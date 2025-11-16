@@ -9,10 +9,15 @@ interface YearPickerProps {
   required?: boolean;
 }
 
+const YEARS_PER_PAGE = 16; // 每页显示的年份数量
+
 export default function YearPicker({ value, onChange, required = false }: YearPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [currentYear, setCurrentYear] = useState(value ? parseInt(value) : new Date().getFullYear());
-  const [startYear, setStartYear] = useState(1950); // 起始显示年份
+  const currentYearValue = value ? parseInt(value) : new Date().getFullYear();
+  const [currentYear, setCurrentYear] = useState(currentYearValue);
+  // 计算初始起始年份，使得当前年份在视图中可见
+  const initialStartYear = Math.floor((currentYearValue - 1950) / YEARS_PER_PAGE) * YEARS_PER_PAGE + 1950;
+  const [startYear, setStartYear] = useState(initialStartYear); // 起始显示年份
   const panelRef = useRef<HTMLDivElement>(null);
 
   // 当年份变化时，调整起始年份以保持选中年份在视图中
@@ -21,8 +26,7 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
       const year = parseInt(value);
       setCurrentYear(year);
       // 计算起始年份，使得选中年份在4x4网格的中心或可见位置
-      const yearsPerPage = 16;
-      const start = Math.floor((year - 1950) / yearsPerPage) * yearsPerPage + 1950;
+      const start = Math.floor((year - 1950) / YEARS_PER_PAGE) * YEARS_PER_PAGE + 1950;
       setStartYear(start);
     }
   }, [value]);
@@ -47,7 +51,7 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
   // 生成4x4年份网格数据
   const generateYearGrid = () => {
     const years = [];
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < YEARS_PER_PAGE; i++) {
       const year = startYear + i;
       if (year >= 1950 && year <= 3950) {
         years.push(year);
@@ -60,14 +64,14 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
 
   // 翻页函数
   const handlePrevPage = () => {
-    if (startYear >= 1950 + 16) {
-      setStartYear(startYear - 16);
+    if (startYear >= 1950 + YEARS_PER_PAGE) {
+      setStartYear(startYear - YEARS_PER_PAGE);
     }
   };
 
   const handleNextPage = () => {
-    if (startYear < 3950 - 16) {
-      setStartYear(startYear + 16);
+    if (startYear < 3950 - YEARS_PER_PAGE) {
+      setStartYear(startYear + YEARS_PER_PAGE);
     }
   };
 
@@ -76,6 +80,52 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
     onChange(year.toString());
     setIsOpen(false);
   };
+
+  // 获取年份对应的干支和农历信息
+  const [yearLunarInfo, setYearLunarInfo] = useState<{ [key: number]: any }>({});
+  
+  useEffect(() => {
+    // 批量获取年份的农历信息（使用默认日期1月1日）
+    const fetchYearLunarInfo = async () => {
+      const yearsToFetch = [];
+      for (let i = 0; i < YEARS_PER_PAGE; i++) {
+        const year = startYear + i;
+        if (year >= 1950 && year <= 3950) {
+          yearsToFetch.push(year);
+        }
+      }
+      
+      const promises = yearsToFetch.map(async (year) => {
+        try {
+          const response = await fetch("/api/nongli", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ year, month: 1, day: 1 }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return { year, lunar: data.lunar };
+          }
+        } catch (error) {
+          console.error(`获取 ${year} 年农历信息失败:`, error);
+        }
+        return null;
+      });
+      
+      const results = await Promise.all(promises);
+      const infoMap: { [key: number]: any } = {};
+      results.forEach((result) => {
+        if (result) {
+          infoMap[result.year] = result.lunar;
+        }
+      });
+      setYearLunarInfo(infoMap);
+    };
+
+    if (isOpen) {
+      fetchYearLunarInfo();
+    }
+  }, [isOpen, startYear]);
 
   // 获取年份对应的干支
   const getYearGanzhi = (year: number) => {
@@ -114,12 +164,12 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
               上一页
             </button>
             <span className="text-sm font-medium text-gray-700 hidden sm:block">
-              {startYear} - {Math.min(startYear + 15, 3950)}
+              {startYear} - {Math.min(startYear + YEARS_PER_PAGE - 1, 3950)}
             </span>
             <button
               type="button"
               onClick={handleNextPage}
-              disabled={startYear >= 3950 - 16}
+              disabled={startYear >= 3950 - YEARS_PER_PAGE}
               className="flex items-center gap-1 px-3 py-2 text-sm text-gray-700 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
             >
               下一页
@@ -134,6 +184,7 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
             {years.map((year) => {
               const ganzhi = getYearGanzhi(year);
               const isSelected = value === year.toString();
+              const lunar = yearLunarInfo[year];
 
               return (
                 <button
@@ -153,6 +204,11 @@ export default function YearPicker({ value, onChange, required = false }: YearPi
                   <div className={`text-[10px] md:text-xs mt-0.5 ${isSelected ? "text-amber-100" : "text-gray-500"}`}>
                     {ganzhi}
                   </div>
+                  {lunar && (
+                    <div className={`text-[9px] mt-0.5 ${isSelected ? "text-amber-200" : "text-blue-500"}`}>
+                      {lunar.yearChinese}年
+                    </div>
+                  )}
                 </button>
               );
             })}

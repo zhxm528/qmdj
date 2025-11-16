@@ -4,6 +4,7 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import Button from "@/components/Button";
 import { useRouter } from "next/navigation";
+import { Modal } from "antd";
 
 export default function Register() {
   const router = useRouter();
@@ -11,32 +12,53 @@ export default function Register() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalContent, setModalContent] = useState({ type: "success" as "success" | "error", message: "" });
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
-      alert("两次输入的密码不一致");
+      setModalContent({ type: "error", message: "两次输入的密码不一致" });
+      setModalVisible(true);
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
 
+      const data = await response.json();
+      
       if (response.ok) {
-        router.push("/login");
+        setModalContent({ 
+          type: "success", 
+          message: data.emailSent 
+            ? "注册成功！请查收邮箱完成验证" 
+            : "注册成功！" 
+        });
+        setModalVisible(true);
+        // 延迟跳转，让用户看到成功提示
+        setTimeout(() => {
+          setModalVisible(false);
+          // 如果发送了验证邮件，不自动跳转，让用户去邮箱验证
+          if (!data.emailSent) {
+            router.push("/login");
+          }
+        }, 3000);
       } else {
-        alert("注册失败，邮箱可能已被使用");
+        setModalContent({ type: "error", message: data.error || "注册失败，请重试" });
+        setModalVisible(true);
       }
     } catch (error) {
       console.error("Register error:", error);
-      alert("注册时发生错误");
+      setModalContent({ type: "error", message: "注册时发生错误，请稍后重试" });
+      setModalVisible(true);
     } finally {
       setLoading(false);
     }
@@ -124,6 +146,36 @@ export default function Register() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={modalVisible}
+        onCancel={() => setModalVisible(false)}
+        footer={null}
+        centered
+        width={400}
+        style={{ height: 200 }}
+        bodyStyle={{ 
+          height: 200, 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "center",
+          padding: "20px"
+        }}
+      >
+        <div className="text-center">
+          {modalContent.type === "success" ? (
+            <div>
+              <div className="text-6xl mb-4 text-green-600">✓</div>
+              <div className="text-xl font-semibold text-green-600">{modalContent.message}</div>
+            </div>
+          ) : (
+            <div>
+              <div className="text-6xl mb-4 text-red-600">✗</div>
+              <div className="text-xl font-semibold text-red-600">{modalContent.message}</div>
+            </div>
+          )}
+        </div>
+      </Modal>
     </Layout>
   );
 }

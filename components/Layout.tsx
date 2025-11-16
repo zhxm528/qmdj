@@ -17,6 +17,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       .then((data) => {
         setUser(data);
         setLoading(false);
+        // 登录后将关键信息写入后台日志
+        if (data && data.id) {
+          try {
+            fetch("/api/user/log", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id: data.id,
+                email: data.email,
+                name: data.name,
+              }),
+            }).catch(() => {});
+          } catch {}
+        }
       })
       .catch(() => setLoading(false));
   }, []);
@@ -53,7 +67,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               {!loading && user ? (
                 <>
                   <Link href="/account" className="text-gray-700 hover:text-amber-600">
-                    账户
+                    {user?.name || "账户"}
                   </Link>
                   <form action="/api/auth/logout" method="POST">
                     <button

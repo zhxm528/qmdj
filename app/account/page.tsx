@@ -50,6 +50,12 @@ export default function Account() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                      昵称/姓名
+                    </label>
+                    <p className="text-gray-900">{user?.name || "-"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       邮箱
                     </label>
                     <p className="text-gray-900">{user?.email || "-"}</p>
@@ -60,38 +66,58 @@ export default function Account() {
                     </label>
                     <p className="text-gray-900">{user?.createdAt || "-"}</p>
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      最近更新
+                    </label>
+                    <p className="text-gray-900">{user?.updatedAt || "-"}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      邮箱验证
+                    </label>
+                    <p className="text-gray-900">
+                      {user?.isEmailVerified ? "已验证" : "未验证"}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      账户状态
+                    </label>
+                    <p className="text-gray-900">{user?.status || "-"}</p>
+                  </div>
                 </div>
               </div>
 
               <div className="border-b pb-6">
-                <h2 className="text-xl font-bold mb-4">订阅状态</h2>
-                <div className="bg-amber-50 p-4 rounded-lg">
-                  <p className="font-medium text-gray-900 mb-2">
-                    当前计划：{user?.subscription?.plan || "免费版"}
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {user?.subscription?.plan !== "免费版"
-                      ? `到期时间：${user?.subscription?.expiresAt || "-"}`
-                      : "升级到付费计划以解锁更多功能"}
-                  </p>
+                <h2 className="text-xl font-bold mb-4">会员信息</h2>
+                <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">会员等级</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.membership?.level || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">会员号</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.membership?.no || "-"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">是否付款</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.membership?.isPaid ? "已付款" : "未付款"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 mb-1">最后付款时间</p>
+                    <p className="font-medium text-gray-900">
+                      {user?.membership?.lastPaidAt || "-"}
+                    </p>
+                  </div>
                 </div>
-                <div className="mt-4">
-                  <Button
-                    variant="secondary"
-                    className="mr-3"
-                    onClick={() => router.push("/pricing")}
-                  >
-                    {user?.subscription?.plan === "免费版"
-                      ? "升级计划"
-                      : "管理订阅"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => alert("发票下载功能即将上线")}
-                  >
-                    下载发票
-                  </Button>
-                </div>
+                <div className="mt-4" />
               </div>
 
               <div>

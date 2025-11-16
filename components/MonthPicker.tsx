@@ -20,6 +20,9 @@ export default function MonthPicker({
 }: MonthPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  
+  // 获取月份的农历信息（必须在所有条件返回之前调用）
+  const [monthLunarInfo, setMonthLunarInfo] = useState<{ [key: number]: any }>({});
 
   // 点击外部关闭面板
   useEffect(() => {
@@ -38,7 +41,53 @@ export default function MonthPicker({
     };
   }, [isOpen]);
 
-  // 如果未选择年份，直接返回禁用状态
+  // 获取月份选项（如果年份存在）
+  const monthOptions = year ? getMonthOptions(parseInt(year)) : [];
+
+  // 获取月份对应的干支
+  const getMonthGanzhi = (month: number) => {
+    return monthOptions.find((m) => m.value === month)?.ganzhi || "";
+  };
+
+  useEffect(() => {
+    // 批量获取月份的农历信息（使用该月第一天）
+    const fetchMonthLunarInfo = async () => {
+      if (!year || monthOptions.length === 0) return;
+      
+      const promises = monthOptions.map(async (month) => {
+        try {
+          const response = await fetch("/api/nongli", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ year: parseInt(year), month: month.value, day: 1 }),
+          });
+          if (response.ok) {
+            const data = await response.json();
+            return { month: month.value, lunar: data.lunar };
+          }
+        } catch (error) {
+          console.error(`获取 ${year}年${month.value}月农历信息失败:`, error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(promises);
+      const infoMap: { [key: number]: any } = {};
+      results.forEach((result) => {
+        if (result) {
+          infoMap[result.month] = result.lunar;
+        }
+      });
+      setMonthLunarInfo(infoMap);
+    };
+
+    if (isOpen && year) {
+      fetchMonthLunarInfo();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, year]);
+
+  // 如果未选择年份，返回禁用状态
   if (!year) {
     return (
       <button
@@ -51,14 +100,6 @@ export default function MonthPicker({
       </button>
     );
   }
-
-  // 获取月份选项
-  const monthOptions = getMonthOptions(parseInt(year));
-
-  // 获取月份对应的干支
-  const getMonthGanzhi = (month: number) => {
-    return monthOptions.find((m) => m.value === month)?.ganzhi || "";
-  };
 
   return (
     <div className="relative" ref={panelRef}>
@@ -91,6 +132,7 @@ export default function MonthPicker({
           <div className="grid grid-cols-4 gap-1.5 p-3 bg-white">
             {monthOptions.map((month) => {
               const isSelected = value === month.value.toString().padStart(2, "0");
+              const lunar = monthLunarInfo[month.value];
 
               return (
                 <button
@@ -113,6 +155,11 @@ export default function MonthPicker({
                   <div className={`text-[10px] md:text-xs mt-0.5 ${isSelected ? "text-amber-100" : "text-gray-500"}`}>
                     {month.ganzhi}
                   </div>
+                  {lunar && (
+                    <div className={`text-[9px] mt-0.5 ${isSelected ? "text-amber-200" : "text-blue-500"}`}>
+                      {lunar.displayWithAlias || lunar.monthAlias}
+                    </div>
+                  )}
                 </button>
               );
             })}

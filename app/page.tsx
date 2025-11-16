@@ -1,123 +1,707 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
-import Button from "@/components/Button";
-import NineGrid from "@/components/NineGrid";
-import Toast from "@/components/Toast";
-import Skeleton from "@/components/Skeleton";
 import DateSelector from "@/components/DateSelector";
+import HourSelector from "@/components/HourSelector";
+import MinuteSelector from "@/components/MinuteSelector";
+import NineGrid from "@/components/NineGrid";
+import { getFourPillars } from "@/lib/ganzhi";
+import { Button, ConfigProvider } from "antd";
+import zhCN from "antd/locale/zh_CN";
 
-export default function Home() {
-  const [title, setTitle] = useState("");
-  const [date, setDate] = useState("");
-  const [time, setTime] = useState("");
+const DISPLAY_ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+
+// 时柱到旬首的映射表
+const HOUR_PILLAR_TO_XUN: Record<string, string> = {
+  甲子: "戊", 乙丑: "戊", 丙寅: "戊", 丁卯: "戊", 戊辰: "戊",
+  己巳: "戊", 庚午: "戊", 辛未: "戊", 壬申: "戊", 癸酉: "戊",
+  甲戌: "己", 乙亥: "己", 丙子: "己", 丁丑: "己", 戊寅: "己",
+  己卯: "己", 庚辰: "己", 辛巳: "己", 壬午: "己", 癸未: "己",
+  甲申: "庚", 乙酉: "庚", 丙戌: "庚", 丁亥: "庚", 戊子: "庚",
+  己丑: "庚", 庚寅: "庚", 辛卯: "庚", 壬辰: "庚", 癸巳: "庚",
+  甲午: "辛", 乙未: "辛", 丙申: "辛", 丁酉: "辛", 戊戌: "辛",
+  己亥: "辛", 庚子: "辛", 辛丑: "辛", 壬寅: "辛", 癸卯: "辛",
+  甲辰: "壬", 乙巳: "壬", 丙午: "壬", 丁未: "壬", 戊申: "壬",
+  己酉: "壬", 庚戌: "壬", 辛亥: "壬", 壬子: "壬", 癸丑: "壬",
+  甲寅: "癸", 乙卯: "癸", 丙辰: "癸", 丁巳: "癸", 戊午: "癸",
+  己未: "癸", 庚申: "癸", 辛酉: "癸", 壬戌: "癸", 癸亥: "癸",
+};
+
+// 根据时柱计算旬首
+function getXunShou(hourPillar: string): string {
+  return HOUR_PILLAR_TO_XUN[hourPillar] || "—";
+}
+
+interface DateInfo {
+  gregorian: string;
+  lunar: string;
+  season: string;
+  startShijie?: string;
+  endShijie?: string;
+  fourPillars: {
+    year: string;
+    month: string;
+    day: string;
+    hour: string;
+  };
+  dunType: "阳遁" | "阴遁";
+  ju: number;
+}
+
+interface PaipanResult {
+  grid: any[];
+  meta?: {
+    date?: string;
+    time?: string;
+    season?: string;
+    dunType?: string;
+    ju?: number;
+  };
+}
+
+// 获取当前日期的格式化字符串 (YYYY-MM-DD)
+function getCurrentDate(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+// 获取当前小时的格式化字符串 (HH)
+function getCurrentHour(): string {
+  const now = new Date();
+  return String(now.getHours()).padStart(2, "0");
+}
+
+// 获取当前分钟的格式化字符串 (MM)
+function getCurrentMinute(): string {
+  const now = new Date();
+  return String(now.getMinutes()).padStart(2, "0");
+}
+
+export default function HomePage() {
+  const [date, setDate] = useState(getCurrentDate());
+  const [hour, setHour] = useState(getCurrentHour());
+  const [minute, setMinute] = useState(getCurrentMinute());
+  const [dateInfo, setDateInfo] = useState<DateInfo | null>(null);
+  const [paipanResult, setPaipanResult] = useState<PaipanResult | null>(null);
+  const [dipangan, setDipangan] = useState<Record<number, string> | null>(null);
+  const [tianpangan, setTianpangan] = useState<Record<number, string> | null>(null);
+  const [dibashen, setDibashen] = useState<Record<number, string> | null>(null);
+  const [tianbashen, setTianbashen] = useState<Record<number, string> | null>(null);
+  const [jiuxing, setJiuxing] = useState<Record<number, string> | null>(null);
+  const [bamen, setBamen] = useState<Record<number, string> | null>(null);
+  const [zhiShiDoor, setZhiShiDoor] = useState<string>("");
+  const [zhiFuPalace, setZhiFuPalace] = useState<number | null>(null);
+  const [kongwang, setKongwang] = useState<Record<number, boolean> | null>(null);
+  const [yima, setYima] = useState<Record<number, boolean> | null>(null);
+  const [jigong, setJigong] = useState<Record<number, { diGan?: string; tianGan?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [isQipanExpanded, setIsQipanExpanded] = useState(false);
 
-  const handleQuery = async () => {
-    // 校验必填项
-    if (!date || !time) {
-      setToast({ message: "请填写日期和时间", type: "error" });
+  // 从日期字符串解析年月日（使用 useMemo 而不是状态）
+  const dateParts = date ? date.split("-") : null;
+  const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
+  const month = dateParts && dateParts.length === 3 ? dateParts[1] : "";
+  const day = dateParts && dateParts.length === 3 ? dateParts[2] : "";
+
+  // 当日期和小时都选择后，自动获取日期信息
+  useEffect(() => {
+    if (!date || !hour) return;
+
+    const parts = date.split("-");
+    if (parts.length !== 3) return;
+    const [yearStr, monthStr, dayStr] = parts;
+    if (!yearStr || !monthStr || !dayStr) return;
+
+    const yearNum = parseInt(yearStr, 10);
+    const monthNum = parseInt(monthStr, 10);
+    const dayNum = parseInt(dayStr, 10);
+    const hourNum = parseInt(hour, 10);
+
+    if (Number.isNaN(yearNum) || Number.isNaN(monthNum) || Number.isNaN(dayNum) || Number.isNaN(hourNum)) {
       return;
     }
 
-    setLoading(true);
+    const fetchDateInfo = async () => {
+      try {
+        setLoading(true);
+
+        const [nongliRes, yinyangdunRes] = await Promise.all([
+          fetch("/api/nongli", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              year: yearNum,
+              month: monthNum,
+              day: dayNum,
+            }),
+          }),
+          fetch("/api/yinyangdun", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date, time: `${hour}:00` }),
+          }),
+        ]);
+
+        const nongliData = await nongliRes.json();
+
+        const shijieRes = await fetch("/api/shijie", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date,
+            time: `${hour}:00`,
+            lunarYear: nongliData.lunar?.year,
+            lunarMonth: nongliData.lunar?.month || nongliData.lunar?.monthAlias,
+            lunarDay: nongliData.lunar?.day,
+          }),
+        });
+
+        const shijieData = await shijieRes.json();
+        const yinyangdunData = await yinyangdunRes.json();
+
+        const pillars = getFourPillars(yearNum, monthNum, dayNum, hourNum);
+
+        setDateInfo({
+          gregorian: date,
+          lunar: nongliData.lunar?.display || "",
+          season: shijieData.shijie || "",
+          startShijie: shijieData.startShijie || shijieData.shijie || "",
+          endShijie: shijieData.endShijie || "",
+          fourPillars: pillars,
+          dunType: yinyangdunData.dunType || "",
+          ju: yinyangdunData.ju || 0,
+        });
+      } catch (error) {
+        console.error("获取日期信息失败:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDateInfo();
+  }, [date, hour]);
+
+  // 排盘
+  const handlePaipan = async () => {
+    if (!date || !hour || !dateInfo) {
+      alert("请先选择日期和小时");
+      return;
+    }
+
     try {
-      const response = await fetch("/api/qimen/query", {
+      setLoading(true);
+
+      const dipanganResponse = await fetch("/api/dipangan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subject: title || "奇门遁甲", date, time }),
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          ju: dateInfo.ju,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error("查询失败");
+      if (!dipanganResponse.ok) {
+        const err = await dipanganResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排地盘干失败");
       }
 
-      const data = await response.json();
-      setResult(data);
-      setToast({ message: "排盘成功", type: "success" });
-    } catch (error) {
-      console.error("Query error:", error);
-      setToast({ message: "查询失败，请重试", type: "error" });
+      const dipanganData = await dipanganResponse.json();
+      const dipanganMap: Record<number, string> = dipanganData.dipangan || {};
+      setDipangan(dipanganMap);
+
+      const tianpanganResponse = await fetch("/api/tianpangan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          hourPillar: dateInfo.fourPillars.hour,
+          dipangan: dipanganMap,
+        }),
+      });
+
+      if (!tianpanganResponse.ok) {
+        const err = await tianpanganResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排天盘干失败");
+      }
+
+      const tianpanganData = await tianpanganResponse.json();
+      const tianpanganMap: Record<number, string> = tianpanganData.tianpangan || {};
+      setTianpangan(tianpanganMap);
+
+      // 排地八神
+      const dibashenResponse = await fetch("/api/dibashen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          hourPillar: dateInfo.fourPillars.hour,
+          dipangan: dipanganMap,
+        }),
+      });
+
+      if (!dibashenResponse.ok) {
+        const err = await dibashenResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排地八神失败");
+      }
+
+      const dibashenData = await dibashenResponse.json();
+      const dibashenMap: Record<number, string> = dibashenData.dibashen || {};
+      setDibashen(dibashenMap);
+      
+      // 从地八神中找到值符所在的宫位
+      let zhiFuPalaceFound: number | null = null;
+      for (const [key, value] of Object.entries(dibashenMap)) {
+        const palace = Number(key);
+        if (!Number.isNaN(palace) && value === "值符") {
+          zhiFuPalaceFound = palace;
+          break;
+        }
+      }
+      setZhiFuPalace(zhiFuPalaceFound);
+
+      // 排天八神
+      const tianbashenResponse = await fetch("/api/tianbashen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          hourPillar: dateInfo.fourPillars.hour,
+          tianpangan: tianpanganMap,
+        }),
+      });
+
+      if (!tianbashenResponse.ok) {
+        const err = await tianbashenResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排天八神失败");
+      }
+
+      const tianbashenData = await tianbashenResponse.json();
+      const tianbashenMap: Record<number, string> = tianbashenData.tianbashen || {};
+      setTianbashen(tianbashenMap);
+
+      // 排九星
+      const jiuxingResponse = await fetch("/api/jiuxing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          dibashen: dibashenMap,
+          tianbashen: tianbashenMap,
+        }),
+      });
+
+      if (!jiuxingResponse.ok) {
+        const err = await jiuxingResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排九星失败");
+      }
+
+      const jiuxingData = await jiuxingResponse.json();
+      const jiuxingMap: Record<number, string> = jiuxingData.jiuxing || {};
+      setJiuxing(jiuxingMap);
+
+      // 排八门
+      const bamenResponse = await fetch("/api/bamen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dunType: dateInfo.dunType,
+          hourPillar: dateInfo.fourPillars.hour,
+          dibashen: dibashenMap,
+        }),
+      });
+
+      if (!bamenResponse.ok) {
+        const err = await bamenResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排八门失败");
+      }
+
+      const bamenData = await bamenResponse.json();
+      const bamenMap: Record<number, string> = bamenData.bamen || {};
+      setBamen(bamenMap);
+      setZhiShiDoor(bamenData.zhiShiDoor || "");
+
+      // 排空亡
+      const kongwangResponse = await fetch("/api/kongwang", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hourPillar: dateInfo.fourPillars.hour,
+        }),
+      });
+
+      if (!kongwangResponse.ok) {
+        const err = await kongwangResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排空亡失败");
+      }
+
+      const kongwangData = await kongwangResponse.json();
+      const kongwangMap: Record<number, boolean> = kongwangData.kongwang || {};
+      setKongwang(kongwangMap);
+
+      // 排驿马
+      const yimaResponse = await fetch("/api/yima", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hourPillar: dateInfo.fourPillars.hour,
+        }),
+      });
+
+      if (!yimaResponse.ok) {
+        const err = await yimaResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排驿马失败");
+      }
+
+      const yimaData = await yimaResponse.json();
+      const yimaMap: Record<number, boolean> = yimaData.yima || {};
+      setYima(yimaMap);
+
+      // 排寄宫
+      const jigongResponse = await fetch("/api/jigong", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dipangan: dipanganMap,
+          tianpangan: tianpanganMap,
+          jiuxing: jiuxingMap,
+        }),
+      });
+
+      if (!jigongResponse.ok) {
+        const err = await jigongResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排寄宫失败");
+      }
+
+      const jigongData = await jigongResponse.json();
+      const jigongMap: Record<number, { diGan?: string; tianGan?: string }> = jigongData.jigong || {};
+      setJigong(jigongMap);
+
+      const grid = DISPLAY_ORDER.map((palaceNo) => {
+        const diGan = dipanganMap[palaceNo] || "";
+        const tianGan = tianpanganMap[palaceNo] || "";
+        const diShen = dibashenMap[palaceNo] || "";
+        const tianShen = tianbashenMap[palaceNo] || "";
+        const star = jiuxingMap[palaceNo] || "";
+        const door = bamenMap[palaceNo] || "";
+        const kongWang = kongwangMap[palaceNo] || false;
+        const yiMa = yimaMap[palaceNo] || false;
+        const jiGongInfo = jigongMap[palaceNo] || null;
+        const parts: string[] = [];
+        if (diGan) parts.push(`地盘干：${diGan}`);
+        if (tianGan) parts.push(`天盘干：${tianGan}`);
+        if (diShen) parts.push(`地八神：${diShen}`);
+        if (tianShen) parts.push(`天八神：${tianShen}`);
+        if (star) parts.push(`九星：${star}`);
+        if (door) parts.push(`八门：${door}`);
+        return {
+          id: palaceNo,
+          name: `宫${palaceNo}`,
+          diGan,
+          tianGan,
+          diShen,
+          tianShen,
+          star,
+          door,
+          kongWang,
+          yiMa,
+          jiGong: jiGongInfo,
+          content: parts.join(" · ") || "暂无排盘数据",
+        };
+      });
+
+      setPaipanResult({ grid });
+    } catch (error: any) {
+      console.error("排盘失败:", error);
+      alert(error.message || "排盘失败，请重试");
     } finally {
       setLoading(false);
     }
   };
 
-  return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          {/* 标题行 */}
-          <div className="text-center mb-12">
-            <h1 className="text-5xl font-bold text-gray-900 mb-2">奇门遁甲</h1>
-            <p className="text-gray-600">在线排盘 · 精准预测</p>
-          </div>
+  const displayOrder = DISPLAY_ORDER;
 
-          {/* 输入行 */}
+  return (
+    <ConfigProvider locale={zhCN}>
+      <Layout>
+        <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* 日期选择框和小时选择框 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-            <div className="flex gap-3 mb-4">
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="请输入问题或对象（可选）"
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <DateSelector
+                value={date}
+                onChange={setDate}
+                required
               />
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  时辰 <span className="text-red-500">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <HourSelector
+                    value={hour}
+                    onChange={setHour}
+                    year={year}
+                    month={month}
+                    day={day}
+                    required
+                  />
+                  <MinuteSelector
+                    value={minute}
+                    onChange={setMinute}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 排盘按钮 */}
+            <div className="mt-6 flex justify-center">
               <Button
-                onClick={handleQuery}
+                type="primary"
+                size="large"
+                onClick={handlePaipan}
                 loading={loading}
-                className="px-8 whitespace-nowrap"
+                disabled={!date || !hour}
+                className="bg-amber-600 hover:bg-amber-700"
               >
-                查询
+                排盘
               </Button>
             </div>
+          </div>
 
-            {/* 条件行 */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <DateSelector value={date} onChange={setDate} required />
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  时间
-                </label>
-                <input
-                  type="time"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  required
-                />
+          {/* 日期信息面板 */}
+          {dateInfo && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门信息</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-sm text-gray-600">公历（阳历）：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {date && hour && minute
+                      ? `${date} ${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
+                      : dateInfo.gregorian}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">农历（阴历）：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.lunar}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">时节：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.startShijie && dateInfo.endShijie
+                      ? `${dateInfo.startShijie} → ${dateInfo.endShijie}`
+                      : dateInfo.season || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">干支四柱：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.fourPillars.year}年 {dateInfo.fourPillars.month}月{" "}
+                    {dateInfo.fourPillars.day}日 {dateInfo.fourPillars.hour}时
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">旬首：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {getXunShou(dateInfo.fourPillars.hour)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">阴阳遁：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.dunType}{dateInfo.ju}局
+                  </span>
+                </div>
+                {zhiShiDoor && (
+                  <div>
+                    <span className="text-sm text-gray-600">值使门：</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {zhiShiDoor}门
+                    </span>
+                  </div>
+                )}
+                {zhiFuPalace !== null && (
+                  <div>
+                    <span className="text-sm text-gray-600">值符：</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      宫{zhiFuPalace}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
-          {/* 结果行 */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-              排盘结果
-            </h2>
-            {loading ? (
-              <Skeleton />
-            ) : result ? (
-              <NineGrid data={result} />
-            ) : (
-              <div className="text-center text-gray-400 py-12">
-                <p>请输入日期和时间，点击查询按钮开始排盘</p>
-              </div>
-            )}
-          </div>
+          {/* 排盘结果面板 */}
+          {paipanResult && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门排盘</h2>
+              <NineGrid data={paipanResult} />
+            </div>
+          )}
+          {/* 奇盘一览 - 可折叠面板 */}
+          {(dipangan || tianpangan || dibashen || tianbashen || jiuxing || bamen || kongwang || yima) && (
+            <div className="bg-white rounded-lg shadow-md mt-6">
+              <button
+                type="button"
+                onClick={() => setIsQipanExpanded(!isQipanExpanded)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
+              >
+                <h2 className="text-xl font-bold text-gray-900">奇盘一览</h2>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${isQipanExpanded ? "transform rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isQipanExpanded && (
+                <div className="px-6 pb-6 space-y-6">
+                  {dipangan && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地盘干一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-amber-200 rounded-lg px-4 py-3 bg-amber-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{dipangan[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tianpangan && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天盘干一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-sky-200 rounded-lg px-4 py-3 bg-sky-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{tianpangan[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {dibashen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地八神一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-purple-200 rounded-lg px-4 py-3 bg-purple-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{dibashen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tianbashen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天八神一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-green-200 rounded-lg px-4 py-3 bg-green-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{tianbashen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {jiuxing && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">九星一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{jiuxing[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {bamen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">八门一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-rose-200 rounded-lg px-4 py-3 bg-rose-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{bamen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {kongwang && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">空亡一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{kongwang[palace] ? "空亡" : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {yima && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">驿马一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{yima[palace] ? "驿马" : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
-
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-    </Layout>
+      </Layout>
+    </ConfigProvider>
   );
 }
+

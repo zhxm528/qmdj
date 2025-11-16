@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import YearPicker from "./YearPicker";
 import MonthPicker from "./MonthPicker";
+import { dayToGanzhi, dateToLunar } from "@/lib/ganzhi";
 
 interface DateSelectorProps {
   value: string; // YYYY-MM-DD 格式
   onChange: (date: string) => void;
   required?: boolean;
+  inline?: boolean; // 是否内联模式，用于与其他组件等宽布局
 }
 
 export default function DateSelector({
@@ -18,6 +20,8 @@ export default function DateSelector({
   const [year, setYear] = useState("");
   const [month, setMonth] = useState("");
   const [day, setDay] = useState("");
+  const [isDayDropdownOpen, setIsDayDropdownOpen] = useState(false);
+  const dayDropdownRef = useRef<HTMLDivElement>(null);
 
   // 从 value 初始化
   useEffect(() => {
@@ -33,24 +37,42 @@ export default function DateSelector({
 
   // 当年月日改变时，更新父组件
   useEffect(() => {
-    if (year && month) {
-      // 检查当前日期是否有效（用于处理月份切换导致的日期超出）
-      const daysInMonth = getDaysInMonth(parseInt(year), parseInt(month));
-      const currentDay = day ? parseInt(day) : 1;
-      
-      if (currentDay > daysInMonth) {
-        // 如果日期超出，自动调整为该月最后一天
-        setDay(daysInMonth.toString().padStart(2, "0"));
-      }
-    }
-  }, [year, month, day]);
+    if (!year || !month || !day) return;
 
-  useEffect(() => {
-    if (year && month && day) {
-      const formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    const daysInMonth = getDaysInMonth(parseInt(year, 10), parseInt(month, 10));
+    const currentDay = parseInt(day, 10);
+
+    if (Number.isNaN(currentDay)) {
+      return;
+    }
+
+    if (currentDay > daysInMonth) {
+      const adjusted = daysInMonth.toString().padStart(2, "0");
+      if (adjusted !== day) {
+        setDay(adjusted);
+      }
+      return;
+    }
+
+    const formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    if (formattedDate !== value) {
       onChange(formattedDate);
     }
-  }, [year, month, day, onChange]);
+  }, [year, month, day, value, onChange]);
+
+  // 点击外部关闭下拉框
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dayDropdownRef.current && !dayDropdownRef.current.contains(event.target as Node)) {
+        setIsDayDropdownOpen(false);
+      }
+    }
+
+    if (isDayDropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isDayDropdownOpen]);
 
   return (
     <div className="space-y-2">
@@ -70,31 +92,21 @@ export default function DateSelector({
         />
 
         {/* 日期选择 */}
-        <div className="relative">
-          <select
-            value={day}
-            onChange={(e) => setDay(e.target.value)}
+        <div className="relative" ref={dayDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsDayDropdownOpen(!isDayDropdownOpen)}
             disabled={!year || !month}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
-            required={required}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed text-left flex items-center justify-between"
           >
-            <option value="">日</option>
-            {year && month && Array.from(
-              { length: getDaysInMonth(parseInt(year), parseInt(month)) },
-              (_, i) => i + 1
-            ).map((d) => (
-              <option key={d} value={d.toString().padStart(2, "0")}>
-                {d}日
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+            <span className={!day ? "text-gray-500" : ""}>
+              {day ? `${day}日` : "日"}
+            </span>
             <svg
               className="h-5 w-5 text-gray-400"
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              aria-hidden="true"
             >
               <path
                 fillRule="evenodd"
@@ -102,7 +114,42 @@ export default function DateSelector({
                 clipRule="evenodd"
               />
             </svg>
-          </div>
+          </button>
+          
+          {isDayDropdownOpen && year && month && (
+            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto" style={{ minWidth: '600px' }}>
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from(
+                  { length: getDaysInMonth(parseInt(year), parseInt(month)) },
+                  (_, i) => i + 1
+                ).map((d) => {
+                  const dayValue = d.toString().padStart(2, "0");
+                  const ganzhi = year && month ? dayToGanzhi(parseInt(year), parseInt(month), d) : "";
+                  const lunar = year && month ? dateToLunar(parseInt(year), parseInt(month), d) : "";
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setDay(dayValue);
+                        setIsDayDropdownOpen(false);
+                      }}
+                      className={`text-center py-2 px-2 rounded transition-colors whitespace-nowrap ${
+                        day === dayValue
+                          ? "bg-amber-500 text-white"
+                          : "hover:bg-amber-50"
+                      }`}
+                      title={`${d}日 (${lunar} ${ganzhi})`}
+                    >
+                      <div className={`text-sm font-medium ${day === dayValue ? 'text-white' : ''} whitespace-nowrap`}>{d}</div>
+                      <div className={`text-xs ${day === dayValue ? 'text-amber-100' : 'text-gray-600'} whitespace-nowrap`}>{lunar}</div>
+                      <div className={`text-xs ${day === dayValue ? 'text-amber-200' : 'text-amber-600'} whitespace-nowrap`}>{ganzhi}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -6,7 +6,9 @@ export async function POST(request: NextRequest) {
     const cookieStore = await cookies();
     cookieStore.delete("session");
 
-    return NextResponse.json({ message: "退出成功" });
+    // 清空 session 后重定向到首页
+    const url = new URL("/", request.url);
+    return NextResponse.redirect(url);
   } catch (error) {
     console.error("Logout error:", error);
     return NextResponse.json(
