@@ -5,6 +5,13 @@ export const groqConfig = {
   model: "llama-3.3-70b-versatile",
 };
 
+// DeepSeek API 配置
+export const deepseekConfig = {
+  apiKey: process.env.DEEPSEEK_API_KEY || "sk-4cfb428f4047486a8bab85b796745658",
+  baseURL: process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com",
+  model: "deepseek-chat",
+};
+
 // 数据库配置
 export const dbConfig = {
   host: process.env.DB_HOST || "localhost",

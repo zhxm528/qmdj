@@ -7,7 +7,7 @@ import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import NineGrid from "@/components/NineGrid";
 import { getFourPillars } from "@/lib/ganzhi";
-import { Button, ConfigProvider } from "antd";
+import { Button, ConfigProvider, Input } from "antd";
 import zhCN from "antd/locale/zh_CN";
 
 const DISPLAY_ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
@@ -100,6 +100,10 @@ export default function HomePage() {
   const [jigong, setJigong] = useState<Record<number, { diGan?: string; tianGan?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [isQipanExpanded, setIsQipanExpanded] = useState(false);
+  const [question, setQuestion] = useState<string>("");
+  const [aiKanpanResult, setAiKanpanResult] = useState<string | null>(null);
+  const [aiKanpanLoading, setAiKanpanLoading] = useState(false);
+  const [promptWenshiResult, setPromptWenshiResult] = useState<any>(null);
 
   // 从日期字符串解析年月日（使用 useMemo 而不是状态）
   const dateParts = date ? date.split("-") : null;
@@ -399,7 +403,7 @@ export default function HomePage() {
         if (door) parts.push(`八门：${door}`);
         return {
           id: palaceNo,
-          name: `宫${palaceNo}`,
+          name: ``, // 宫位名称
           diGan,
           tianGan,
           diShen,
@@ -414,6 +418,124 @@ export default function HomePage() {
       });
 
       setPaipanResult({ grid });
+
+      // 保存排盘结果到数据库
+      try {
+        const saveResponse = await fetch("/api/qimen_pan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            date,
+            hour,
+            minute,
+            dateInfo,
+            dipangan: dipanganMap,
+            tianpangan: tianpanganMap,
+            dibashen: dibashenMap,
+            tianbashen: tianbashenMap,
+            jiuxing: jiuxingMap,
+            bamen: bamenMap,
+            kongwang: kongwangMap,
+            yima: yimaMap,
+            jigong: jigongMap,
+            zhiShiDoor,
+            zhiFuPalace: zhiFuPalaceFound,
+          }),
+        });
+
+        if (saveResponse.ok) {
+          const saveData = await saveResponse.json();
+          console.log("排盘结果已保存:", saveData);
+        } else {
+          const err = await saveResponse.json().catch(() => ({}));
+          console.warn("保存排盘结果失败:", err.error || "未知错误");
+          // 不阻止用户查看排盘结果，仅记录警告
+        }
+      } catch (saveError: any) {
+        console.warn("保存排盘结果时出错:", saveError);
+        // 不阻止用户查看排盘结果，仅记录警告
+      }
+
+      // 调用问事提炼 API（如果有问事内容）
+      let refinedQuestion = question;
+      if (question && question.trim().length > 0) {
+        try {
+          console.log("=== 开始问事提炼 ===");
+          console.log("原始问事文本:", question);
+
+          const promptWenshiResponse = await fetch("/api/prompt_wenshi", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              text: question,
+            }),
+          });
+
+          if (promptWenshiResponse.ok) {
+            const promptWenshiData = await promptWenshiResponse.json();
+            if (promptWenshiData.success && promptWenshiData.data) {
+              setPromptWenshiResult(promptWenshiData.data);
+              // 使用提炼后的问句作为后续 AI 看盘的问题
+              refinedQuestion = promptWenshiData.data.short_prompt_zh || question;
+              console.log("=== 问事提炼成功 ===");
+              console.log("提炼后的 JSON:", JSON.stringify(promptWenshiData.data, null, 2));
+              console.log("提炼后的问句:", refinedQuestion);
+            } else {
+              console.warn("问事提炼失败:", promptWenshiData.error || "未知错误");
+            }
+          } else {
+            const err = await promptWenshiResponse.json().catch(() => ({}));
+            console.warn("问事提炼失败:", err.error || "未知错误");
+          }
+        } catch (promptWenshiError: any) {
+          console.warn("问事提炼时出错:", promptWenshiError);
+          // 不阻止后续流程，继续使用原始问题
+        }
+      }
+
+      // 调用 AI 看盘 API
+      try {
+        setAiKanpanLoading(true);
+        setAiKanpanResult(null);
+
+        const kanpanResponse = await fetch("/api/kanpan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            question: refinedQuestion,
+            dateInfo,
+            paipanResult: { grid },
+            dipangan: dipanganMap,
+            tianpangan: tianpanganMap,
+            dibashen: dibashenMap,
+            tianbashen: tianbashenMap,
+            jiuxing: jiuxingMap,
+            bamen: bamenMap,
+            kongwang: kongwangMap,
+            yima: yimaMap,
+            jigong: jigongMap,
+            zhiShiDoor,
+            zhiFuPalace: zhiFuPalaceFound,
+          }),
+        });
+
+        if (kanpanResponse.ok) {
+          const kanpanData = await kanpanResponse.json();
+          if (kanpanData.success) {
+            setAiKanpanResult(kanpanData.result || "无法生成分析结果");
+          } else {
+            setAiKanpanResult(`AI看盘失败：${kanpanData.error || "未知错误"}`);
+          }
+        } else {
+          const err = await kanpanResponse.json().catch(() => ({}));
+          setAiKanpanResult(`AI看盘失败：${err.error || "未知错误"}`);
+        }
+      } catch (kanpanError: any) {
+        console.error("AI看盘失败:", kanpanError);
+        setAiKanpanResult(`AI看盘失败：${kanpanError.message || "请重试"}`);
+      } finally {
+        setAiKanpanLoading(false);
+      }
     } catch (error: any) {
       console.error("排盘失败:", error);
       alert(error.message || "排盘失败，请重试");
@@ -458,6 +580,19 @@ export default function HomePage() {
               </div>
             </div>
 
+            {/* 问事输入框 */}
+            <div className="mt-6 w-full">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                问事：
+              </label>
+              <Input
+                value={question}
+                onChange={(e) => setQuestion(e.target.value)}
+                placeholder="请输入要问的事情"
+                className="w-full"
+              />
+            </div>
+
             {/* 排盘按钮 */}
             <div className="mt-6 flex justify-center">
               <Button
@@ -473,10 +608,37 @@ export default function HomePage() {
             </div>
           </div>
 
+          {/* AI看盘面板 */}
+          {(aiKanpanLoading || aiKanpanResult) && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">AI看盘</h2>
+              {aiKanpanLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
+                  <span className="ml-3 text-gray-600">AI正在分析中...</span>
+                </div>
+              ) : aiKanpanResult ? (
+                <div className="prose max-w-none">
+                  <div className="whitespace-pre-wrap text-gray-700 leading-relaxed">
+                    {aiKanpanResult}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* 排盘结果面板 */}
+          {paipanResult && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门排盘</h2>
+              <NineGrid data={paipanResult} />
+            </div>
+          )}
+
           {/* 日期信息面板 */}
           {dateInfo && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门信息</h2>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4"></h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <span className="text-sm text-gray-600">公历（阳历）：</span>
@@ -539,13 +701,6 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* 排盘结果面板 */}
-          {paipanResult && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门排盘</h2>
-              <NineGrid data={paipanResult} />
-            </div>
-          )}
           {/* 奇盘一览 - 可折叠面板 */}
           {(dipangan || tianpangan || dibashen || tianbashen || jiuxing || bamen || kongwang || yima) && (
             <div className="bg-white rounded-lg shadow-md mt-6">
