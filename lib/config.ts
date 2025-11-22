@@ -14,11 +14,11 @@ export const deepseekConfig = {
 
 // 数据库配置
 export const dbConfig = {
-  host: process.env.DB_HOST || "localhost",
+  host: process.env.DB_HOST || "47.120.18.202",
   port: parseInt(process.env.DB_PORT || "5432", 10),
-  database: process.env.DB_NAME || "mydatabase",
-  user: process.env.DB_USER || "myuser",
-  password: process.env.DB_PASSWORD || "mypassword",
+  database: process.env.DB_NAME || "qmdj",
+  user: process.env.DB_USER || "mz",
+  password: process.env.DB_PASSWORD || "12qw!@QW",
   // 连接池配置
   max: parseInt(process.env.DB_POOL_MAX || "20", 10), // 最大连接数
   idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || "30000", 10), // 空闲连接超时时间（毫秒）
