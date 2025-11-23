@@ -457,7 +457,8 @@ export default function HomePage() {
       }
 
       // 调用问事提炼 API（如果有问事内容）
-      let refinedQuestion = question;
+      let refinedQuestionData: any = null; // 存储 JSON 对象格式的提炼结果
+      let refinedQuestion: string = question; // 保留字符串格式作为后备
       if (question && question.trim().length > 0) {
         try {
           console.log("=== 开始问事提炼 ===");
@@ -475,11 +476,11 @@ export default function HomePage() {
             const promptWenshiData = await promptWenshiResponse.json();
             if (promptWenshiData.success && promptWenshiData.data) {
               setPromptWenshiResult(promptWenshiData.data);
-              // 使用提炼后的问句作为后续 AI 看盘的问题
-              refinedQuestion = promptWenshiData.data.short_prompt_zh || question;
+              // 保存 JSON 对象格式的提炼结果
+              refinedQuestionData = promptWenshiData.data;
+              refinedQuestion = JSON.stringify(promptWenshiData.data, null, 2);
               console.log("=== 问事提炼成功 ===");
-              console.log("提炼后的 JSON:", JSON.stringify(promptWenshiData.data, null, 2));
-              console.log("提炼后的问句:", refinedQuestion);
+              console.log("提炼后的 JSON:", refinedQuestion);
             } else {
               console.warn("问事提炼失败:", promptWenshiData.error || "未知错误");
             }
@@ -494,47 +495,51 @@ export default function HomePage() {
       }
 
       // 调用 AI 看盘 API
-      try {
-        setAiKanpanLoading(true);
-        setAiKanpanResult(null);
+      // 注意：当前暂时禁用，如需启用请将下面的条件改为 true
+      const ENABLE_AI_KANPAN = true;
+      if (ENABLE_AI_KANPAN) {
+        try {
+          setAiKanpanLoading(true);
+          setAiKanpanResult(null);
 
-        const kanpanResponse = await fetch("/api/kanpan", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            question: refinedQuestion,
-            dateInfo,
-            paipanResult: { grid },
-            dipangan: dipanganMap,
-            tianpangan: tianpanganMap,
-            dibashen: dibashenMap,
-            tianbashen: tianbashenMap,
-            jiuxing: jiuxingMap,
-            bamen: bamenMap,
-            kongwang: kongwangMap,
-            yima: yimaMap,
-            jigong: jigongMap,
-            zhiShiDoor,
-            zhiFuPalace: zhiFuPalaceFound,
-          }),
-        });
+          const kanpanResponse = await fetch("/api/kanpan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              question: refinedQuestionData || refinedQuestion,
+              dateInfo,
+              paipanResult: { grid },
+              dipangan: dipanganMap,
+              tianpangan: tianpanganMap,
+              dibashen: dibashenMap,
+              tianbashen: tianbashenMap,
+              jiuxing: jiuxingMap,
+              bamen: bamenMap,
+              kongwang: kongwangMap,
+              yima: yimaMap,
+              jigong: jigongMap,
+              zhiShiDoor,
+              zhiFuPalace: zhiFuPalaceFound,
+            }),
+          });
 
-        if (kanpanResponse.ok) {
-          const kanpanData = await kanpanResponse.json();
-          if (kanpanData.success) {
-            setAiKanpanResult(kanpanData.result || "无法生成分析结果");
+          if (kanpanResponse.ok) {
+            const kanpanData = await kanpanResponse.json();
+            if (kanpanData.success) {
+              setAiKanpanResult(kanpanData.result || "无法生成分析结果");
+            } else {
+              setAiKanpanResult(`AI看盘失败：${kanpanData.error || "未知错误"}`);
+            }
           } else {
-            setAiKanpanResult(`AI看盘失败：${kanpanData.error || "未知错误"}`);
+            const err = await kanpanResponse.json().catch(() => ({}));
+            setAiKanpanResult(`AI看盘失败：${err.error || "未知错误"}`);
           }
-        } else {
-          const err = await kanpanResponse.json().catch(() => ({}));
-          setAiKanpanResult(`AI看盘失败：${err.error || "未知错误"}`);
+        } catch (kanpanError: any) {
+          console.error("AI看盘失败:", kanpanError);
+          setAiKanpanResult(`AI看盘失败：${kanpanError.message || "请重试"}`);
+        } finally {
+          setAiKanpanLoading(false);
         }
-      } catch (kanpanError: any) {
-        console.error("AI看盘失败:", kanpanError);
-        setAiKanpanResult(`AI看盘失败：${kanpanError.message || "请重试"}`);
-      } finally {
-        setAiKanpanLoading(false);
       }
     } catch (error: any) {
       console.error("排盘失败:", error);
@@ -589,7 +594,9 @@ export default function HomePage() {
                 value={question}
                 onChange={(e) => setQuestion(e.target.value)}
                 placeholder="请输入要问的事情"
+                size="large"
                 className="w-full"
+                style={{ height: '48px' }}
               />
             </div>
 

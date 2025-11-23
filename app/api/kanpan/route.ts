@@ -140,71 +140,95 @@ export async function POST(request: NextRequest) {
     
     const userPrompt = `以下是奇门遁甲排盘结果：${paipanDescription}\n\n${question ? `问事：${question}\n\n` : ""}请根据以上排盘结果${question ? "和问事内容" : ""}，提供专业的奇门遁甲分析和预测。`;
 
-    console.log("=== 调用 DeepSeek API ===");
-    console.log("baseURL:", deepseekConfig.baseURL);
-    console.log("提示词:", userPrompt);
+    // 构建 DeepSeek API 调用参数
+    const apiUrl = `${deepseekConfig.baseURL}/v1/chat/completions`;
+    const requestHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${deepseekConfig.apiKey}`,
+    };
+    const requestBody = {
+      model: deepseekConfig.model,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        {
+          role: "user",
+          content: userPrompt,
+        },
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+    };
 
-    const startTime = Date.now();
+    // 在后台日志中打印调用 DeepSeek API 的入参
+    console.log("\n========== DeepSeek API 调用入参 ==========");
+    console.log("API URL:", apiUrl);
+    console.log("请求头:", JSON.stringify(requestHeaders, null, 2));
+    console.log("请求体:", JSON.stringify(requestBody, null, 2));
+    console.log("==========================================\n");
+
+    // 暂时不调用 DeepSeek API，保留代码以便后续启用
+    // 注意：如需启用，请将下面的条件改为 true
+    const ENABLE_DEEPSEEK_API = false;
     
-    // 调用 DeepSeek API
-    const response = await fetch(`${deepseekConfig.baseURL}/v1/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${deepseekConfig.apiKey}`,
-      },
-      body: JSON.stringify({
-        model: deepseekConfig.model,
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt,
-          },
-          {
-            role: "user",
-            content: userPrompt,
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-      }),
-    });
-
-    const endTime = Date.now();
-    const duration = endTime - startTime;
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("=== DeepSeek API 调用失败 ===");
-      console.error("状态码:", response.status);
-      console.error("错误信息:", errorText);
-      throw new Error(`DeepSeek API 调用失败: ${response.status} ${errorText}`);
-    }
-
-    const data = await response.json();
-
-    // 打印响应日志
-    console.log("=== DeepSeek API 响应 ===");
-    console.log("耗时:", `${duration}ms`);
-    console.log("响应ID:", data.id);
-    console.log("模型:", data.model);
-    if (data.usage) {
-      console.log("Token 使用:", {
-        总计: data.usage.total_tokens || 0,
-        提示: data.usage.prompt_tokens || 0,
-        完成: data.usage.completion_tokens || 0,
+    if (ENABLE_DEEPSEEK_API) {
+      const startTime = Date.now();
+      
+      // 调用 DeepSeek API
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: requestHeaders,
+        body: JSON.stringify(requestBody),
       });
+
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("=== DeepSeek API 调用失败 ===");
+        console.error("状态码:", response.status);
+        console.error("错误信息:", errorText);
+        throw new Error(`DeepSeek API 调用失败: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // 打印响应日志
+      console.log("=== DeepSeek API 响应 ===");
+      console.log("耗时:", `${duration}ms`);
+      console.log("响应ID:", data.id);
+      console.log("模型:", data.model);
+      if (data.usage) {
+        console.log("Token 使用:", {
+          总计: data.usage.total_tokens || 0,
+          提示: data.usage.prompt_tokens || 0,
+          完成: data.usage.completion_tokens || 0,
+        });
+      }
+
+      const result = data.choices?.[0]?.message?.content || "无法生成分析结果";
+      console.log("返回结果长度:", result.length);
+      console.log("====================\n");
+
+      return NextResponse.json({
+        success: true,
+        result,
+        timestamp: new Date().toISOString(),
+      });
+    } else {
+      // 暂时不调用 API，返回提示信息
+      console.log("注意：DeepSeek API 调用已禁用，当前不执行实际调用");
+      return NextResponse.json(
+        {
+          success: false,
+          error: "DeepSeek API 调用已暂时禁用，请稍后再试",
+        },
+        { status: 503 }
+      );
     }
-
-    const result = data.choices?.[0]?.message?.content || "无法生成分析结果";
-    console.log("返回结果长度:", result.length);
-    console.log("====================\n");
-
-    return NextResponse.json({
-      success: true,
-      result,
-      timestamp: new Date().toISOString(),
-    });
   } catch (error: any) {
     console.error("=== AI看盘 API 调用失败 ===");
     console.error("错误类型:", error?.name || "Unknown");
