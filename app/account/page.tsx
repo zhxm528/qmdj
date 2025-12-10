@@ -5,6 +5,29 @@ import Layout from "@/components/Layout";
 import Button from "@/components/Button";
 import { useRouter } from "next/navigation";
 
+function formatDate(dateStr?: string | null) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateTime(dateStr?: string | null) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return dateStr;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${day} ${hh}:${mm}:${ss}`;
+}
+
 export default function Account() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -64,13 +87,17 @@ export default function Account() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       注册日期
                     </label>
-                    <p className="text-gray-900">{user?.createdAt || "-"}</p>
+                    <p className="text-gray-900">
+                      {formatDate(user?.createdAt)}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       最近更新
                     </label>
-                    <p className="text-gray-900">{user?.updatedAt || "-"}</p>
+                    <p className="text-gray-900">
+                      {formatDateTime(user?.updatedAt)}
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">

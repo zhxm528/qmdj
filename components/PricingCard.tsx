@@ -65,7 +65,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md p-8 border-2 transition-transform hover:scale-105 ${
+      className={`bg-white rounded-lg shadow-md p-8 border-2 transition-transform hover:scale-105 flex flex-col ${
         plan.highlight ? "border-amber-500 scale-105" : "border-gray-200"
       }`}
     >
@@ -78,33 +78,58 @@ export default function PricingCard({ plan }: PricingCardProps) {
       <h3 className="text-2xl font-bold text-gray-900 mb-4">{plan.name}</h3>
 
       <div className="mb-6">
-        <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
+        <span 
+          className="text-5xl font-bold text-gray-900"
+          style={{ fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif', letterSpacing: '0.02em' }}
+        >
+          {plan.price}
+        </span>
         <span className="text-gray-600">{plan.period}</span>
       </div>
 
-      <ul className="space-y-3 mb-8">
+      <ul className="space-y-3 mb-8 flex-1">
         {plan.features.map((feature, idx) => (
           <li key={idx} className="flex items-start text-sm text-gray-700">
-            <svg
-              className="w-5 h-5 text-amber-600 mr-2 flex-shrink-0"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M5 13l4 4L19 7"
+            <div className="relative mr-2 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
+              {/* 带边框的小格子 */}
+              <div 
+                className="absolute border-2 border-amber-600 rounded"
+                style={{ 
+                  width: '16px', 
+                  height: '16px', 
+                  top: '2px',
+                  left: '0px',
+                  backgroundColor: 'white'
+                }}
               />
-            </svg>
+              {/* 对勾图标，上方探出边框 */}
+              <svg
+                className="absolute text-green-600"
+                style={{ 
+                  width: '24px', 
+                  height: '24px', 
+                  top: '-4px',
+                  left: '-4px'
+                }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={3}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
             <span>{feature}</span>
           </li>
         ))}
       </ul>
 
-      <Button onClick={handleClick} className="w-full">
+      <Button onClick={handleClick} className="w-full mt-auto">
         {plan.cta}
       </Button>
     </div>

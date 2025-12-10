@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { deepseekConfig } from "@/lib/config";
+import { PromptService } from "@/app/api/prompt_context/route";
 
 interface KanpanRequest {
-  question?: string;
+  question?: string | object;
   dateInfo?: any;
   paipanResult?: any;
   dipangan?: Record<number, string>;
@@ -16,6 +17,7 @@ interface KanpanRequest {
   jigong?: Record<number, { diGan?: string; tianGan?: string }>;
   zhiShiDoor?: string;
   zhiFuPalace?: number | null;
+  systemPrompt?: string; // 可选的动态 system prompt
 }
 
 export async function POST(request: NextRequest) {
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
       jigong,
       zhiShiDoor,
       zhiFuPalace,
+      systemPrompt,
     } = body;
 
     // 打印输入参数
@@ -135,10 +138,108 @@ export async function POST(request: NextRequest) {
       paipanDescription += `\n值符：宫${zhiFuPalace}\n`;
     }
 
-    // 构建提示词
-    const systemPrompt = "你是一位资深的奇门遁甲大师，精通奇门遁甲的理论和实践，能够根据排盘结果提供专业、准确的预测和分析。";
+    // 解析 question（可能是 JSON 字符串、对象或普通字符串）
+    let questionData: any = null;
+    let questionText = "";
     
-    const userPrompt = `以下是奇门遁甲排盘结果：${paipanDescription}\n\n${question ? `问事：${question}\n\n` : ""}请根据以上排盘结果${question ? "和问事内容" : ""}，提供专业的奇门遁甲分析和预测。`;
+    if (question) {
+      if (typeof question === "object" && question !== null) {
+        // 如果已经是对象，直接使用
+        questionData = question;
+        questionText = questionData.short_prompt_zh || JSON.stringify(question);
+      } else if (typeof question === "string") {
+        try {
+          // 尝试解析为 JSON
+          questionData = JSON.parse(question);
+          // 如果解析成功，使用 short_prompt_zh 作为问事文本
+          if (questionData && typeof questionData === "object") {
+            questionText = questionData.short_prompt_zh || question;
+          } else {
+            questionText = question;
+          }
+        } catch (e) {
+          // 如果不是 JSON，直接使用原始字符串
+          questionText = question;
+        }
+      } else {
+        questionText = String(question);
+      }
+    }
+
+    // 构建系统提示词（system prompt）
+    // 优先使用传入的 systemPrompt，其次从数据库获取，最后回退到硬编码的默认值
+    const defaultSystemPrompt = `你是一位**资深的奇门遁甲大师，同时也是一位**经验丰富的心理咨询师。你精通传统奇门遁甲的理论与实战，并具备良好的同理心和沟通能力，能够在专业解盘的同时，给予问事者情绪上的支持与建设性引导。`;
+    
+    // 从数据库获取系统提示词（带回退机制）
+    let finalSystemPrompt: string;
+    
+    if (systemPrompt) {
+      // 优先使用传入的 systemPrompt
+      finalSystemPrompt = systemPrompt;
+    } else {
+      try {
+        // 尝试从数据库获取提示词
+        const service = new PromptService();
+        const envCode = (process.env.ENV as 'dev' | 'staging' | 'prod') || 'dev';
+        
+        const messages = await service.renderToMessages({
+          envCode,
+          logicalKey: 'qmdj.master.analyze_chart',
+          scope: 'scene',
+          projectCode: 'qmdj',
+          sceneCode: 'analyze_chart',
+          role: 'system',
+          language: 'zh-CN',
+          variables: {}
+        });
+        
+        if (messages && messages.length > 0 && messages[0].content) {
+          finalSystemPrompt = messages[0].content;
+        } else {
+          // 如果返回空，回退到默认值
+          finalSystemPrompt = defaultSystemPrompt;
+        }
+      } catch (error) {
+        // 数据库获取失败，回退到硬编码的默认提示词
+        console.error('Failed to load prompt from database, using fallback:', error);
+        finalSystemPrompt = defaultSystemPrompt;
+      }
+    }
+    
+    // 构建排盘结果描述（不包含问事）
+    const paipanPrompt = `以下是奇门遁甲排盘结果：${paipanDescription}\n\n请根据以上排盘结果${questionText ? "和问事内容" : ""}，提供专业的奇门遁甲分析和预测。`;
+
+    // 构建问事信息（单独作为 user message）
+    let questionPrompt = "";
+    if (questionText) {
+      questionPrompt = `问事：${questionText}`;
+      
+      // 如果有解析的 JSON 数据，添加额外的结构化信息
+      if (questionData && typeof questionData === "object") {
+        questionPrompt += "\n\n问事详情：\n";
+        if (questionData.category_code) {
+          questionPrompt += `- 问题分类：${questionData.category_code}`;
+          if (questionData.subcategory_code) {
+            questionPrompt += ` / ${questionData.subcategory_code}`;
+          }
+          questionPrompt += "\n";
+        }
+        if (questionData.reason) {
+          questionPrompt += `- 分类原因：${questionData.reason}\n`;
+        }
+        if (questionData.extra) {
+          if (questionData.extra.who) {
+            questionPrompt += `- 问事对象：${questionData.extra.who}\n`;
+          }
+          if (questionData.extra.time_scope) {
+            questionPrompt += `- 时间范围：${questionData.extra.time_scope}\n`;
+          }
+          if (questionData.extra.key_objects) {
+            questionPrompt += `- 关键对象：${questionData.extra.key_objects}\n`;
+          }
+        }
+      }
+    }
 
     // 构建 DeepSeek API 调用参数
     const apiUrl = `${deepseekConfig.baseURL}/v1/chat/completions`;
@@ -146,18 +247,30 @@ export async function POST(request: NextRequest) {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${deepseekConfig.apiKey}`,
     };
+    
+    // 构建 messages 数组
+    const messages: Array<{ role: "system" | "user"; content: string }> = [
+      {
+        role: "system",
+        content: finalSystemPrompt,
+      },
+      {
+        role: "user",
+        content: paipanPrompt,
+      },
+    ];
+    
+    // 如果有问事内容，单独作为一个 user message
+    if (questionPrompt) {
+      messages.push({
+        role: "user",
+        content: questionPrompt,
+      });
+    }
+    
     const requestBody = {
       model: deepseekConfig.model,
-      messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
-      ],
+      messages: messages,
       temperature: 0.7,
       max_tokens: 2000,
     };
@@ -171,7 +284,7 @@ export async function POST(request: NextRequest) {
 
     // 暂时不调用 DeepSeek API，保留代码以便后续启用
     // 注意：如需启用，请将下面的条件改为 true
-    const ENABLE_DEEPSEEK_API = false;
+    const ENABLE_DEEPSEEK_API = true;
     
     if (ENABLE_DEEPSEEK_API) {
       const startTime = Date.now();
@@ -196,6 +309,11 @@ export async function POST(request: NextRequest) {
 
       const data = await response.json();
 
+      // 打印 DeepSeek API 原始返回内容
+      console.log("\n========== DeepSeek API 原始返回内容 ==========");
+      console.log("完整响应数据:", JSON.stringify(data, null, 2));
+      console.log("=============================================\n");
+
       // 打印响应日志
       console.log("=== DeepSeek API 响应 ===");
       console.log("耗时:", `${duration}ms`);
@@ -209,9 +327,21 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const result = data.choices?.[0]?.message?.content || "无法生成分析结果";
+      let result = data.choices?.[0]?.message?.content || "无法生成分析结果";
+      
+      // 打印提取的原始看盘结果
+      console.log("\n========== DeepSeek API 提取的原始看盘结果 ==========");
+      console.log(result);
       console.log("返回结果长度:", result.length);
-      console.log("====================\n");
+      console.log("===============================================\n");
+
+      // 将 Markdown 格式转换为自然阅读文本格式
+      result = convertMarkdownToText(result);
+
+      // 打印转换后的看盘结果
+      console.log("\n========== 转换后的看盘结果（纯文本格式）==========");
+      console.log(result);
+      console.log("===============================================\n");
 
       return NextResponse.json({
         success: true,
@@ -244,5 +374,66 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * 将 Markdown 格式转换为自然阅读文本格式
+ */
+function convertMarkdownToText(markdown: string): string {
+  let text = markdown;
+
+  // 1. 移除代码块（```code```），保留内容
+  text = text.replace(/```[\w]*\n?([\s\S]*?)```/g, "$1");
+
+  // 2. 移除行内代码标记（`code`），保留内容
+  text = text.replace(/`([^`\n]+)`/g, "$1");
+
+  // 3. 转换标题（# ## ### 等）为普通文本，保留标题内容
+  text = text.replace(/^#{1,6}\s+(.+)$/gm, "$1");
+
+  // 4. 转换粗体（**text** 或 __text__）为普通文本
+  // 先处理双星号，避免与单星号冲突
+  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+  text = text.replace(/__([^_]+)__/g, "$1");
+
+  // 5. 转换斜体（*text* 或 _text_）为普通文本
+  // 先处理已经被粗体处理过的，避免重复处理
+  // 只处理单星号或单下划线，且前后有空格或标点的
+  text = text.replace(/\s\*([^*\n]+)\*\s/g, " $1 ");
+  text = text.replace(/\s_([^_\n]+)_\s/g, " $1 ");
+  // 处理行首或行尾的斜体
+  text = text.replace(/^\*([^*\n]+)\*/gm, "$1");
+  text = text.replace(/^_([^_\n]+)_/gm, "$1");
+
+  // 6. 转换链接（[text](url)）为普通文本，只保留链接文本
+  text = text.replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1");
+
+  // 7. 转换引用（> text）为普通文本，添加缩进
+  text = text.replace(/^>\s+(.+)$/gm, "  $1");
+
+  // 8. 转换无序列表（- item 或 * item 或 + item）为普通文本，添加项目符号
+  text = text.replace(/^[\-\*\+]\s+(.+)$/gm, "  • $1");
+
+  // 9. 转换有序列表（1. item）为普通文本，添加缩进
+  text = text.replace(/^\d+\.\s+(.+)$/gm, "  $1");
+
+  // 10. 移除分割线（--- 或 *** 或 ___）
+  text = text.replace(/^[\-\*_]{3,}$/gm, "");
+
+  // 11. 移除多余的空白行（超过两个连续换行）
+  text = text.replace(/\n{3,}/g, "\n\n");
+
+  // 12. 清理每行的首尾空白，但保留必要的缩进
+  const lines = text.split("\n");
+  text = lines.map(line => {
+    // 如果行以空格开头（可能是列表缩进），保留前两个空格
+    const trimmed = line.trim();
+    if (trimmed && line.startsWith("  ")) {
+      return "  " + trimmed;
+    }
+    return trimmed;
+  }).join("\n");
+
+  return text.trim();
 }
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ConfigProvider, Modal } from "antd";
+import zhCN from "antd/locale/zh_CN";
 import Layout from "@/components/Layout";
 import Button from "@/components/Button";
 import { useRouter } from "next/navigation";
@@ -25,19 +27,27 @@ export default function Login() {
       if (response.ok) {
         router.push("/");
       } else {
-        alert("登录失败，请检查邮箱和密码");
+        const errorData = await response.json().catch(() => ({}));
+        Modal.error({
+          title: "登录失败",
+          content: errorData.error || "请检查邮箱和密码",
+        });
       }
     } catch (error) {
       console.error("Login error:", error);
-      alert("登录时发生错误");
+      Modal.error({
+        title: "登录失败",
+        content: "登录时发生错误，请重试",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center py-12 px-4">
+    <ConfigProvider locale={zhCN}>
+      <Layout>
+        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white flex items-center justify-center py-12 px-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6 text-center">登录</h1>
 
@@ -115,6 +125,7 @@ export default function Login() {
         </div>
       </div>
     </Layout>
+    </ConfigProvider>
   );
 }
 

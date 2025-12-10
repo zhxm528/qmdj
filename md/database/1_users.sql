@@ -70,3 +70,11 @@ COMMENT ON COLUMN users.membership_no IS '会员号';
 COMMENT ON COLUMN users.is_paid IS '是否付款';
 COMMENT ON COLUMN users.last_paid_at IS '最后付款时间，格式yyyy-MM-dd HH:mm:ss';
 
+-- 插入管理员用户
+-- 注意：默认密码为 'admin123'，建议首次登录后立即修改密码
+-- 密码使用 bcryptjs 加密（salt rounds: 10）
+-- 如需修改密码，可使用以下命令生成新的哈希值：
+-- node -e "const bcrypt = require('bcryptjs'); console.log(bcrypt.hashSync('your_password', 10));"
+INSERT INTO users (name, email, password, role, status, is_email_verified, created_at, updated_at)
+VALUES ('管理员', 'zhxm528@gmail.com', '$2a$10$rhPjs1l/WixrBIrpdsqClunteR8CE8V4rQIiV68/Pqeas8sjcTXqm', 'qmdj', 'active', TRUE, NOW(), NOW());
+

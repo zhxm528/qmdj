@@ -51,17 +51,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 首页
               </Link>
               <Link href="/products" className="text-gray-700 hover:text-amber-600">
-                产品
+                学习
               </Link>
               <Link href="/pricing" className="text-gray-700 hover:text-amber-600">
                 价格
               </Link>
-              <Link
-                href="/community"
-                className="text-gray-700 hover:text-amber-600"
-              >
-                社群
-              </Link>
+              {!loading && user && user.role === 'qmdj' && (
+                <>
+                  <Link
+                    href="/community"
+                    className="text-gray-700 hover:text-amber-600"
+                  >
+                    交流
+                  </Link>
+                  <Link
+                    href="/game"
+                    className="text-gray-700 hover:text-amber-600"
+                  >
+                    游戏
+                  </Link>
+                  <Link
+                    href="/admin"
+                    className="text-gray-700 hover:text-amber-600"
+                  >
+                    管理
+                  </Link>
+                </>
+              )}
             </div>
             <div className="flex items-center space-x-4">
               {!loading && user ? (

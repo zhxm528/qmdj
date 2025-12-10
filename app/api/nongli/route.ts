@@ -6,7 +6,26 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    // 检查请求体是否为空
+    const text = await req.text();
+    if (!text || text.trim().length === 0) {
+      return NextResponse.json(
+        { error: "请求体为空" },
+        { status: 400 }
+      );
+    }
+
+    let body;
+    try {
+      body = JSON.parse(text);
+    } catch (parseError) {
+      console.error("JSON 解析错误:", parseError);
+      return NextResponse.json(
+        { error: "请求体格式错误，无法解析 JSON" },
+        { status: 400 }
+      );
+    }
+
     const { year, month, day } = body;
 
     if (!year || !month || !day) {
