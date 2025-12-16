@@ -16,10 +16,11 @@ import {
   Space,
   Popconfirm,
   message,
+  Radio,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, GiftOutlined } from "@ant-design/icons";
 import dayjs, { Dayjs } from "dayjs";
 
 interface MemberCard {
@@ -31,6 +32,8 @@ interface MemberCard {
   issued_at: string;
   expired_at: string | null;
   remark: string | null;
+  level_id: number | null;
+  level_name: string | null;
 }
 
 interface MemberCardFormValues {
@@ -52,6 +55,10 @@ export default function MemberCardPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCard, setEditingCard] = useState<MemberCard | null>(null);
   const [members, setMembers] = useState<Array<{ member_id: number; full_name: string | null; mobile: string | null }>>([]);
+  const [issueCardModalVisible, setIssueCardModalVisible] = useState(false);
+  const [issuingCard, setIssuingCard] = useState<MemberCard | null>(null);
+  const [membershipLevels, setMembershipLevels] = useState<Array<{ level_id: number; level_name: string }>>([]);
+  const [selectedLevelId, setSelectedLevelId] = useState<number | undefined>(undefined);
 
   // 加载会员列表（用于下拉选择）
   const loadMembers = async () => {
@@ -63,6 +70,29 @@ export default function MemberCardPage() {
       }
     } catch (error) {
       console.error("加载会员列表失败:", error);
+    }
+  };
+
+  // 加载会员等级列表（用于发卡选择）
+  const loadMembershipLevels = async () => {
+    try {
+      const res = await fetch("/api/admin/member/membership_level?pageSize=-1");
+      const data = await res.json();
+      console.log("[loadMembershipLevels] API响应:", data);
+      if (data.success && data.data) {
+        const levels = data.data.map((level: any) => ({
+          level_id: level.level_id,
+          level_name: level.level_name,
+        }));
+        console.log("[loadMembershipLevels] 处理后的等级列表:", levels);
+        setMembershipLevels(levels);
+      } else {
+        console.error("[loadMembershipLevels] API返回失败:", data.error);
+        message.error(data.error || "加载会员等级列表失败");
+      }
+    } catch (error) {
+      console.error("加载会员等级列表失败:", error);
+      message.error("加载会员等级列表失败");
     }
   };
 
@@ -93,8 +123,31 @@ export default function MemberCardPage() {
 
   useEffect(() => {
     loadMembers();
+    loadMembershipLevels();
     loadCards(1, 10);
   }, []);
+
+  // 当 Modal 打开且是编辑模式时，回显表单数据
+  useEffect(() => {
+    if (modalVisible && editingCard) {
+      form.setFieldsValue({
+        card_no: editingCard.card_no,
+        member_id: editingCard.member_id,
+        is_primary: editingCard.is_primary,
+        status: editingCard.status,
+        expired_at: editingCard.expired_at ? dayjs(editingCard.expired_at) : null,
+        remark: editingCard.remark || undefined,
+      });
+    } else if (modalVisible && !editingCard) {
+      // 新增模式，重置表单
+      form.resetFields();
+      form.setFieldsValue({
+        card_no: "", // 新增时，卡号字段为空，由后端自动生成
+        is_primary: true,
+        status: 1,
+      });
+    }
+  }, [modalVisible, editingCard, form]);
 
   const handleAdd = () => {
     setEditingCard(null);
@@ -108,14 +161,6 @@ export default function MemberCardPage() {
 
   const handleEdit = (record: MemberCard) => {
     setEditingCard(record);
-    form.setFieldsValue({
-      card_no: record.card_no,
-      member_id: record.member_id,
-      is_primary: record.is_primary,
-      status: record.status,
-      expired_at: record.expired_at ? dayjs(record.expired_at) : null,
-      remark: record.remark || undefined,
-    });
     setModalVisible(true);
   };
 
@@ -144,7 +189,8 @@ export default function MemberCardPage() {
     try {
       const values = await form.validateFields();
       const payload: any = {
-        card_no: values.card_no || null,
+        // 新增时，卡号由后端自动生成，不传 card_no 或传空字符串
+        card_no: editingCard ? (values.card_no || null) : "",
         member_id: values.member_id || null,
         is_primary: values.is_primary ?? true,
         status: values.status ?? 1,
@@ -191,6 +237,50 @@ export default function MemberCardPage() {
     loadCards(page, size);
   };
 
+  const handleIssueCard = (record: MemberCard) => {
+    console.log("[handleIssueCard] 打开发卡弹窗，当前会员等级列表:", membershipLevels);
+    setIssuingCard(record);
+    // 默认选择当前用户所属的会员等级
+    setSelectedLevelId(record.level_id || undefined);
+    // 确保会员等级列表已加载
+    if (membershipLevels.length === 0) {
+      loadMembershipLevels();
+    }
+    setIssueCardModalVisible(true);
+  };
+
+  const handleIssueCardOk = async () => {
+    if (!issuingCard || !selectedLevelId) {
+      message.error("请选择发卡类型");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/member/member_card", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          card_id: issuingCard.card_id,
+          level_id: selectedLevelId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        message.success("发卡成功");
+        setIssueCardModalVisible(false);
+        setIssuingCard(null);
+        setSelectedLevelId(undefined);
+        loadCards(currentPage, pageSize);
+      } else {
+        message.error(data.error || "发卡失败");
+      }
+    } catch (error) {
+      console.error("发卡失败:", error);
+      message.error("发卡失败");
+    }
+  };
+
   const getMemberName = (memberId: number) => {
     const member = members.find((m) => m.member_id === memberId);
     if (member) {
@@ -211,14 +301,24 @@ export default function MemberCardPage() {
       title: "会员卡号",
       dataIndex: "card_no",
       key: "card_no",
-      width: 150,
+      width: 180,
+      ellipsis: true,
     },
     {
       title: "会员ID",
       dataIndex: "member_id",
       key: "member_id",
-      width: 100,
+      width: 150,
+      ellipsis: true,
       render: (value: number) => getMemberName(value),
+    },
+    {
+      title: "会员等级",
+      dataIndex: "level_name",
+      key: "level_name",
+      width: 140,
+      ellipsis: true,
+      render: (value: string | null) => value || "-",
     },
     {
       title: "是否主卡",
@@ -231,8 +331,8 @@ export default function MemberCardPage() {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      width: 100,
-      render: (value: number) => (value === 1 ? "正常" : "挂失/注销"),
+      width: 120,
+      render: (value: number) => (value === 1 ? "使用中" : "挂失/注销"),
     },
     {
       title: "发卡时间",
@@ -254,19 +354,29 @@ export default function MemberCardPage() {
       title: "备注",
       dataIndex: "remark",
       key: "remark",
+      width: 200,
       ellipsis: true,
     },
     {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 180,
       render: (_, record) => (
-        <Space>
+        <Space size="small">
+          <Button
+            type="link"
+            icon={<GiftOutlined />}
+            onClick={() => handleIssueCard(record)}
+            style={{ padding: 0 }}
+          >
+            发卡
+          </Button>
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -274,7 +384,7 @@ export default function MemberCardPage() {
             title="确定要删除该会员卡吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }}>
               删除
             </Button>
           </Popconfirm>
@@ -321,7 +431,7 @@ export default function MemberCardPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1200 }}
+              scroll={{ x: 1530 }}
             />
 
             <Modal
@@ -331,21 +441,26 @@ export default function MemberCardPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingCard(null);
               }}
-              destroyOnClose
+              destroyOnClose={false}
               width={600}
             >
               <Form<MemberCardFormValues>
                 form={form}
                 layout="vertical"
-                preserve={false}
+                preserve={true}
               >
                 <Form.Item
                   label="会员卡号"
                   name="card_no"
-                  rules={[{ required: true, message: "请输入会员卡号" }]}
+                  rules={editingCard ? [{ required: true, message: "请输入会员卡号" }] : []}
                 >
-                  <Input placeholder="请输入会员卡号" />
+                  <Input 
+                    placeholder={editingCard ? "请输入会员卡号" : "系统自动生成"} 
+                    disabled={!editingCard}
+                    readOnly={!editingCard}
+                  />
                 </Form.Item>
                 <Form.Item
                   label="会员"
@@ -395,6 +510,39 @@ export default function MemberCardPage() {
                   <Input.TextArea rows={3} placeholder="请输入备注" />
                 </Form.Item>
               </Form>
+            </Modal>
+
+            <Modal
+              title="发卡"
+              open={issueCardModalVisible}
+              onOk={handleIssueCardOk}
+              onCancel={() => {
+                setIssueCardModalVisible(false);
+                setIssuingCard(null);
+                setSelectedLevelId(undefined);
+              }}
+              destroyOnClose
+              width={500}
+            >
+              {membershipLevels.length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  暂无会员等级数据，请先添加会员等级
+                </div>
+              ) : (
+                <Radio.Group
+                  value={selectedLevelId}
+                  onChange={(e) => setSelectedLevelId(e.target.value)}
+                  style={{ width: "100%" }}
+                >
+                  <Space direction="vertical" style={{ width: "100%" }}>
+                    {membershipLevels.map((level) => (
+                      <Radio key={level.level_id} value={level.level_id}>
+                        {level.level_name}
+                      </Radio>
+                    ))}
+                  </Space>
+                </Radio.Group>
+              )}
             </Modal>
           </div>
         </div>

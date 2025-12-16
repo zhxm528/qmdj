@@ -10,16 +10,26 @@ CREATE TABLE membership_level (
     min_points     INTEGER NOT NULL DEFAULT 0,    -- 达到该等级所需的最低积分
     max_points     INTEGER,                       -- 该等级上限积分(可选, 顶级可为NULL)
     discount_rate  NUMERIC(5,2) NOT NULL DEFAULT 1.00, -- 消费折扣, 1.00表示不打折
+    sale_price     NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- 该等级会员的销售价格
+    cost_price     NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- 该等级会员的成本价格
     created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 -- 初始化三种等级（示例）
-INSERT INTO membership_level (level_code, level_name, min_points, max_points, discount_rate)
+INSERT INTO membership_level (
+    level_code,
+    level_name,
+    min_points,
+    max_points,
+    discount_rate,
+    sale_price,
+    cost_price
+)
 VALUES 
-('SILVER',  '银卡',    0,    9999,   1.00),
-('GOLD',    '金卡', 10000,   49999,  0.95),
-('DIAMOND', '钻石卡', 50000,  NULL,   0.90);
+('SILVER',  '白银会员',    0,    9999,   1.00,  9.90, 9.90),
+('GOLD',    '黄金会员', 10000,   49999,  0.95,  29.90, 29.90),
+('DIAMOND', '钻石会员', 50000,  NULL,   0.90,  299.90, 299.90);
 
 
 -- ===========================
@@ -144,7 +154,7 @@ CREATE TABLE consumption_transaction (
     points_earned     INTEGER NOT NULL DEFAULT 0,    -- 本次消费获得积分
     external_order_no VARCHAR(100),                  -- 外部订单号(如收银系统)
     remark            TEXT,
-    created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW() -- 使用带时区时间，内部按 UTC 存储
 );
 
 CREATE INDEX idx_consumption_member_id ON consumption_transaction(member_id);
@@ -163,6 +173,8 @@ COMMENT ON COLUMN membership_level.level_name    IS '等级名称，如：银卡
 COMMENT ON COLUMN membership_level.min_points    IS '达到该等级所需的最低积分（含）';
 COMMENT ON COLUMN membership_level.max_points    IS '该等级对应的积分上限（含）；最高等级可为 NULL，表示无上限';
 COMMENT ON COLUMN membership_level.discount_rate IS '消费折扣系数，例如 1.00 不打折，0.95 打95折';
+COMMENT ON COLUMN membership_level.sale_price    IS '该会员等级的销售价格，用于前台售卖价';
+COMMENT ON COLUMN membership_level.cost_price    IS '该会员等级的成本价格，用于内部成本核算';
 COMMENT ON COLUMN membership_level.created_at    IS '记录创建时间';
 COMMENT ON COLUMN membership_level.updated_at    IS '记录最近更新时间';
 

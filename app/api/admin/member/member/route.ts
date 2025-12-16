@@ -44,6 +44,52 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    
+    // 如果提供了 id 参数，查询单个会员
+    const id = searchParams.get("id");
+    if (id) {
+      const memberQuery = `
+        SELECT
+          m.member_id,
+          m.member_code,
+          m.full_name,
+          m.mobile,
+          m.email,
+          m.gender,
+          m.birth_date,
+          m.status,
+          m.level_id,
+          ml.level_name,
+          ml.sale_price,
+          ml.cost_price,
+          m.total_points,
+          m.available_points,
+          m.remark,
+          m.registered_at AT TIME ZONE 'UTC' AS registered_at,
+          m.updated_at AT TIME ZONE 'UTC' AS updated_at
+        FROM member m
+        LEFT JOIN membership_level ml ON m.level_id = ml.level_id
+        WHERE m.member_id = $1
+      `;
+      console.log("[member/member] 查询单个会员 SQL:", {
+        query: memberQuery.trim(),
+        params: [id],
+      });
+      const memberResult = await query(memberQuery, [id]);
+      if (memberResult && memberResult.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: memberResult[0],
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "会员不存在" },
+          { status: 404 }
+        );
+      }
+    }
+
+    // 查询会员列表
     const params: MemberQueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
@@ -63,31 +109,38 @@ export async function GET(request: NextRequest) {
     }
 
     // 计算总数
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM member`,
-      []
-    );
+    const countQuery = `SELECT COUNT(*) as total FROM member`;
+    console.log("[member/member] 查询会员总数 SQL:", {
+      query: countQuery,
+      params: [],
+    });
+    const countResult = await query(countQuery, []);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
-    // 查询数据
+    // 查询数据（包含会员等级名称及售价/成本价）
+    // 注意：registered_at 和 updated_at 使用 AT TIME ZONE 'UTC' 返回 UTC 时间字符串，前端再按配置的时区转换展示
     let dataQuery = `
       SELECT
-        member_id,
-        member_code,
-        full_name,
-        mobile,
-        email,
-        gender,
-        birth_date,
-        status,
-        level_id,
-        total_points,
-        available_points,
-        remark,
-        registered_at,
-        updated_at
-      FROM member
-      ORDER BY registered_at DESC
+        m.member_id,
+        m.member_code,
+        m.full_name,
+        m.mobile,
+        m.email,
+        m.gender,
+        m.birth_date,
+        m.status,
+        m.level_id,
+        ml.level_name,
+        ml.sale_price,
+        ml.cost_price,
+        m.total_points,
+        m.available_points,
+        m.remark,
+        m.registered_at AT TIME ZONE 'UTC' AS registered_at,
+        m.updated_at AT TIME ZONE 'UTC' AS updated_at
+      FROM member m
+      LEFT JOIN membership_level ml ON m.level_id = ml.level_id
+      ORDER BY m.registered_at DESC
     `;
 
     const values: any[] = [];
@@ -99,6 +152,10 @@ export async function GET(request: NextRequest) {
       values.push(offset);
     }
 
+    console.log("[member/member] 查询会员列表 SQL:", {
+      query: dataQuery.trim(),
+      params: values,
+    });
     const members = await query(dataQuery, values);
 
     return NextResponse.json({

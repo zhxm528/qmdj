@@ -258,7 +258,7 @@ export default function MembershipLevelPage() {
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">会员等级管理</h1>
+              <h1 className="text-3xl font-bold text-gray-900">会员等级</h1>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}

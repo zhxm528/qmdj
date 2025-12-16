@@ -18,6 +18,7 @@ interface KanpanRequest {
   zhiShiDoor?: string;
   zhiFuPalace?: number | null;
   systemPrompt?: string; // 可选的动态 system prompt
+  sceneCode?: string; // 场景代码：'career', 'wealth', 'relationship', 'study', 'health', 'lawsuit'
 }
 
 export async function POST(request: NextRequest) {
@@ -39,11 +40,13 @@ export async function POST(request: NextRequest) {
       zhiShiDoor,
       zhiFuPalace,
       systemPrompt,
+      sceneCode,
     } = body;
 
     // 打印输入参数
     console.log("=== AI看盘 API 请求开始 ===");
     console.log("输入参数:", JSON.stringify(body, null, 2));
+    console.log("使用的场景代码 (sceneCode):", sceneCode || "未指定（将使用默认值 analyze_chart）");
 
     // 构建排盘信息的详细描述
     let paipanDescription = "";
@@ -182,12 +185,16 @@ export async function POST(request: NextRequest) {
         const service = new PromptService();
         const envCode = (process.env.ENV as 'dev' | 'staging' | 'prod') || 'dev';
         
+        // 使用传入的 sceneCode，如果没有则使用默认值 'analyze_chart'
+        const finalSceneCode = sceneCode || 'analyze_chart';
+        console.log("从数据库获取提示词模板，使用的 sceneCode:", finalSceneCode);
+        
         const messages = await service.renderToMessages({
           envCode,
           logicalKey: 'qmdj.master.analyze_chart',
           scope: 'scene',
           projectCode: 'qmdj',
-          sceneCode: 'analyze_chart',
+          sceneCode: finalSceneCode,
           role: 'system',
           language: 'zh-CN',
           variables: {}

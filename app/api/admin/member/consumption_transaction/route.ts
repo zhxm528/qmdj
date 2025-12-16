@@ -44,6 +44,17 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+
+    // 如果前端上报了浏览器时区信息，则在后台打印出来，方便排查时间相关问题
+    const clientTimezone = searchParams.get("clientTimezone");
+    const clientOffsetMinutes = searchParams.get("clientOffsetMinutes");
+    if (clientTimezone) {
+      console.log("[consumption_transaction] 浏览器时区上报:", {
+        clientTimezone,
+        clientOffsetMinutes,
+      });
+    }
+
     const params: ConsumptionTransactionQueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
@@ -69,7 +80,7 @@ export async function GET(request: NextRequest) {
     );
     const total = parseInt(countResult[0]?.total || "0", 10);
 
-    // 查询数据
+    // 查询数据（created_at 直接返回 UTC 时间，不做任何转换）
     let dataQuery = `
       SELECT
         consumption_id,
@@ -85,7 +96,7 @@ export async function GET(request: NextRequest) {
         points_earned,
         external_order_no,
         remark,
-        created_at
+        created_at AT TIME ZONE 'UTC' AS created_at
       FROM consumption_transaction
       ORDER BY created_at DESC
     `;
@@ -240,12 +251,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 检查会员是否存在
-    const memberCheck = await query(
-      `SELECT member_id FROM member WHERE member_id = $1`,
+    // 检查会员是否存在，并获取会员等级及对应的销售价格/成本价格
+    const memberRows = await query(
+      `
+        SELECT 
+          m.member_id,
+          m.level_id,
+          ml.sale_price,
+          ml.cost_price
+        FROM member m
+        LEFT JOIN membership_level ml ON m.level_id = ml.level_id
+        WHERE m.member_id = $1
+      `,
       [member_id]
     );
-    if (!memberCheck || memberCheck.length === 0) {
+    if (!memberRows || memberRows.length === 0) {
       return NextResponse.json(
         { success: false, error: "会员不存在" },
         { status: 400 }
@@ -266,7 +286,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 插入数据
+    // 插入消费记录（created_at 使用 TIMESTAMPTZ，内部按 UTC 存储，默认 NOW() 由数据库处理）
     const insertQuery = `
       INSERT INTO consumption_transaction (
         member_id,
@@ -285,7 +305,7 @@ export async function POST(request: NextRequest) {
       RETURNING *
     `;
 
-    const result = await query(insertQuery, [
+    const insertParams = [
       member_id,
       card_id || null,
       original_amount,
@@ -298,9 +318,77 @@ export async function POST(request: NextRequest) {
       points_earned || 0,
       external_order_no || null,
       remark || null,
-    ]);
+    ];
+
+    // 后台打印保存的 SQL 语句和参数，便于检查时间值
+    console.log("[consumption_transaction] INSERT SQL:", {
+      query: insertQuery,
+      params: insertParams,
+    });
+
+    const result = await query(insertQuery, insertParams);
 
     if (result && result.length > 0) {
+      // ================================
+      // 根据会员等级售价计算增加有效期天数，并更新会员卡有效期
+      // 规则：
+      // - 会员等级按照 31 天为一个计费周期
+      // - 每天单价 = membership_level.sale_price / 31
+      // - 增加天数 = ceil( 本次消费金额 / 每天单价 )
+      // - 这里“消费金额”采用 paid_amount（实付金额），可根据业务需要调整为 payable_amount
+      // - 仅在存在会员卡 card_id 且等级售价 > 0 且实付金额 > 0 时生效
+      // ================================
+      try {
+        const member = memberRows[0] as {
+          level_id: number | null;
+          sale_price: string | number | null;
+          cost_price: string | number | null;
+        };
+
+        const salePrice = member?.sale_price
+          ? Number(member.sale_price)
+          : 0;
+
+        const effectivePaidAmount = Number(paid_amount || 0);
+
+        if (card_id && salePrice > 0 && effectivePaidAmount > 0) {
+          const dailyPrice = salePrice / 31;
+          // 防御性判断，避免除以 0
+          if (dailyPrice > 0) {
+            const rawDays = effectivePaidAmount / dailyPrice;
+            const daysToAdd = Math.ceil(rawDays);
+
+            // 后台打印增加的天数
+            console.log(
+              "[consumption_transaction] 增加会员有效期天数:",
+              {
+                member_id,
+                card_id,
+                sale_price: salePrice,
+                paid_amount: effectivePaidAmount,
+                days_to_add: daysToAdd,
+              }
+            );
+
+            // 更新 member_card.expired_at：
+            // 如果原来为 NULL，则从当前时间开始计算；否则在原有到期日基础上延长
+            await query(
+              `
+                UPDATE member_card
+                SET expired_at = COALESCE(expired_at, NOW()) + ($1 || ' days')::interval
+                WHERE card_id = $2
+              `,
+              [daysToAdd, card_id]
+            );
+          }
+        }
+      } catch (calcError) {
+        console.error(
+          "[consumption_transaction] 计算或更新会员有效期失败:",
+          calcError
+        );
+      }
+
       return NextResponse.json({
         success: true,
         data: result[0],

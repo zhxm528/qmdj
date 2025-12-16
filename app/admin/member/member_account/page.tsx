@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
   ConfigProvider,
@@ -9,6 +9,8 @@ import {
   Modal,
   Form,
   InputNumber,
+  Input,
+  Select,
   Space,
   Popconfirm,
   message,
@@ -17,12 +19,18 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+// 后端 updated_at 为 UTC（通过 AT TIME ZONE 'UTC' 返回），使用 dayjs utc 插件按配置的时区展示
+dayjs.extend(utc);
 
 interface MemberAccount {
   member_id: number;
   balance: number;
   frozen_balance: number;
   updated_at: string;
+  full_name?: string | null;
+  mobile?: string | null;
 }
 
 interface MemberAccountFormValues {
@@ -41,6 +49,10 @@ export default function MemberAccountPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingAccount, setEditingAccount] = useState<MemberAccount | null>(null);
   const [members, setMembers] = useState<Array<{ member_id: number; full_name: string | null; mobile: string | null }>>([]);
+  const [timezoneConfig, setTimezoneConfig] = useState<{
+    timezone: string;
+    utcOffset: number;
+  } | null>(null);
 
   // 加载会员列表（用于下拉选择）
   const loadMembers = async () => {
@@ -81,9 +93,66 @@ export default function MemberAccountPage() {
   };
 
   useEffect(() => {
+    // 加载时区配置
+    const loadTimezoneConfig = async () => {
+      try {
+        const res = await fetch("/api/config/timezone");
+        const data = await res.json();
+        if (data.success) {
+          setTimezoneConfig({
+            timezone: data.timezone,
+            utcOffset: data.utcOffset,
+          });
+        }
+      } catch (error) {
+        console.error("[member_account] 加载时区配置失败:", error);
+        // 如果加载失败，使用默认值
+        setTimezoneConfig({
+          timezone: "Asia/Shanghai",
+          utcOffset: 8,
+        });
+      }
+    };
+
+    loadTimezoneConfig();
     loadMembers();
     loadAccounts(1, 10);
   }, []);
+
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingAccount) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            member_id: editingAccount.member_id,
+            balance: Number(editingAccount.balance),
+            frozen_balance: Number(editingAccount.frozen_balance),
+          };
+          console.log("[member_account] Modal 打开后设置表单值:", formValues);
+          form.setFieldsValue(formValues);
+          // 验证表单值是否设置成功
+          const currentValues = form.getFieldsValue();
+          console.log("[member_account] 表单值已设置，当前表单值:", currentValues);
+          console.log("[member_account] 表单值设置验证:", {
+            member_id: currentValues.member_id === formValues.member_id,
+            balance: currentValues.balance === formValues.balance,
+            frozen_balance: currentValues.frozen_balance === formValues.frozen_balance,
+          });
+        } else {
+          // 新增模式，重置表单
+          form.resetFields();
+          form.setFieldsValue({
+            balance: 0,
+            frozen_balance: 0,
+          });
+        }
+      }, 100);
+    }
+  };
 
   const handleAdd = () => {
     setEditingAccount(null);
@@ -95,14 +164,60 @@ export default function MemberAccountPage() {
     setModalVisible(true);
   };
 
-  const handleEdit = (record: MemberAccount) => {
-    setEditingAccount(record);
-    form.setFieldsValue({
-      member_id: record.member_id,
-      balance: Number(record.balance),
-      frozen_balance: Number(record.frozen_balance),
-    });
-    setModalVisible(true);
+  const handleEdit = async (record: MemberAccount) => {
+    try {
+      console.log("[member_account] 点击编辑按钮，会员ID:", record.member_id);
+      // 从后端重新查询记录，确保数据最新
+      const res = await fetch(`/api/admin/member/member_account?member_id=${record.member_id}`);
+      const data = await res.json();
+      
+      // 详细打印后端返回给前端的内容
+      console.log("[member_account] ========== 后端返回给前端的完整响应 ==========");
+      console.log("[member_account] 响应状态码:", res.status);
+      console.log("[member_account] 响应状态文本:", res.statusText);
+      console.log("[member_account] 响应数据 (JSON):", JSON.stringify(data, null, 2));
+      console.log("[member_account] 响应数据 (对象):", data);
+      if (data.success) {
+        console.log("[member_account] success:", data.success);
+        if (data.data) {
+          console.log("[member_account] data 字段内容:", data.data);
+          console.log("[member_account] data 字段类型:", typeof data.data);
+          console.log("[member_account] data 是否为数组:", Array.isArray(data.data));
+          if (typeof data.data === "object" && !Array.isArray(data.data)) {
+            console.log("[member_account] data 对象的所有字段:");
+            Object.keys(data.data).forEach((key) => {
+              console.log(`[member_account]   ${key}:`, data.data[key], `(类型: ${typeof data.data[key]})`);
+            });
+          }
+        } else {
+          console.log("[member_account] data 字段为空或未定义");
+        }
+      } else {
+        console.log("[member_account] success:", data.success);
+        console.log("[member_account] error:", data.error);
+      }
+      console.log("[member_account] ============================================");
+      
+      if (data.success && data.data) {
+        const account = data.data;
+        console.log("[member_account] 提取的账户数据对象:", account);
+        console.log("[member_account] 账户中的会员信息:", {
+          member_id: account.member_id,
+          full_name: account.full_name,
+          mobile: account.mobile,
+        });
+        
+        // 先设置 editingAccount，然后打开 Modal
+        // useEffect 会在 Modal 打开后自动设置表单值
+        setEditingAccount(account);
+        setModalVisible(true);
+      } else {
+        message.error(data.error || "查询会员账户信息失败");
+      }
+    } catch (error) {
+      console.error("[member_account] 查询会员账户信息失败:", error);
+      message.error("查询会员账户信息失败");
+    }
   };
 
   const handleDelete = async (record: MemberAccount) => {
@@ -134,6 +249,31 @@ export default function MemberAccountPage() {
         balance: values.balance ?? 0,
         frozen_balance: values.frozen_balance ?? 0,
       };
+
+      // 新增模式下，校验会员的唯一性
+      if (!editingAccount && payload.member_id) {
+        // 先检查当前列表中是否已存在
+        const existingAccount = accounts.find((acc) => acc.member_id === payload.member_id);
+        if (existingAccount) {
+          const memberName = getMemberName(payload.member_id);
+          message.error(`该会员（${memberName}）已存在账户，请使用编辑功能`);
+          return;
+        }
+        
+        // 如果列表中没有，调用后端 API 再次确认（因为列表可能分页，不包含所有数据）
+        try {
+          const checkRes = await fetch(`/api/admin/member/member_account?member_id=${payload.member_id}`);
+          const checkData = await checkRes.json();
+          if (checkData.success && checkData.data) {
+            const memberName = getMemberName(payload.member_id);
+            message.error(`该会员（${memberName}）已存在账户，请使用编辑功能`);
+            return;
+          }
+        } catch (checkError) {
+          console.error("[member_account] 检查会员账户唯一性失败:", checkError);
+          // 如果检查失败，继续保存流程，让后端校验
+        }
+      }
 
       let res: Response;
       if (editingAccount) {
@@ -172,22 +312,37 @@ export default function MemberAccountPage() {
     loadAccounts(page, size);
   };
 
-  const getMemberName = (memberId: number) => {
+  const getMemberName = (memberId: number, account?: MemberAccount) => {
+    // 优先使用账户数据中的会员信息（如果从后端查询时已包含）
+    if (account) {
+      if (account.full_name) {
+        return account.full_name;
+      }
+      if (account.mobile) {
+        return account.mobile;
+      }
+    }
+    // 否则从 members 数组中查找
     const member = members.find((m) => m.member_id === memberId);
     if (member) {
-      return member.full_name || member.mobile || `ID: ${memberId}`;
+      if (member.full_name) {
+        return member.full_name;
+      }
+      if (member.mobile) {
+        return member.mobile;
+      }
     }
     return `ID: ${memberId}`;
   };
 
-  const columns: ColumnsType<MemberAccount> = [
+  const columns: ColumnsType<MemberAccount> = useMemo(() => [
     {
-      title: "会员ID",
+      title: "会员",
       dataIndex: "member_id",
       key: "member_id",
       width: 120,
       fixed: "left",
-      render: (value: number) => getMemberName(value),
+      render: (value: number, record: MemberAccount) => getMemberName(value, record),
     },
     {
       title: "可用余额",
@@ -217,8 +372,16 @@ export default function MemberAccountPage() {
       dataIndex: "updated_at",
       key: "updated_at",
       width: 180,
-      render: (value: string) =>
-        value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
+      render: (value: string) => {
+        if (!value) return "-";
+        if (!timezoneConfig) {
+          // 如果时区配置还未加载，先按 UTC 展示
+          return dayjs.utc(value).format("YYYY-MM-DD HH:mm:ss") + " (UTC)";
+        }
+        const utcTime = dayjs.utc(value);
+        const localTime = utcTime.add(timezoneConfig.utcOffset, "hour");
+        return localTime.format("YYYY-MM-DD HH:mm:ss");
+      },
     },
     {
       title: "操作",
@@ -245,7 +408,7 @@ export default function MemberAccountPage() {
         </Space>
       ),
     },
-  ];
+  ], [timezoneConfig, getMemberName, handleEdit, handleDelete]);
 
   return (
     <ConfigProvider locale={zhCN}>
@@ -291,13 +454,29 @@ export default function MemberAccountPage() {
             <Modal
               title={editingAccount ? "编辑会员账户" : "初始化会员账户"}
               open={modalVisible}
-              onOk={handleModalOk}
+              // 禁止点击弹窗外区域关闭
+              maskClosable={false}
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
               }}
+              afterOpenChange={handleModalAfterOpenChange}
               destroyOnClose
               width={600}
+              footer={[
+                <Button
+                  key="close"
+                  onClick={() => {
+                    setModalVisible(false);
+                    form.resetFields();
+                  }}
+                >
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  保存
+                </Button>,
+              ]}
             >
               <Form<MemberAccountFormValues>
                 form={form}
@@ -310,10 +489,26 @@ export default function MemberAccountPage() {
                     name="member_id"
                     rules={[{ required: true, message: "请选择会员" }]}
                   >
-                    <InputNumber
-                      style={{ width: "100%" }}
-                      placeholder="请输入会员ID"
-                      min={1}
+                    <Select
+                      placeholder="请选择会员"
+                      showSearch
+                      optionFilterProp="label"
+                      filterOption={(input, option) =>
+                        (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                      }
+                      options={members.map((m) => ({
+                        value: m.member_id,
+                        label: m.full_name || m.mobile || `ID: ${m.member_id}`,
+                      }))}
+                    />
+                  </Form.Item>
+                )}
+                {editingAccount && (
+                  <Form.Item label="会员">
+                    <Input
+                      value={getMemberName(editingAccount.member_id, editingAccount) || `ID: ${editingAccount.member_id}`}
+                      disabled
+                      readOnly
                     />
                   </Form.Item>
                 )}

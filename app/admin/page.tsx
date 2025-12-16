@@ -34,16 +34,16 @@ export default function Admin() {
       icon: "👥",
       menus: [
         {
+          title: "会员等级",
+          path: "/admin/member/membership_level",
+        },
+        {
           title: "会员信息",
           path: "/admin/member/member",
         },
         {
           title: "会员卡号",
           path: "/admin/member/member_card",
-        },
-        {
-          title: "会员等级",
-          path: "/admin/member/membership_level",
         },
         {
           title: "会员账户",

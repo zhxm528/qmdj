@@ -2,13 +2,26 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import NineGrid from "@/components/NineGrid";
 import { getFourPillars } from "@/lib/ganzhi";
-import { Button, ConfigProvider, Input } from "antd";
+import { Button, ConfigProvider, Input, Radio, Dropdown, MenuProps, Tooltip, Modal } from "antd";
+import {
+  MoreOutlined,
+  ShareAltOutlined,
+  UserAddOutlined,
+  EditOutlined,
+  FolderOutlined,
+  InboxOutlined,
+  DeleteOutlined,
+  StarOutlined,
+  StarFilled,
+  PlusOutlined,
+} from "@ant-design/icons";
 import zhCN from "antd/locale/zh_CN";
 
 const DISPLAY_ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
@@ -102,6 +115,7 @@ export default function HomePage() {
   const [jigong, setJigong] = useState<Record<number, { diGan?: string; tianGan?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
   const [isQipanExpanded, setIsQipanExpanded] = useState(false);
+  const [isPaipanExpanded, setIsPaipanExpanded] = useState(true);
   const [question, setQuestion] = useState<string>("");
   const [aiKanpanResult, setAiKanpanResult] = useState<string | null>(null);
   const [aiKanpanLoading, setAiKanpanLoading] = useState(false);
@@ -115,6 +129,26 @@ export default function HomePage() {
   const [currentPanUid, setCurrentPanUid] = useState<string | null>(null);
   const [currentConversationId, setCurrentConversationId] = useState<number | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<string>(""); // 保存当前问事的原始文本
+  const [conversationPage, setConversationPage] = useState<number>(1); // 对话列表当前页码
+  const CONVERSATIONS_PER_PAGE = 7; // 每页显示7条对话记录
+  const [sceneCode, setSceneCode] = useState<string>("analyze_chart"); // 场景代码，默认选择"综合"
+  const [editingConversationId, setEditingConversationId] = useState<number | null>(null); // 正在编辑的对话ID
+  const [editingTitle, setEditingTitle] = useState<string>(""); // 正在编辑的标题
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // 用户登录状态
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState<number>(0); // 加载提示语索引
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false); // 是否只显示收藏的对话
+  const [favoriteConversationIds, setFavoriteConversationIds] = useState<Set<number>>(new Set()); // 收藏的对话ID集合
+  
+  // AI分析时的轮播提示语
+  const loadingMessages = [
+    "我正在认真整理你的情况，请稍等片刻。",
+    "我在这里，正在为你梳理关键点。",
+    "先深呼吸一下，我正在把信息理清，马上给你更清晰的方向。",
+    "我正在仔细分析，不会敷衍你。",
+    "你的问题很重要，我正在认真看，马上回复你。",
+    "我正在把你的感受与重点逐一整理，请稍等。",
+    "我在思考最适合你的建议，马上就好。",
+  ];
 
   // 从日期字符串解析年月日（使用 useMemo 而不是状态）
   const dateParts = date ? date.split("-") : null;
@@ -655,7 +689,7 @@ export default function HomePage() {
             logicalKey: "qmdj.master.analyze_chart",
             scope: "scene",
             projectCode: "qmdj",
-            sceneCode: "analyze_chart",
+            sceneCode: sceneCode, // 使用用户选择的场景代码
             role: "system",
             language: "zh-CN",
             variables: {
@@ -700,6 +734,7 @@ export default function HomePage() {
           jigong: jigong || {},
           zhiShiDoor,
           zhiFuPalace,
+          sceneCode: sceneCode, // 传递场景代码
           ...(systemPrompt ? { systemPrompt } : {}),
         }),
       });
@@ -789,15 +824,39 @@ export default function HomePage() {
   // 加载对话列表
   const loadConversations = async () => {
     try {
-      const response = await fetch("/api/conversations?project_code=qmdj");
+      const url = showFavoritesOnly 
+        ? "/api/conversations?project_code=qmdj&favorites_only=true"
+        : "/api/conversations?project_code=qmdj";
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setConversations(data.conversations || []);
+          const newConversations = data.conversations || [];
+          setConversations(newConversations);
+          // 如果当前页没有数据了，重置到第一页
+          const totalPages = Math.ceil(newConversations.length / CONVERSATIONS_PER_PAGE);
+          if (conversationPage > totalPages && totalPages > 0) {
+            setConversationPage(1);
+          }
         }
       }
     } catch (error) {
       console.error("加载对话列表失败:", error);
+    }
+  };
+
+  // 加载收藏状态
+  const loadFavoriteStatus = async () => {
+    try {
+      const response = await fetch("/api/conversations/favorites");
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.favorite_ids) {
+          setFavoriteConversationIds(new Set(data.favorite_ids));
+        }
+      }
+    } catch (error) {
+      console.error("加载收藏状态失败:", error);
     }
   };
 
@@ -833,10 +892,208 @@ export default function HomePage() {
     setCurrentQuestion("");
   };
 
-  // 组件加载时获取对话列表
+  // 开始编辑对话标题（重命名）
+  const handleStartEditTitle = (convId: number, currentTitle: string) => {
+    setEditingConversationId(convId);
+    setEditingTitle(currentTitle || "");
+  };
+
+  // 收藏/取消收藏对话
+  const handleToggleFavorite = async (convId: number) => {
+    try {
+      const isFavorite = favoriteConversationIds.has(convId);
+      const response = await fetch("/api/conversations/favorites", {
+        method: isFavorite ? "DELETE" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversation_id: convId,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // 更新本地收藏状态
+        setFavoriteConversationIds((prev) => {
+          const newSet = new Set(prev);
+          if (isFavorite) {
+            newSet.delete(convId);
+          } else {
+            newSet.add(convId);
+          }
+          return newSet;
+        });
+        // 如果当前只显示收藏的对话，且取消了收藏，需要重新加载列表
+        if (showFavoritesOnly && isFavorite) {
+          await loadConversations();
+        }
+      } else {
+        alert(data.error || "操作失败");
+      }
+    } catch (error) {
+      console.error("收藏/取消收藏失败:", error);
+      alert("操作失败，请重试");
+    }
+  };
+
+  // 处理菜单项点击
+  const handleMenuClick = (key: string, convId: number, convTitle: string) => {
+    switch (key) {
+      case "rename":
+        handleStartEditTitle(convId, convTitle);
+        break;
+      case "share":
+        // TODO: 实现分享功能
+        alert("分享功能待实现");
+        break;
+      case "groupChat":
+        // TODO: 实现群聊功能
+        alert("群聊功能待实现");
+        break;
+      case "moveToProject":
+        // TODO: 实现移至项目功能
+        alert("移至项目功能待实现");
+        break;
+      case "favorite":
+        handleToggleFavorite(convId);
+        break;
+      case "delete":
+        if (confirm("确定要删除这个对话吗？此操作不可恢复。")) {
+          handleDeleteConversation(convId);
+        }
+        break;
+    }
+  };
+
+  // 删除对话
+  const handleDeleteConversation = async (convId: number) => {
+    try {
+      const response = await fetch(`/api/conversations?conversation_id=${convId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // 更新本地列表
+        setConversations((prev) => prev.filter((conv: any) => conv.id !== convId));
+        if (selectedConversationId === convId) {
+          setSelectedConversationId(null);
+          setCurrentConversationId(null);
+          setConversationRecords([]);
+        }
+      } else {
+        alert(data.error || "删除失败");
+      }
+    } catch (error) {
+      console.error("删除对话失败:", error);
+      alert("删除失败，请重试");
+    }
+  };
+
+  // 取消编辑
+  const handleCancelEditTitle = () => {
+    setEditingConversationId(null);
+    setEditingTitle("");
+  };
+
+  // 保存编辑的标题
+  const handleSaveTitle = async (convId: number) => {
+    const trimmedTitle = editingTitle.trim();
+    if (!trimmedTitle) {
+      alert("标题不能为空");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/conversations", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversation_id: convId,
+          title: trimmedTitle,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        // 更新本地对话列表
+        setConversations((prev) =>
+          prev.map((conv: any) =>
+            conv.id === convId
+              ? { ...conv, title: trimmedTitle }
+              : conv
+          )
+        );
+        // 关闭编辑模式
+        setEditingConversationId(null);
+        setEditingTitle("");
+      } else {
+        alert(data.error || "保存失败");
+      }
+    } catch (error) {
+      console.error("保存标题失败:", error);
+      alert("保存失败，请重试");
+    }
+  };
+
+  // 检查用户登录状态
+  const checkLoginStatus = async () => {
+    try {
+      const response = await fetch("/api/user/me");
+      setIsLoggedIn(response.ok);
+    } catch (error) {
+      setIsLoggedIn(false);
+    }
+  };
+
+  // 组件加载时获取对话列表和检查登录状态
   useEffect(() => {
     loadConversations();
+    checkLoginStatus();
+    loadFavoriteStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 当 showFavoritesOnly 改变时重新加载对话列表
+  useEffect(() => {
+    if (isLoggedIn) {
+      // 切换过滤模式时重置到第一页
+      setConversationPage(1);
+      loadConversations();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showFavoritesOnly]);
+
+  // 监听页面可见性变化，当页面重新可见时检查登录状态（用于登录后返回页面时更新状态）
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkLoginStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // AI分析时轮播提示语
+  useEffect(() => {
+    if (!aiKanpanLoading) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2000); // 每2秒切换一次
+
+    return () => clearInterval(interval);
+  }, [aiKanpanLoading, loadingMessages.length]);
 
   const displayOrder = DISPLAY_ORDER;
 
@@ -884,10 +1141,76 @@ export default function HomePage() {
                 disabled={!date || !hour}
                 className="bg-amber-600 hover:bg-amber-700"
               >
-                排盘
+                启局排盘
               </Button>
             </div>
           </div>
+
+          {/* 日期信息面板 */}
+          {dateInfo && (
+            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4"></h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-sm text-gray-600">公历（阳历）：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {date && hour && minute
+                      ? `${date} ${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
+                      : dateInfo.gregorian}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">农历（阴历）：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.lunar}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">时节：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.startShijie && dateInfo.endShijie
+                      ? `${dateInfo.startShijie} → ${dateInfo.endShijie}`
+                      : dateInfo.season || "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">干支四柱：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.fourPillars.year}年 {dateInfo.fourPillars.month}月{" "}
+                    {dateInfo.fourPillars.day}日 {dateInfo.fourPillars.hour}时
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">旬首：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {getXunShou(dateInfo.fourPillars.hour)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-gray-600">阴阳遁：</span>
+                  <span className="ml-2 font-medium text-gray-900">
+                    {dateInfo.dunType}{dateInfo.ju}局
+                  </span>
+                </div>
+                {zhiShiDoor && (
+                  <div>
+                    <span className="text-sm text-gray-600">值使门：</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      {zhiShiDoor}门
+                    </span>
+                  </div>
+                )}
+                {zhiFuPalace !== null && (
+                  <div>
+                    <span className="text-sm text-gray-600">值符：</span>
+                    <span className="ml-2 font-medium text-gray-900">
+                      宫{zhiFuPalace}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 看盘分析结果区域（左右布局） */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -896,36 +1219,196 @@ export default function HomePage() {
               <div className="lg:col-span-1 border-r border-gray-200 pr-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-lg font-bold text-gray-900">对话历史</h2>
-                  <Button
-                    size="small"
-                    onClick={handleNewConversation}
-                    className="text-xs"
-                  >
-                    新对话
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Tooltip 
+                      title={!isLoggedIn ? "请先登录才能查看收藏" : (showFavoritesOnly ? "显示所有对话" : "只显示收藏的对话")} 
+                      placement="top"
+                    >
+                      <Button
+                        size="small"
+                        type={showFavoritesOnly ? "primary" : "default"}
+                        icon={showFavoritesOnly ? <StarFilled /> : <StarOutlined />}
+                        onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+                        disabled={!isLoggedIn}
+                        className="text-xs"
+                      />
+                    </Tooltip>
+                    <Tooltip 
+                      title={
+                        !isLoggedIn 
+                          ? "请先登录才能创建新对话" 
+                          : `你可以从这三件事开始写：
+- 你想问的主题（事业/感情/财运/学业/健康/官司…）
+- 现在最困扰你的点是什么
+- 你更希望得到：方向、时机、还是具体做法`
+                      } 
+                      placement="top"
+                      overlayInnerStyle={{ width: '400px', whiteSpace: 'pre-line' }}
+                    >
+                      <Button
+                        size="small"
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        onClick={handleNewConversation}
+                        disabled={!isLoggedIn}
+                        className="text-xs"
+                      />
+                    </Tooltip>
+                  </div>
                 </div>
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                <div className="space-y-2 max-h-[600px] overflow-y-auto mb-4">
                   {conversations.length === 0 ? (
                     <p className="text-sm text-gray-500 text-center py-4">暂无对话记录</p>
-                  ) : (
-                    conversations.map((conv: any) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => handleSelectConversation(conv.id)}
-                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                          selectedConversationId === conv.id
-                            ? "bg-amber-100 text-amber-900 border border-amber-300"
-                            : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-                        }`}
-                      >
-                        <div className="font-medium truncate">{conv.title || "未命名对话"}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {new Date(conv.last_question_at || conv.updated_at).toLocaleDateString()}
-                        </div>
-                      </button>
-                    ))
-                  )}
+                  ) : (() => {
+                    // 计算分页数据
+                    const totalPages = Math.ceil(conversations.length / CONVERSATIONS_PER_PAGE);
+                    const startIndex = (conversationPage - 1) * CONVERSATIONS_PER_PAGE;
+                    const endIndex = startIndex + CONVERSATIONS_PER_PAGE;
+                    const currentPageConversations = conversations.slice(startIndex, endIndex);
+                    
+                    return (
+                      <>
+                        {currentPageConversations.map((conv: any) => (
+                          <div
+                            key={conv.id}
+                            className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
+                              selectedConversationId === conv.id
+                                ? "bg-amber-100 text-amber-900 border border-amber-300"
+                                : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
+                            }`}
+                          >
+                            {editingConversationId === conv.id ? (
+                              <div className="space-y-2">
+                                <Input
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  onPressEnter={() => handleSaveTitle(conv.id)}
+                                  autoFocus
+                                  className="text-sm"
+                                  size="small"
+                                />
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    onClick={() => handleSaveTitle(conv.id)}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    className="text-xs"
+                                  >
+                                    保存
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    onClick={handleCancelEditTitle}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                    className="text-xs"
+                                  >
+                                    取消
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                className="flex items-center justify-between group"
+                                onClick={() => handleSelectConversation(conv.id)}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium truncate flex items-center gap-1">
+                                    {favoriteConversationIds.has(conv.id) && (
+                                      <StarFilled className="text-yellow-500 flex-shrink-0" />
+                                    )}
+                                    <span className="truncate">{conv.title || "未命名对话"}</span>
+                                  </div>
+                                  <div className="text-xs text-gray-500 mt-1">
+                                    {new Date(conv.last_question_at || conv.updated_at).toLocaleDateString()}
+                                  </div>
+                                </div>
+                                <Dropdown
+                                  menu={{
+                                    items: [
+                                      {
+                                        key: "share",
+                                        label: "分享",
+                                        icon: <ShareAltOutlined />,
+                                      },
+                                      {
+                                        key: "groupChat",
+                                        label: "开始群聊",
+                                        icon: <UserAddOutlined />,
+                                      },
+                                      {
+                                        key: "rename",
+                                        label: "重命名",
+                                        icon: <EditOutlined />,
+                                      },
+                                      {
+                                        key: "moveToProject",
+                                        label: "移至项目",
+                                        icon: <FolderOutlined />,
+                                      },
+                                      {
+                                        key: "favorite",
+                                        label: favoriteConversationIds.has(conv.id) ? "取消收藏" : "收藏",
+                                        icon: favoriteConversationIds.has(conv.id) ? <StarFilled /> : <StarOutlined />,
+                                      },
+                                      {
+                                        key: "delete",
+                                        label: "删除",
+                                        icon: <DeleteOutlined />,
+                                        danger: true,
+                                      },
+                                    ],
+                                    onClick: ({ key }) =>
+                                      handleMenuClick(key, conv.id, conv.title),
+                                  }}
+                                  trigger={["click"]}
+                                  placement="bottomRight"
+                                >
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                    }}
+                                    className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-700"
+                                    title="更多操作"
+                                  >
+                                    <MoreOutlined />
+                                  </button>
+                                </Dropdown>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </>
+                    );
+                  })()}
                 </div>
+                {/* 分页控件 */}
+                {conversations.length > CONVERSATIONS_PER_PAGE && (() => {
+                  const totalPages = Math.ceil(conversations.length / CONVERSATIONS_PER_PAGE);
+                  return (
+                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                      <Button
+                        size="small"
+                        onClick={() => setConversationPage(Math.max(1, conversationPage - 1))}
+                        disabled={conversationPage === 1}
+                        className="text-xs"
+                      >
+                        上一页
+                      </Button>
+                      <span className="text-xs text-gray-600">
+                        第 {conversationPage} / {totalPages} 页
+                      </span>
+                      <Button
+                        size="small"
+                        onClick={() => setConversationPage(Math.min(totalPages, conversationPage + 1))}
+                        disabled={conversationPage === totalPages}
+                        className="text-xs"
+                      >
+                        下一页
+                      </Button>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* 右侧：AI分析结果内容区 */}
@@ -933,7 +1416,7 @@ export default function HomePage() {
                 {aiKanpanLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                    <span className="ml-3 text-gray-600">AI正在分析中...</span>
+                    <span className="ml-3 text-gray-600">{loadingMessages[loadingMessageIndex]}</span>
                   </div>
                 ) : (selectedConversationId && conversationRecords.length > 0) || (aiKanpanResult && currentConversationId) ? (
                   <div className="space-y-6">
@@ -1008,8 +1491,8 @@ export default function HomePage() {
                   </div>
                 ) : (
                   <div className="text-center py-12 text-gray-500">
-                    <p>点击&ldquo;看盘&rdquo;按钮开始分析</p>
-                    <p className="text-sm mt-2">或从左侧选择一个历史对话查看</p>
+                    <p>你的感受很重要，我们从最想解决的地方开始</p>
+                    <p className="text-sm mt-2">点击&ldquo;看盘&rdquo;获取解读；也可以打开左侧&ldquo;历史对话&rdquo;接着聊</p>
                   </div>
                 )}
               </div>
@@ -1019,103 +1502,141 @@ export default function HomePage() {
           {/* 问事输入框和看盘按钮 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="w-full">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                问事：
-              </label>
-              <Input
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="请输入要问的事情"
-                size="large"
-                className="w-full"
-                style={{ height: '48px' }}
-              />
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    问事：
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {question.length}/200
+                  </span>
+                </div>
+                <Input
+                  value={question}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 200) {
+                      setQuestion(e.target.value);
+                    }
+                  }}
+                  placeholder="请输入要问的事情"
+                  size="large"
+                  className="w-full"
+                  style={{ height: '48px' }}
+                  maxLength={200}
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                 用你最舒服的方式写，别担心措辞，只需要说重点，简短也没关系，200 字以内我们先从这里开始。。
+                </p>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  问哪方面：
+                </label>
+                <Radio.Group
+                  value={sceneCode}
+                  onChange={(e) => setSceneCode(e.target.value)}
+                  size="large"
+                  className="flex flex-wrap gap-2"
+                >
+                  <Radio value="analyze_chart">综合</Radio>
+                  <Radio value="career">事业</Radio>
+                  <Radio value="wealth">财运</Radio>
+                  <Radio value="relationship">感情</Radio>
+                  <Radio value="study">学业</Radio>
+                  <Radio value="health">健康</Radio>
+                  <Radio value="lawsuit">官司</Radio>
+                </Radio.Group>
+              </div>
             </div>
             <div className="mt-4 flex justify-center">
-              <Button
-                type="primary"
-                size="large"
-                onClick={handleKanpan}
-                loading={aiKanpanLoading}
-                disabled={!paipanResult || !question || question.trim().length === 0}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                看盘
-              </Button>
+              {(() => {
+                const isButtonDisabled = !paipanResult || !question || question.trim().length === 0;
+                const tooltipTitle = isButtonDisabled && !isLoggedIn ? (
+                  <div>
+                    <div className="mb-2 text-left">我已经准备好为你看盘了，登录后即可开始，还能一键查看历史盘与收藏哦。</div>
+                    <div className="text-center">
+                      <Link href="/login" className="text-blue-400 hover:text-blue-300 underline">
+                        登录
+                      </Link>
+                    </div>
+                  </div>
+                ) : "";
+                
+                return (
+                  <div className="flex items-center gap-3">
+                    <Tooltip 
+                      title={tooltipTitle} 
+                      placement="top"
+                      overlayInnerStyle={{ width: '300px' }}
+                    >
+                      <Button
+                        type="primary"
+                        size="large"
+                        onClick={() => {
+                          if (isButtonDisabled && isLoggedIn) {
+                            Modal.info({
+                              title: '使用流程',
+                              content: (
+                                <div className="space-y-2 mt-4">
+                                  <p>1. 选择日期和时间</p>
+                                  <p>2. 点击&ldquo;启局排盘&rdquo;按钮完成排盘</p>
+                                  <p>3. 在&ldquo;问事&rdquo;输入框中输入要问的事情</p>
+                                  <p>4. 点击&ldquo;看盘&rdquo;按钮进行分析</p>
+                                </div>
+                              ),
+                              okText: '我知道了',
+                              centered: true,
+                            });
+                          } else if (!isButtonDisabled) {
+                            handleKanpan();
+                          }
+                        }}
+                        loading={aiKanpanLoading}
+                        className={`bg-blue-600 hover:bg-blue-700 ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        style={isButtonDisabled ? { pointerEvents: 'auto' } : {}}
+                      >
+                        看盘
+                      </Button>
+                    </Tooltip>
+                    {!isLoggedIn && (
+                      <Button
+                        type="default"
+                        size="large"
+                        onClick={() => router.push("/login")}
+                        className="border-amber-600 text-amber-600 hover:bg-amber-50"
+                      >
+                        登录
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 
-          {/* 排盘结果面板 */}
+          {/* 排盘结果面板 - 可折叠面板 */}
           {paipanResult && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">奇门排盘</h2>
-              <NineGrid data={paipanResult} />
-            </div>
-          )}
-
-          {/* 日期信息面板 */}
-          {dateInfo && (
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4"></h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <span className="text-sm text-gray-600">公历（阳历）：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {date && hour && minute
-                      ? `${date} ${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
-                      : dateInfo.gregorian}
-                  </span>
+            <div className="bg-white rounded-lg shadow-md mb-6">
+              <button
+                type="button"
+                onClick={() => setIsPaipanExpanded(!isPaipanExpanded)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
+              >
+                <h2 className="text-xl font-bold text-gray-900">九宫</h2>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${isPaipanExpanded ? "transform rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isPaipanExpanded && (
+                <div className="px-6 pb-6">
+                  <NineGrid data={paipanResult} />
                 </div>
-                <div>
-                  <span className="text-sm text-gray-600">农历（阴历）：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {dateInfo.lunar}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">时节：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {dateInfo.startShijie && dateInfo.endShijie
-                      ? `${dateInfo.startShijie} → ${dateInfo.endShijie}`
-                      : dateInfo.season || "—"}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">干支四柱：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {dateInfo.fourPillars.year}年 {dateInfo.fourPillars.month}月{" "}
-                    {dateInfo.fourPillars.day}日 {dateInfo.fourPillars.hour}时
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">旬首：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {getXunShou(dateInfo.fourPillars.hour)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-sm text-gray-600">阴阳遁：</span>
-                  <span className="ml-2 font-medium text-gray-900">
-                    {dateInfo.dunType}{dateInfo.ju}局
-                  </span>
-                </div>
-                {zhiShiDoor && (
-                  <div>
-                    <span className="text-sm text-gray-600">值使门：</span>
-                    <span className="ml-2 font-medium text-gray-900">
-                      {zhiShiDoor}门
-                    </span>
-                  </div>
-                )}
-                {zhiFuPalace !== null && (
-                  <div>
-                    <span className="text-sm text-gray-600">值符：</span>
-                    <span className="ml-2 font-medium text-gray-900">
-                      宫{zhiFuPalace}
-                    </span>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           )}
 
@@ -1127,7 +1648,7 @@ export default function HomePage() {
                 onClick={() => setIsQipanExpanded(!isQipanExpanded)}
                 className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
               >
-                <h2 className="text-xl font-bold text-gray-900">奇盘一览</h2>
+                <h2 className="text-xl font-bold text-gray-900">更多</h2>
                 <svg
                   className={`w-5 h-5 text-gray-500 transition-transform ${isQipanExpanded ? "transform rotate-180" : ""}`}
                   fill="none"

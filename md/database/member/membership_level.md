@@ -7,6 +7,8 @@ CREATE TABLE membership_level (
     min_points     INTEGER NOT NULL DEFAULT 0,    -- 达到该等级所需的最低积分
     max_points     INTEGER,                       -- 该等级上限积分(可选, 顶级可为NULL)
     discount_rate  NUMERIC(5,2) NOT NULL DEFAULT 1.00, -- 消费折扣, 1.00表示不打折
+    sale_price     NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- 该等级会员的销售价格
+    cost_price     NUMERIC(12,2) NOT NULL DEFAULT 0.00, -- 该等级会员的成本价格
     created_at     TIMESTAMP NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMP NOT NULL DEFAULT NOW()
 );

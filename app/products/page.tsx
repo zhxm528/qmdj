@@ -11,6 +11,7 @@ interface Panel {
   title: string;
   id: string;
   icon: string;
+  status?: string;
   menus?: MenuItem[];
 }
 
@@ -18,22 +19,24 @@ export default function Products() {
   const products = [
     {
       id: 1,
-      title: "基础排盘",
-      status: "已支持",
-      features: ["标准九宫格", "基础门星神", "快速查询"],
+      title: "奇门遁甲",
+      status: "黄金会员",
+      features: ["在线排盘", "精准问事", "深度解析"],
       icon: "📊",
+      path: "/",
+      buttonText: "进入奇门",
     },
     {
       id: 2,
-      title: "高级断局",
-      status: "Coming soon",
+      title: "生辰八字",
+      status: "黄金会员",
       features: ["深度解析", "多种格局", "精准判断"],
       icon: "🔮",
     },
     {
       id: 4,
-      title: "个性化报告 PDF",
-      status: "Coming soon",
+      title: "紫微斗数",
+      status: "黄金会员",
       features: ["专业报告生成", "PDF导出", "多语言支持"],
       icon: "📄",
     },
@@ -44,6 +47,7 @@ export default function Products() {
       title: "知识库",
       id: "knowledge_base",
       icon: "📖",
+      status: "黄金会员",
       menus: [
         {
           title: "名词解释",
@@ -76,9 +80,14 @@ export default function Products() {
                     className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-xl transition-shadow"
                   >
                     <div className="text-4xl mb-4">{panel.icon}</div>
-                    <h3 className="text-2xl font-semibold text-gray-900 mb-4">
+                    <h3 className="text-2xl font-semibold text-gray-900 mb-2">
                       {panel.title}
                     </h3>
+                    {panel.status && (
+                      <span className="inline-block px-3 py-1 rounded-full text-sm font-medium mb-4 bg-amber-100 text-amber-800">
+                        {panel.status}
+                      </span>
+                    )}
                     <div className="text-gray-600">
                       {panel.menus && panel.menus.length > 0 ? (
                         <ul className="space-y-2">

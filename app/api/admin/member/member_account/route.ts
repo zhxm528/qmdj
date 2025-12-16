@@ -44,6 +44,41 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    
+    // 如果提供了 member_id 参数，查询单个会员账户
+    const memberId = searchParams.get("member_id");
+    if (memberId) {
+      const accountQuery = `
+        SELECT
+          ma.member_id,
+          ma.balance,
+          ma.frozen_balance,
+          ma.updated_at AT TIME ZONE 'UTC' AS updated_at,
+          m.full_name,
+          m.mobile
+        FROM member_account ma
+        LEFT JOIN member m ON ma.member_id = m.member_id
+        WHERE ma.member_id = $1
+      `;
+      console.log("[member_account] 查询单个会员账户 SQL:", {
+        query: accountQuery.trim(),
+        params: [memberId],
+      });
+      const accountResult = await query(accountQuery, [memberId]);
+      if (accountResult && accountResult.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: accountResult[0],
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "会员账户不存在" },
+          { status: 404 }
+        );
+      }
+    }
+
+    // 查询会员账户列表
     const params: MemberAccountQueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
@@ -63,10 +98,12 @@ export async function GET(request: NextRequest) {
     }
 
     // 计算总数
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM member_account`,
-      []
-    );
+    const countQuery = `SELECT COUNT(*) as total FROM member_account`;
+    console.log("[member_account] 查询总数 SQL:", {
+      query: countQuery.trim(),
+      params: [],
+    });
+    const countResult = await query(countQuery, []);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
     // 查询数据
@@ -75,7 +112,7 @@ export async function GET(request: NextRequest) {
         member_id,
         balance,
         frozen_balance,
-        updated_at
+        updated_at AT TIME ZONE 'UTC' AS updated_at
       FROM member_account
       ORDER BY updated_at DESC
     `;
@@ -89,6 +126,10 @@ export async function GET(request: NextRequest) {
       values.push(offset);
     }
 
+    console.log("[member_account] 查询会员账户列表 SQL:", {
+      query: dataQuery.trim(),
+      params: values,
+    });
     const accounts = await query(dataQuery, values);
 
     return NextResponse.json({

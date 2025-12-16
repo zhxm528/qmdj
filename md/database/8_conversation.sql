@@ -599,3 +599,72 @@ DELETE FROM conversations
 WHERE deleted_at IS NOT NULL 
   AND deleted_at < NOW() - INTERVAL '30 days';
 */
+
+
+-- =========================================================
+-- 用户收藏对话表：conversation_favorites
+-- 用途：
+--   记录“某用户收藏了某个对话”的关系（user ⇄ conversation 多对多）
+-- 设计要点：
+--   1) (user_id, conversation_id) 唯一，防止重复收藏
+--   2) 支持软取消收藏：deleted_at 非空表示已取消收藏（可选）
+--   3) 建立部分索引（WHERE deleted_at IS NULL）提升“有效收藏”查询性能
+-- =========================================================
+
+DROP TABLE IF EXISTS conversation_favorites;
+
+CREATE TABLE conversation_favorites (
+  id              BIGSERIAL PRIMARY KEY,  -- 内部主键（自增）
+
+  user_id         INTEGER NOT NULL
+    REFERENCES users(id) ON DELETE CASCADE, -- 关联用户；用户删除则其收藏记录级联删除
+
+  conversation_id BIGINT  NOT NULL
+    REFERENCES conversations(id) ON DELETE CASCADE, -- 关联对话；对话删除则收藏记录级联删除
+
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(), -- 收藏创建时间
+  deleted_at      TIMESTAMPTZ                         -- 取消收藏时间（NULL=仍收藏；非NULL=已取消）
+);
+
+-- 约束：同一用户对同一对话只能收藏一次
+ALTER TABLE conversation_favorites
+  ADD CONSTRAINT uq_conversation_favorites_user_conv
+  UNIQUE (user_id, conversation_id);
+
+-- =========================================================
+-- 索引：优化查询
+--   1) 按用户拉取“已收藏对话列表”
+--   2) 判断某对话是否被某用户收藏
+-- 使用部分索引，仅覆盖“有效收藏”（deleted_at IS NULL）
+-- =========================================================
+
+CREATE INDEX idx_conversation_favorites_user_created
+  ON conversation_favorites (user_id, created_at DESC)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_conversation_favorites_user_conv
+  ON conversation_favorites (user_id, conversation_id)
+  WHERE deleted_at IS NULL;
+
+-- =========================================================
+-- 注释（表 & 字段）
+-- =========================================================
+
+COMMENT ON TABLE conversation_favorites IS
+'用户收藏对话关系表：记录 user_id 收藏 conversation_id 的关系；(user_id, conversation_id) 唯一；deleted_at 用于软取消收藏。';
+
+COMMENT ON COLUMN conversation_favorites.id IS
+'内部主键（自增）';
+
+COMMENT ON COLUMN conversation_favorites.user_id IS
+'收藏者用户ID，关联 users(id)，用户删除则收藏记录级联删除';
+
+COMMENT ON COLUMN conversation_favorites.conversation_id IS
+'被收藏的对话ID，关联 conversations(id)，对话删除则收藏记录级联删除';
+
+COMMENT ON COLUMN conversation_favorites.created_at IS
+'收藏创建时间（点击收藏的时间）';
+
+COMMENT ON COLUMN conversation_favorites.deleted_at IS
+'取消收藏时间：NULL表示仍处于收藏状态；非NULL表示已取消收藏（软删除）';
+

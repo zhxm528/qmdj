@@ -40,3 +40,11 @@ export const mailConfig = {
   },
   baseUrl: "http://localhost:3000",
 };
+
+// 时区配置
+export const timezoneConfig = {
+  // IANA 时区标识符，例如：Asia/Shanghai, America/New_York, Europe/London
+  timezone: process.env.TIMEZONE || "Asia/Shanghai",
+  // UTC 偏移量（小时），例如：+8 表示东八区（北京时间）
+  utcOffset: parseInt(process.env.UTC_OFFSET || "8", 10),
+};

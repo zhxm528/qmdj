@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Layout from "@/components/Layout";
 import {
   ConfigProvider,
@@ -19,6 +19,10 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+// 后端 created_at 为 UTC（TIMESTAMPTZ），使用 dayjs utc 插件按配置的时区展示
+dayjs.extend(utc);
 
 interface ConsumptionTransaction {
   consumption_id: number;
@@ -61,8 +65,33 @@ export default function ConsumptionTransactionPage() {
   const [pageSize, setPageSize] = useState(10);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<ConsumptionTransaction | null>(null);
-  const [members, setMembers] = useState<Array<{ member_id: number; full_name: string | null; mobile: string | null }>>([]);
-  const [cards, setCards] = useState<Array<{ card_id: number; card_no: string; member_id: number }>>([]);
+  const [members, setMembers] = useState<
+    Array<{
+      member_id: number;
+      full_name: string | null;
+      mobile: string | null;
+      level_id?: number | null;
+      level_name?: string | null;
+      sale_price?: number | null;
+      cost_price?: number | null;
+    }>
+  >([]);
+  const [cards, setCards] = useState<
+    Array<{
+      card_id: number;
+      card_no: string;
+      member_id: number;
+      expired_at?: string | null;
+    }>
+  >([]);
+  const selectedMemberId = Form.useWatch("member_id", form);
+  const selectedCardId = Form.useWatch("card_id", form);
+  const [previewDaysToAdd, setPreviewDaysToAdd] = useState<number | null>(null);
+  const [previewExpiredDate, setPreviewExpiredDate] = useState<string | null>(null);
+  const [timezoneConfig, setTimezoneConfig] = useState<{
+    timezone: string;
+    utcOffset: number;
+  } | null>(null);
 
   // 加载会员列表（用于下拉选择）
   const loadMembers = async () => {
@@ -116,6 +145,49 @@ export default function ConsumptionTransactionPage() {
   };
 
   useEffect(() => {
+    // 加载时区配置
+    const loadTimezoneConfig = async () => {
+      try {
+        const res = await fetch("/api/config/timezone");
+        const data = await res.json();
+        if (data.success) {
+          setTimezoneConfig({
+            timezone: data.timezone,
+            utcOffset: data.utcOffset,
+          });
+        }
+      } catch (error) {
+        console.error("加载时区配置失败:", error);
+        // 如果加载失败，使用默认值
+        setTimezoneConfig({
+          timezone: "Asia/Shanghai",
+          utcOffset: 8,
+        });
+      }
+    };
+
+    // 上报浏览器时区信息到后台，便于排查时间显示问题
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const offsetMinutes = new Date().getTimezoneOffset(); // 相对于 UTC 的分钟数（通常东八区为 -480）
+      // 前端控制台也打印一次
+      console.log("[consumption_transaction] 浏览器时区:", {
+        timezone: tz,
+        offsetMinutes,
+      });
+      // 上报给后端，在日志中记录
+      fetch(
+        `/api/admin/member/consumption_transaction?clientTimezone=${encodeURIComponent(
+          tz || ""
+        )}&clientOffsetMinutes=${offsetMinutes}`
+      ).catch((err) => {
+        console.error("上报浏览器时区失败:", err);
+      });
+    } catch (e) {
+      console.error("获取浏览器时区失败:", e);
+    }
+
+    loadTimezoneConfig();
     loadMembers();
     loadCards();
     loadTransactions(1, 10);
@@ -130,6 +202,8 @@ export default function ConsumptionTransactionPage() {
       points_used: 0,
       points_earned: 0,
     });
+    setPreviewDaysToAdd(null);
+    setPreviewExpiredDate(null);
     setModalVisible(true);
   };
 
@@ -214,6 +288,8 @@ export default function ConsumptionTransactionPage() {
         message.success(editingTransaction ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
+        setPreviewDaysToAdd(null);
+        setPreviewExpiredDate(null);
         loadTransactions(currentPage, pageSize);
       } else {
         message.error(data.error || "保存失败");
@@ -230,17 +306,22 @@ export default function ConsumptionTransactionPage() {
 
   const getMemberName = (memberId: number) => {
     const member = members.find((m) => m.member_id === memberId);
-    if (member) {
-      return member.full_name || member.mobile || `ID: ${memberId}`;
+    if (member && member.full_name) {
+      return member.full_name;
     }
-    return `ID: ${memberId}`;
+    return "-";
   };
 
   const getCardNo = (cardId: number | null) => {
     if (!cardId) return "-";
     const card = cards.find((c) => c.card_id === cardId);
-    return card ? card.card_no : `ID: ${cardId}`;
+    return card ? `${card.card_no}` : `ID: ${cardId}`;
   };
+
+  // 根据选中的会员过滤可选会员卡
+  const filteredCards = selectedMemberId
+    ? cards.filter((c) => c.member_id === selectedMemberId)
+    : cards;
 
   const getPayChannelName = (channel: string) => {
     const channelMap: Record<string, string> = {
@@ -253,7 +334,52 @@ export default function ConsumptionTransactionPage() {
     return channelMap[channel] || channel;
   };
 
-  const columns: ColumnsType<ConsumptionTransaction> = [
+  // 当前选中的会员详情（用于展示等级及售价/成本价信息）
+  const selectedMember = selectedMemberId
+    ? members.find((m) => m.member_id === selectedMemberId)
+    : undefined;
+
+  // 当前选中的会员卡
+  const selectedCard = selectedCardId
+    ? cards.find((c) => c.card_id === selectedCardId)
+    : undefined;
+
+  // 在“实付金额”输入框失去焦点时，根据当前值和会员等级售价，预估增加的有效期天数和新的到期日期
+  const updatePreviewExpireInfo = () => {
+    if (!selectedMember || !selectedMember.sale_price) {
+      setPreviewDaysToAdd(null);
+      setPreviewExpiredDate(null);
+      return;
+    }
+
+    const salePrice = Number(selectedMember.sale_price);
+    const paid = Number(form.getFieldValue("paid_amount") || 0);
+
+    if (!salePrice || salePrice <= 0 || !paid || paid <= 0) {
+      setPreviewDaysToAdd(null);
+      setPreviewExpiredDate(null);
+      return;
+    }
+
+    const dailyPrice = salePrice / 31;
+    if (!dailyPrice || dailyPrice <= 0) {
+      setPreviewDaysToAdd(null);
+      setPreviewExpiredDate(null);
+      return;
+    }
+
+    const rawDays = paid / dailyPrice;
+    const daysToAdd = Math.ceil(rawDays);
+    setPreviewDaysToAdd(daysToAdd);
+
+    const baseDate = selectedCard?.expired_at
+      ? dayjs(selectedCard.expired_at)
+      : dayjs();
+    setPreviewExpiredDate(baseDate.add(daysToAdd, "day").format("YYYY-MM-DD"));
+  };
+
+  // 使用 useMemo 确保 timezoneConfig 更新时 columns 重新创建
+  const columns: ColumnsType<ConsumptionTransaction> = useMemo(() => [
     {
       title: "ID",
       dataIndex: "consumption_id",
@@ -343,8 +469,27 @@ export default function ConsumptionTransactionPage() {
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
-      render: (value: string) =>
-        value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
+      // 后端返回的 created_at 为 UTC 时间字符串，这里按照配置的时区展示
+      render: (value: string) => {
+        if (!value) return "-";
+        if (!timezoneConfig) {
+          // 如果时区配置还未加载，先显示 UTC 时间
+          console.log("[consumption_transaction] 时区配置未加载，显示 UTC 时间:", value);
+          return dayjs.utc(value).format("YYYY-MM-DD HH:mm:ss") + " (UTC)";
+        }
+        // 使用配置的时区偏移量
+        // dayjs.utc() 创建 UTC 时间对象，然后使用 add() 方法添加时区偏移量
+        const utcTime = dayjs.utc(value);
+        const localTime = utcTime.add(timezoneConfig.utcOffset, "hour");
+        console.log("[consumption_transaction] 时间转换:", {
+          original: value,
+          utc: utcTime.format("YYYY-MM-DD HH:mm:ss"),
+          timezone: timezoneConfig.timezone,
+          utcOffset: timezoneConfig.utcOffset,
+          converted: localTime.format("YYYY-MM-DD HH:mm:ss"),
+        });
+        return localTime.format("YYYY-MM-DD HH:mm:ss");
+      },
     },
     {
       title: "操作",
@@ -371,7 +516,8 @@ export default function ConsumptionTransactionPage() {
         </Space>
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [timezoneConfig]);
 
   return (
     <ConfigProvider locale={zhCN}>
@@ -417,13 +563,32 @@ export default function ConsumptionTransactionPage() {
             <Modal
               title={editingTransaction ? "编辑消费记录" : "新增消费记录"}
               open={modalVisible}
-              onOk={handleModalOk}
+              // 禁止点击弹窗外区域关闭
+              maskClosable={false}
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setPreviewDaysToAdd(null);
+                setPreviewExpiredDate(null);
               }}
-              destroyOnClose
+              destroyOnHidden
               width={700}
+              footer={[
+                <Button
+                  key="close"
+                  onClick={() => {
+                    setModalVisible(false);
+                    form.resetFields();
+                    setPreviewDaysToAdd(null);
+                    setPreviewExpiredDate(null);
+                  }}
+                >
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  保存
+                </Button>,
+              ]}
             >
               <Form<ConsumptionTransactionFormValues>
                 form={form}
@@ -436,6 +601,16 @@ export default function ConsumptionTransactionPage() {
                   rules={[{ required: true, message: "请选择会员" }]}
                 >
                   <Select
+                    onChange={(value) => {
+                      // 当会员变更时，如果当前选中的会员卡不属于该会员，则清空会员卡选择
+                      const currentCardId = form.getFieldValue("card_id");
+                      if (currentCardId) {
+                        const card = cards.find((c) => c.card_id === currentCardId);
+                        if (!card || card.member_id !== value) {
+                          form.setFieldsValue({ card_id: undefined });
+                        }
+                      }
+                    }}
                     showSearch
                     placeholder="请选择会员"
                     optionFilterProp="children"
@@ -448,6 +623,38 @@ export default function ConsumptionTransactionPage() {
                     }))}
                   />
                 </Form.Item>
+                {selectedMember && (
+                  <div className="mb-4 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                    <div>
+                      会员等级：
+                      <span className="font-medium">
+                        {selectedMember.level_name || "未设置等级"}
+                      </span>
+                    </div>
+                    {selectedMember.sale_price != null && selectedMember.sale_price > 0 && (
+                      <div>
+                        销售单价（31天周期）：
+                        <span className="font-medium">
+                          ¥{Number(selectedMember.sale_price).toFixed(2)}
+                          {" / 31天，约 ¥"}
+                          {(Number(selectedMember.sale_price) / 31).toFixed(2)}
+                          {" / 天"}
+                        </span>
+                      </div>
+                    )}
+                    {selectedMember.cost_price != null && selectedMember.cost_price > 0 && (
+                      <div>
+                        成本单价（31天周期）：
+                        <span className="font-medium">
+                          ¥{Number(selectedMember.cost_price).toFixed(2)}
+                          {" / 31天，约 ¥"}
+                          {(Number(selectedMember.cost_price) / 31).toFixed(2)}
+                          {" / 天"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <Form.Item label="会员卡" name="card_id">
                   <Select
                     showSearch
@@ -457,7 +664,7 @@ export default function ConsumptionTransactionPage() {
                     filterOption={(input, option) =>
                       (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
                     }
-                    options={cards.map((c) => ({
+                    options={filteredCards.map((c) => ({
                       value: c.card_id,
                       label: `${c.card_no} (会员ID: ${c.member_id})`,
                     }))}
@@ -526,8 +733,21 @@ export default function ConsumptionTransactionPage() {
                     precision={2}
                     prefix="¥"
                     placeholder="请输入实际支付金额"
+                    onBlur={updatePreviewExpireInfo}
                   />
                 </Form.Item>
+                {previewDaysToAdd !== null && previewExpiredDate && (
+                  <div className="mt-2 mb-2 text-xs text-gray-600 bg-blue-50 rounded px-2 py-1">
+                    <div>
+                      预计本次将增加有效期：
+                      <span className="font-medium">{previewDaysToAdd} 天</span>
+                    </div>
+                    <div>
+                      预计新的到期日期：
+                      <span className="font-medium">{previewExpiredDate}</span>
+                    </div>
+                  </div>
+                )}
                 <Form.Item
                   label="支付渠道"
                   name="pay_channel"

@@ -7,6 +7,7 @@ interface Plan {
   name: string;
   price: string;
   period: string;
+  description?: string;
   features: string[];
   cta: string;
   highlight: boolean;
@@ -24,6 +25,9 @@ export default function PricingCard({ plan }: PricingCardProps) {
     if (isFree) {
       // 免费版：引导注册
       router.push("/register");
+    } else if (plan.cta === "立即开通") {
+      // 立即开通：跳转到充值页面
+      router.push("/deposit");
     } else {
       // 付费版：发起订阅
       handleSubscribe();
@@ -70,7 +74,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
       }`}
     >
       {plan.highlight && (
-        <div className="bg-amber-500 text-white text-sm font-bold px-4 py-1 rounded-full inline-block mb-4">
+        <div className="bg-amber-500 text-white text-sm font-bold px-4 py-1 rounded-full block mb-4 mx-auto w-fit">
           推荐
         </div>
       )}
@@ -79,12 +83,17 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <div className="mb-6">
         <span 
-          className="text-5xl font-bold text-gray-900"
+          className="text-5xl font-bold text-amber-600"
           style={{ fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif', letterSpacing: '0.02em' }}
         >
           {plan.price}
         </span>
         <span className="text-gray-600">{plan.period}</span>
+        {plan.description && (
+          <div className="mt-2 text-sm text-gray-500">
+            {plan.description}
+          </div>
+        )}
       </div>
 
       <ul className="space-y-3 mb-8 flex-1">

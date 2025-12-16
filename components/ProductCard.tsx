@@ -1,9 +1,13 @@
+import Link from "next/link";
+
 interface Product {
   id: number;
   title: string;
   status: string;
   features: string[];
   icon: string;
+  path?: string;
+  buttonText?: string;
 }
 
 interface ProductCardProps {
@@ -12,6 +16,8 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const isAvailable = product.status === "已支持";
+  const buttonText = product.buttonText || (isAvailable ? "立即使用" : "即将开放");
+  const buttonClassName = "w-full px-4 py-2 rounded-lg border border-amber-600 text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
 
   return (
     <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-xl transition-shadow border border-gray-200">
@@ -36,12 +42,18 @@ export default function ProductCard({ product }: ProductCardProps) {
         ))}
       </ul>
 
-      <button
-        className="w-full px-4 py-2 rounded-lg border border-amber-600 text-amber-600 hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        disabled={!isAvailable}
-      >
-        {isAvailable ? "立即使用" : "即将开放"}
-      </button>
+      {product.path ? (
+        <Link href={product.path} className={`${buttonClassName} block text-center`}>
+          {buttonText}
+        </Link>
+      ) : (
+        <button
+          className={buttonClassName}
+          disabled={!isAvailable}
+        >
+          {buttonText}
+        </button>
+      )}
     </div>
   );
 }

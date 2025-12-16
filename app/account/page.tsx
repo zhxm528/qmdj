@@ -34,7 +34,7 @@ export default function Account() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/user/me")
+    fetch("/api/account")
       .then((res) => res.json())
       .then((data) => {
         setUser(data);
@@ -81,74 +81,66 @@ export default function Account() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       邮箱
                     </label>
-                    <p className="text-gray-900">{user?.email || "-"}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      注册日期
-                    </label>
                     <p className="text-gray-900">
-                      {formatDate(user?.createdAt)}
+                      {user?.email || "-"}
+                      {user?.email && (
+                        <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
+                          user?.isEmailVerified 
+                            ? "bg-green-100 text-green-800" 
+                            : "bg-yellow-100 text-yellow-800"
+                        }`}>
+                          {user?.isEmailVerified ? "已验证" : "未验证"}
+                        </span>
+                      )}
                     </p>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      最近更新
-                    </label>
-                    <p className="text-gray-900">
-                      {formatDateTime(user?.updatedAt)}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      邮箱验证
-                    </label>
-                    <p className="text-gray-900">
-                      {user?.isEmailVerified ? "已验证" : "未验证"}
-                    </p>
-                  </div>
+                  {user?.memberRegisteredAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        注册日期
+                      </label>
+                      <p className="text-gray-900">
+                        {formatDate(user.memberRegisteredAt)}
+                      </p>
+                    </div>
+                  )}
+                  {user?.cardExpiredAt && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        会员卡有效期
+                      </label>
+                      <p className="text-gray-900">{formatDate(user.cardExpiredAt)}</p>
+                    </div>
+                  )}
+                  {user?.memberLevel && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        会员等级
+                      </label>
+                      <p className="inline-block px-4 py-2 bg-amber-500 text-white font-bold rounded-lg text-lg">
+                        {user.memberLevel.levelName === "银卡" ? "白银会员" : user.memberLevel.levelName}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       账户状态
                     </label>
-                    <p className="text-gray-900">{user?.status || "-"}</p>
+                    <p className="text-gray-900">
+                      {user?.status === "active" ? "使用中" : user?.status || "-"}
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div className="border-b pb-6">
-                <h2 className="text-xl font-bold mb-4">会员信息</h2>
-                <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">会员等级</p>
-                    <p className="font-medium text-gray-900">
-                      {user?.membership?.level || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">会员号</p>
-                    <p className="font-medium text-gray-900">
-                      {user?.membership?.no || "-"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">是否付款</p>
-                    <p className="font-medium text-gray-900">
-                      {user?.membership?.isPaid ? "已付款" : "未付款"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1">最后付款时间</p>
-                    <p className="font-medium text-gray-900">
-                      {user?.membership?.lastPaidAt || "-"}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4" />
-              </div>
-
-              <div>
-                <Button variant="danger" onClick={handleLogout} className="w-full">
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => router.push("/member")}
+                  className="flex-1"
+                >
+                  查看账户
+                </Button>
+                <Button variant="danger" onClick={handleLogout} className="flex-1">
                   退出登录
                 </Button>
               </div>

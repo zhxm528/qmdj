@@ -25,8 +25,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN">
-      <body className={notoSerif.className}>{children}</body>
+    <html lang="zh-CN" suppressHydrationWarning>
+      <body className={notoSerif.className} suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

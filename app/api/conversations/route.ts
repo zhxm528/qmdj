@@ -326,6 +326,7 @@ export async function GET(request: NextRequest) {
     const conversationId = searchParams.get("conversation_id");
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("page_size") || "20", 10);
+    const favoritesOnly = searchParams.get("favorites_only") === "true";
 
     // 获取项目ID
     let projectId: string | null = null;
@@ -418,25 +419,47 @@ export async function GET(request: NextRequest) {
           AND c.deleted_at IS NULL
       `;
       const params: any[] = [userId];
+      let paramIndex = 2;
 
       if (projectId) {
-        sql += ` AND c.project_id = $2`;
+        sql += ` AND c.project_id = $${paramIndex}`;
         params.push(projectId);
+        paramIndex++;
+      }
+
+      // 如果只获取收藏的对话，添加JOIN条件
+      if (favoritesOnly) {
+        sql += ` AND EXISTS (
+          SELECT 1 FROM conversation_favorites cf
+          WHERE cf.conversation_id = c.id
+            AND cf.user_id = $1
+            AND cf.deleted_at IS NULL
+        )`;
       }
 
       sql += ` GROUP BY c.id, c.uid, c.title, c.pan_id, c.pan_uid, c.created_at, c.updated_at
                ORDER BY c.updated_at DESC
-               LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+               LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       params.push(pageSize, offset);
 
       const conversations = await query(sql, params);
 
       // 获取总数
-      let countSql = `SELECT COUNT(*) as total FROM conversations WHERE user_id = $1 AND deleted_at IS NULL`;
+      let countSql = `SELECT COUNT(*) as total FROM conversations c WHERE c.user_id = $1 AND c.deleted_at IS NULL`;
       const countParams: any[] = [userId];
+      let countParamIndex = 2;
       if (projectId) {
-        countSql += ` AND project_id = $2`;
+        countSql += ` AND c.project_id = $${countParamIndex}`;
         countParams.push(projectId);
+        countParamIndex++;
+      }
+      if (favoritesOnly) {
+        countSql += ` AND EXISTS (
+          SELECT 1 FROM conversation_favorites cf
+          WHERE cf.conversation_id = c.id
+            AND cf.user_id = $1
+            AND cf.deleted_at IS NULL
+        )`;
       }
       const countResult = await query<{ total: string }>(countSql, countParams);
       const total = parseInt(countResult[0]?.total || "0", 10);
@@ -452,11 +475,153 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-  } catch (error: any) {
+    } catch (error: any) {
     console.error("[conversations] 获取对话列表失败:", error);
     return NextResponse.json(
       {
         error: error.message || "获取对话列表失败，请稍后重试",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * PUT /api/conversations
+ * 更新对话标题
+ */
+export async function PUT(request: NextRequest) {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "未登录" },
+        { status: 401 }
+      );
+    }
+
+    const body = await request.json();
+    const { conversation_id, title } = body;
+
+    if (!conversation_id) {
+      return NextResponse.json(
+        { error: "对话ID为必填项" },
+        { status: 400 }
+      );
+    }
+
+    if (!title || typeof title !== "string" || title.trim() === "") {
+      return NextResponse.json(
+        { error: "标题不能为空" },
+        { status: 400 }
+      );
+    }
+
+    // 验证对话是否存在且属于当前用户
+    const conversationRows = await query<{ id: number }>(
+      `SELECT id FROM conversations 
+       WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL LIMIT 1`,
+      [conversation_id, userId]
+    );
+
+    if (!conversationRows || conversationRows.length === 0) {
+      return NextResponse.json(
+        { error: "对话不存在或无权限访问" },
+        { status: 404 }
+      );
+    }
+
+    // 更新标题
+    const updateResult = await query<{
+      id: number;
+      uid: string;
+      title: string;
+      updated_at: string;
+    }>(
+      `UPDATE conversations 
+       SET title = $1, updated_at = NOW()
+       WHERE id = $2 AND user_id = $3
+       RETURNING id, uid, title, updated_at`,
+      [title.trim(), conversation_id, userId]
+    );
+
+    if (!updateResult || updateResult.length === 0) {
+      return NextResponse.json(
+        { error: "更新失败" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      conversation: updateResult[0],
+    });
+  } catch (error: any) {
+    console.error("[conversations] 更新对话标题失败:", error);
+    return NextResponse.json(
+      {
+        error: error.message || "更新对话标题失败，请稍后重试",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * DELETE /api/conversations
+ * 删除对话（软删除）
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return NextResponse.json(
+        { error: "未登录" },
+        { status: 401 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const conversationId = searchParams.get("conversation_id");
+
+    if (!conversationId) {
+      return NextResponse.json(
+        { error: "对话ID为必填项" },
+        { status: 400 }
+      );
+    }
+
+    // 验证对话是否存在且属于当前用户
+    const conversationRows = await query<{ id: number }>(
+      `SELECT id FROM conversations 
+       WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL LIMIT 1`,
+      [parseInt(conversationId, 10), userId]
+    );
+
+    if (!conversationRows || conversationRows.length === 0) {
+      return NextResponse.json(
+        { error: "对话不存在或无权限访问" },
+        { status: 404 }
+      );
+    }
+
+    // 软删除对话（设置 deleted_at）
+    await query(
+      `UPDATE conversations 
+       SET deleted_at = NOW()
+       WHERE id = $1 AND user_id = $2`,
+      [parseInt(conversationId, 10), userId]
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: "对话已删除",
+    });
+  } catch (error: any) {
+    console.error("[conversations] 删除对话失败:", error);
+    return NextResponse.json(
+      {
+        error: error.message || "删除对话失败，请稍后重试",
       },
       { status: 500 }
     );

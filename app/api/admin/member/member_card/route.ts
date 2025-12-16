@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { query } from "@/lib/db";
+import { query, transaction } from "@/lib/db";
+import { timezoneConfig } from "@/lib/config";
 
 // 获取当前用户ID（管理员权限检查）
 async function getCurrentUserId(): Promise<number | null> {
@@ -69,19 +70,26 @@ export async function GET(request: NextRequest) {
     );
     const total = parseInt(countResult[0]?.total || "0", 10);
 
-    // 查询数据
+    // 查询数据（包含会员的 level_id 和等级名称）
+    // 显示逻辑：先通过会员卡关联会员表获取会员等级ID，再关联会员等级表显示对应的名称
     let dataQuery = `
       SELECT
-        card_id,
-        card_no,
-        member_id,
-        is_primary,
-        status,
-        issued_at,
-        expired_at,
-        remark
-      FROM member_card
-      ORDER BY issued_at DESC
+        mc.card_id,
+        mc.card_no,
+        mc.member_id,
+        mc.is_primary,
+        mc.status,
+        mc.issued_at,
+        mc.expired_at,
+        mc.remark,
+        m.level_id,
+        ml.level_name
+      FROM member_card mc
+      -- 第一步：通过会员卡关联会员表，获取会员的等级ID
+      LEFT JOIN member m ON mc.member_id = m.member_id
+      -- 第二步：通过会员的等级ID关联会员等级表，获取等级名称
+      LEFT JOIN membership_level ml ON m.level_id = ml.level_id
+      ORDER BY mc.card_no DESC
     `;
 
     const values: any[] = [];
@@ -120,14 +128,21 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { card_no, member_id, is_primary, status, expired_at, remark } = body;
+    let { card_no, member_id, is_primary, status, expired_at, remark } = body;
 
-    // 验证必填字段
-    if (!card_no) {
-      return NextResponse.json(
-        { success: false, error: "会员卡号不能为空" },
-        { status: 400 }
-      );
+    // 如果未提供卡号或卡号为空，则自动生成
+    if (!card_no || card_no.trim() === "") {
+      // 卡号规则：'QM' + yyyyMMddHHmmss + 4位随机数
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      const hours = String(now.getHours()).padStart(2, "0");
+      const minutes = String(now.getMinutes()).padStart(2, "0");
+      const seconds = String(now.getSeconds()).padStart(2, "0");
+      const dateStr = `${year}${month}${day}${hours}${minutes}${seconds}`;
+      const randomNum = Math.floor(1000 + Math.random() * 9000); // 4位随机数（1000-9999）
+      card_no = `QM${dateStr}${randomNum}`;
     }
 
     if (!member_id) {
@@ -353,6 +368,141 @@ export async function PUT(request: NextRequest) {
     }
     return NextResponse.json(
       { success: false, error: error.message || "更新失败" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH：发卡操作（更新发卡日期和有效日期）
+export async function PATCH(request: NextRequest) {
+  try {
+    const currentUserId = await getCurrentUserId();
+    if (!currentUserId) {
+      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const { card_id, level_id } = body;
+
+    if (!card_id) {
+      return NextResponse.json(
+        { success: false, error: "会员卡ID不能为空" },
+        { status: 400 }
+      );
+    }
+
+    // 检查会员卡是否存在，并获取会员ID
+    const cardCheck = await query<{ card_id: number; member_id: number }>(
+      `SELECT card_id, member_id FROM member_card WHERE card_id = $1`,
+      [card_id]
+    );
+    if (!cardCheck || cardCheck.length === 0) {
+      return NextResponse.json(
+        { success: false, error: "会员卡不存在" },
+        { status: 404 }
+      );
+    }
+    const memberId = cardCheck[0].member_id;
+
+    // 计算发卡日期（当前日期，时分秒为0）和有效日期（31天后）
+    // 获取目标时区的当前日期（精确到天）
+    const now = new Date();
+    
+    // 打印 now 的时间
+    console.log("[member_card] 发卡操作 - 当前时间 (now):");
+    console.log("  now (ISO):", now.toISOString());
+    console.log("  now (本地时间):", now.toString());
+    console.log("  now (时间戳):", now.getTime());
+    
+    // 获取服务器本地的当前日期（精确到天）
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // getMonth() 返回 0-11，需要加1
+    const day = now.getDate();
+    
+    // 构造目标时区当天的 00:00:00（不转换为 UTC，直接使用本地时间）
+    const issuedAt = new Date(year, month - 1, day, 0, 0, 0, 0);
+    
+    // 有效日期：发卡日期 + 31 天，时间设为 23:59:59
+    const expiredAt = new Date(year, month - 1, day + 31, 23, 59, 59, 999);
+
+    // 格式化日期为 PostgreSQL 可接受的格式 (YYYY-MM-DD HH:mm:ss)
+    const formatDateTime = (date: Date): string => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      const h = String(date.getHours()).padStart(2, '0');
+      const min = String(date.getMinutes()).padStart(2, '0');
+      const s = String(date.getSeconds()).padStart(2, '0');
+      return `${y}-${m}-${d} ${h}:${min}:${s}`;
+    };
+
+    const issuedAtStr = formatDateTime(issuedAt);
+    const expiredAtStr = formatDateTime(expiredAt);
+
+    // 更新发卡日期和有效日期
+    const updateQuery = `
+      UPDATE member_card
+      SET issued_at = $1, expired_at = $2
+      WHERE card_id = $3
+      RETURNING *
+    `;
+    
+    // 打印 SQL 语句和参数
+    console.log("[member_card] 发卡操作 - SQL 语句:");
+    console.log("  SQL:", updateQuery);
+    console.log("  参数:");
+    console.log("    $1 (issued_at):", issuedAtStr);
+    console.log("    $2 (expired_at):", expiredAtStr);
+    console.log("    $3 (card_id):", card_id);
+    console.log("  时区配置:", {
+      timezone: timezoneConfig.timezone,
+      utcOffset: timezoneConfig.utcOffset,
+    });
+    console.log("  服务器本地当前日期:", `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+    console.log("  发卡日期 (服务器本地当天 00:00:00):", issuedAtStr);
+    console.log("  有效日期 (发卡日期 + 31 天 23:59:59):", expiredAtStr);
+    console.log("  会员ID:", memberId);
+    console.log("  会员等级ID:", level_id);
+
+    // 使用事务更新会员卡和会员等级
+    const result = await transaction(async (client) => {
+      // 更新会员卡的发卡日期和有效日期
+      const cardResult = await client.query(updateQuery, [
+        issuedAtStr,
+        expiredAtStr,
+        card_id,
+      ]);
+
+      // 如果提供了 level_id，更新会员的等级
+      if (level_id) {
+        await client.query(
+          `UPDATE member SET level_id = $1 WHERE member_id = $2`,
+          [level_id, memberId]
+        );
+        console.log(`[member_card] 已更新会员等级: member_id=${memberId}, level_id=${level_id}`);
+      }
+
+      return cardResult;
+    });
+
+    // 处理返回结果（transaction 返回的是 QueryResult，需要访问 rows 属性）
+    const resultRows = (result as any)?.rows || result;
+    if (resultRows && resultRows.length > 0) {
+      return NextResponse.json({
+        success: true,
+        data: resultRows[0],
+        message: "发卡成功",
+      });
+    } else {
+      return NextResponse.json(
+        { success: false, error: "发卡失败" },
+        { status: 500 }
+      );
+    }
+  } catch (error: any) {
+    console.error("[member_card] 发卡失败:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "发卡失败" },
       { status: 500 }
     );
   }
