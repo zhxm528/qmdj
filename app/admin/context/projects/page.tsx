@@ -12,10 +12,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 interface Project {
@@ -33,8 +36,14 @@ interface ProjectFormValues {
   description?: string;
 }
 
+interface QueryFormValues {
+  code?: string;
+  name?: string;
+}
+
 export default function ProjectsPage() {
   const [form] = Form.useForm<ProjectFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [total, setTotal] = useState(0);
@@ -43,12 +52,22 @@ export default function ProjectsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  const loadProjects = async (page: number, size: number) => {
+  const loadProjects = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.code) {
+          params.set("code", filters.code);
+        }
+        if (filters.name) {
+          params.set("name", filters.name);
+        }
+      }
 
       const res = await fetch(`/api/admin/context/projects?${params.toString()}`);
       const data = await res.json();
@@ -72,20 +91,92 @@ export default function ProjectsPage() {
     loadProjects(1, 10);
   }, []);
 
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      console.log("[projects] Modal 打开，当前项目:", editingProject);
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingProject) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            code: editingProject.code || undefined,
+            name: editingProject.name || undefined,
+            description: editingProject.description || undefined,
+          };
+          console.log("[projects] Modal 打开后设置表单值:", formValues);
+          form.setFieldsValue(formValues);
+          // 验证表单值是否设置成功
+          const currentValues = form.getFieldsValue();
+          console.log("[projects] 表单值已设置，当前表单值:", currentValues);
+          console.log("[projects] 表单值设置验证:", {
+            code: currentValues.code === formValues.code,
+            name: currentValues.name === formValues.name,
+            description: currentValues.description === formValues.description,
+          });
+        } else {
+          // 新增模式，重置表单
+          form.resetFields();
+        }
+      }, 100);
+    }
+  };
+
   const handleAdd = () => {
     setEditingProject(null);
     form.resetFields();
     setModalVisible(true);
   };
 
-  const handleEdit = (record: Project) => {
-    setEditingProject(record);
-    form.setFieldsValue({
-      code: record.code,
-      name: record.name,
-      description: record.description || undefined,
-    });
-    setModalVisible(true);
+  const handleEdit = async (record: Project) => {
+    try {
+      // 从后端重新查询记录，确保数据最新
+      const res = await fetch(`/api/admin/context/projects?id=${record.id}`);
+      const data = await res.json();
+      
+      // 详细打印后端返回给前端的内容
+      console.log("[projects] ========== 后端返回给前端的完整响应 ==========");
+      console.log("[projects] 响应状态码:", res.status);
+      console.log("[projects] 响应状态文本:", res.statusText);
+      console.log("[projects] 响应数据 (JSON):", JSON.stringify(data, null, 2));
+      console.log("[projects] 响应数据 (对象):", data);
+      if (data.success) {
+        console.log("[projects] success:", data.success);
+        if (data.data) {
+          console.log("[projects] data 字段内容:", data.data);
+          console.log("[projects] data 字段类型:", typeof data.data);
+          console.log("[projects] data 是否为数组:", Array.isArray(data.data));
+          if (typeof data.data === "object" && !Array.isArray(data.data)) {
+            console.log("[projects] data 对象的所有字段:");
+            Object.keys(data.data).forEach((key) => {
+              console.log(`[projects]   ${key}:`, data.data[key], `(类型: ${typeof data.data[key]})`);
+            });
+          }
+        } else {
+          console.log("[projects] data 字段为空或未定义");
+        }
+      } else {
+        console.log("[projects] success:", data.success);
+        console.log("[projects] error:", data.error);
+      }
+      console.log("[projects] ============================================");
+      
+      if (data.success && data.data) {
+        const project = data.data;
+        console.log("[projects] 提取的项目数据对象:", project);
+        
+        // 先设置 editingProject，然后打开 Modal
+        // useEffect 会在 Modal 打开后自动设置表单值
+        setEditingProject(project);
+        setModalVisible(true);
+      } else {
+        message.error(data.error || "查询项目信息失败");
+      }
+    } catch (error) {
+      console.error("[projects] 查询项目信息失败:", error);
+      message.error("查询项目信息失败");
+    }
   };
 
   const handleDelete = async (record: Project) => {
@@ -99,7 +190,8 @@ export default function ProjectsPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadProjects(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadProjects(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -141,7 +233,8 @@ export default function ProjectsPage() {
         message.success(editingProject ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
-        loadProjects(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadProjects(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -152,18 +245,21 @@ export default function ProjectsPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadProjects(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadProjects(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadProjects(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadProjects(1, pageSize);
   };
 
   const columns: ColumnsType<Project> = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 300,
-      fixed: "left",
-      ellipsis: true,
-    },
     {
       title: "项目代码",
       dataIndex: "code",
@@ -180,8 +276,7 @@ export default function ProjectsPage() {
       title: "项目描述",
       dataIndex: "description",
       key: "description",
-      width: 300,
-      ellipsis: true,
+      width: 400,
       render: (value: string | null) => value || "-",
     },
     {
@@ -189,6 +284,7 @@ export default function ProjectsPage() {
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
+      align: "center",
       render: (value: string) =>
         value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
     },
@@ -197,6 +293,7 @@ export default function ProjectsPage() {
       dataIndex: "updated_at",
       key: "updated_at",
       width: 180,
+      align: "center",
       render: (value: string) =>
         value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
     },
@@ -204,13 +301,15 @@ export default function ProjectsPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 180,
+      align: "center",
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -218,7 +317,12 @@ export default function ProjectsPage() {
             title="确定要删除该项目吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button 
+              type="link" 
+              danger 
+              icon={<DeleteOutlined />}
+              style={{ padding: 0 }}
+            >
               删除
             </Button>
           </Popconfirm>
@@ -243,6 +347,38 @@ export default function ProjectsPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="code" label="项目代码" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入项目代码" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="name" label="项目名称" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入项目名称" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<Project>
               columns={columns}
               dataSource={projects}
@@ -265,7 +401,7 @@ export default function ProjectsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1500 }}
+              scroll={{ x: 1110 }}
             />
 
             <Modal
@@ -275,9 +411,24 @@ export default function ProjectsPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingProject(null);
               }}
-              destroyOnClose
+              afterOpenChange={handleModalAfterOpenChange}
+              maskClosable={false}
+              destroyOnHidden
               width={700}
+              footer={[
+                <Button key="close" onClick={() => {
+                  setModalVisible(false);
+                  form.resetFields();
+                  setEditingProject(null);
+                }}>
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  {editingProject ? "更新" : "创建"}
+                </Button>,
+              ]}
             >
               <Form<ProjectFormValues>
                 form={form}

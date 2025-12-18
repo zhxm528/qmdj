@@ -14,10 +14,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 interface PointsTransaction {
@@ -44,8 +47,16 @@ interface PointsTransactionFormValues {
   remark?: string;
 }
 
+interface QueryFormValues {
+  member_id?: number;
+  card_no?: string;
+  change_type?: string[];
+  related_type?: string[];
+}
+
 export default function PointsTransactionPage() {
   const [form] = Form.useForm<PointsTransactionFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<PointsTransaction[]>([]);
   const [total, setTotal] = useState(0);
@@ -82,12 +93,28 @@ export default function PointsTransactionPage() {
     }
   };
 
-  const loadTransactions = async (page: number, size: number) => {
+  const loadTransactions = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.member_id) {
+          params.set("member_id", String(filters.member_id));
+        }
+        if (filters.card_no) {
+          params.set("card_no", filters.card_no);
+        }
+        if (filters.change_type && filters.change_type.length > 0) {
+          params.set("change_type", filters.change_type.join(","));
+        }
+        if (filters.related_type && filters.related_type.length > 0) {
+          params.set("related_type", filters.related_type.join(","));
+        }
+      }
 
       const res = await fetch(`/api/admin/member/points_transaction?${params.toString()}`);
       const data = await res.json();
@@ -203,7 +230,18 @@ export default function PointsTransactionPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadTransactions(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadTransactions(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadTransactions(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadTransactions(1, pageSize);
   };
 
   const getMemberName = (memberId: number) => {
@@ -237,33 +275,36 @@ export default function PointsTransactionPage() {
       key: "points_txn_id",
       width: 80,
       fixed: "left",
+      align: "center",
     },
     {
       title: "会员",
       dataIndex: "member_id",
       key: "member_id",
-      width: 150,
+      width: 180,
       render: (value: number) => getMemberName(value),
     },
     {
       title: "会员卡号",
       dataIndex: "card_id",
       key: "card_id",
-      width: 120,
+      width: 220,
       render: (value: number | null) => getCardNo(value),
     },
     {
       title: "变动类型",
       dataIndex: "change_type",
       key: "change_type",
-      width: 100,
+      width: 120,
+      align: "center",
       render: (value: string) => getChangeTypeName(value),
     },
     {
       title: "变动积分",
       dataIndex: "change_points",
       key: "change_points",
-      width: 120,
+      width: 150,
+      align: "right",
       render: (value: number) => {
         const color = value >= 0 ? "text-green-600" : "text-red-600";
         const sign = value >= 0 ? "+" : "";
@@ -274,34 +315,39 @@ export default function PointsTransactionPage() {
       title: "变动后余额",
       dataIndex: "balance_after",
       key: "balance_after",
-      width: 120,
+      width: 150,
+      align: "right",
       render: (value: number) => value.toLocaleString(),
     },
     {
       title: "关联类型",
       dataIndex: "related_type",
       key: "related_type",
-      width: 120,
+      width: 140,
+      align: "center",
       render: (value: string | null) => value || "-",
     },
     {
       title: "关联ID",
       dataIndex: "related_id",
       key: "related_id",
-      width: 100,
+      width: 120,
+      align: "center",
       render: (value: number | null) => value || "-",
     },
     {
       title: "备注",
       dataIndex: "remark",
       key: "remark",
-      ellipsis: true,
+      width: 250,
+      render: (value: string | null) => value || "-",
     },
     {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
+      align: "center",
       render: (value: string) =>
         value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
     },
@@ -309,13 +355,15 @@ export default function PointsTransactionPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 180,
+      align: "center",
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -323,7 +371,12 @@ export default function PointsTransactionPage() {
             title="确定要删除该积分变动记录吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button 
+              type="link" 
+              danger 
+              icon={<DeleteOutlined />}
+              style={{ padding: 0 }}
+            >
               删除
             </Button>
           </Popconfirm>
@@ -348,6 +401,78 @@ export default function PointsTransactionPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="member_id" label="会员" style={{ marginBottom: '10px' }}>
+                      <Select
+                        showSearch
+                        placeholder="请选择会员"
+                        allowClear
+                        optionFilterProp="label"
+                        filterOption={(input, option) =>
+                          (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={members.map((m) => ({
+                          value: m.member_id,
+                          label: `${m.full_name || ""} ${m.mobile || ""} (ID: ${m.member_id})`.trim(),
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="card_no" label="会员卡号" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入会员卡号" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="change_type" label="变动类型" style={{ marginBottom: '10px' }}>
+                      <Select
+                        mode="multiple"
+                        placeholder="请选择变动类型"
+                        allowClear
+                      >
+                        <Select.Option value="EARN">获得</Select.Option>
+                        <Select.Option value="REDEEM">兑换</Select.Option>
+                        <Select.Option value="ADJUST">调整</Select.Option>
+                        <Select.Option value="EXPIRE">过期</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="related_type" label="关联类型" style={{ marginBottom: '10px' }}>
+                      <Select
+                        mode="multiple"
+                        placeholder="请选择关联类型"
+                        allowClear
+                      >
+                        <Select.Option value="RECHARGE">充值</Select.Option>
+                        <Select.Option value="CONSUMPTION">消费</Select.Option>
+                        <Select.Option value="MANUAL">手动</Select.Option>
+                        <Select.Option value="REGISTER">注册</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<PointsTransaction>
               columns={columns}
               dataSource={transactions}
@@ -370,7 +495,7 @@ export default function PointsTransactionPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1400 }}
+              scroll={{ x: 1770 }}
             />
 
             <Modal

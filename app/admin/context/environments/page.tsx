@@ -13,10 +13,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 
 const { TextArea } = Input;
 
@@ -33,8 +36,14 @@ interface EnvironmentFormValues {
   description?: string;
 }
 
+interface QueryFormValues {
+  code?: string;
+  name?: string;
+}
+
 export default function EnvironmentsPage() {
   const [form] = Form.useForm<EnvironmentFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [total, setTotal] = useState(0);
@@ -43,12 +52,22 @@ export default function EnvironmentsPage() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingEnvironment, setEditingEnvironment] = useState<Environment | null>(null);
 
-  const loadEnvironments = async (page: number, size: number) => {
+  const loadEnvironments = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.code) {
+          params.set("code", filters.code);
+        }
+        if (filters.name) {
+          params.set("name", filters.name);
+        }
+      }
 
       const res = await fetch(`/api/admin/context/environments?${params.toString()}`);
       const data = await res.json();
@@ -99,7 +118,8 @@ export default function EnvironmentsPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadEnvironments(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadEnvironments(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -141,7 +161,8 @@ export default function EnvironmentsPage() {
         message.success(editingEnvironment ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
-        loadEnvironments(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadEnvironments(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -151,23 +172,26 @@ export default function EnvironmentsPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadEnvironments(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadEnvironments(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadEnvironments(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadEnvironments(1, pageSize);
   };
 
   const columns: ColumnsType<Environment> = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 300,
-      fixed: "left",
-      ellipsis: true,
-    },
-    {
       title: "环境代号",
       dataIndex: "code",
       key: "code",
-      width: 120,
+      width: 150,
     },
     {
       title: "环境名称",
@@ -180,20 +204,21 @@ export default function EnvironmentsPage() {
       dataIndex: "description",
       key: "description",
       width: 400,
-      ellipsis: true,
       render: (value: string | null) => value || "-",
     },
     {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 180,
+      align: "center",
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -201,7 +226,12 @@ export default function EnvironmentsPage() {
             title="确定要删除该环境吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button 
+              type="link" 
+              danger 
+              icon={<DeleteOutlined />}
+              style={{ padding: 0 }}
+            >
               删除
             </Button>
           </Popconfirm>
@@ -226,6 +256,38 @@ export default function EnvironmentsPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="code" label="环境代号" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入环境代号" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="name" label="环境名称" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入环境名称" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<Environment>
               columns={columns}
               dataSource={environments}
@@ -248,7 +310,7 @@ export default function EnvironmentsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1500 }}
+              scroll={{ x: 930 }}
             />
 
             <Modal

@@ -14,10 +14,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 
@@ -56,8 +59,16 @@ interface ConsumptionTransactionFormValues {
   remark?: string;
 }
 
+interface QueryFormValues {
+  member_id?: number;
+  card_no?: string;
+  pay_channel?: string[];
+  status?: number[];
+}
+
 export default function ConsumptionTransactionPage() {
   const [form] = Form.useForm<ConsumptionTransactionFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState<ConsumptionTransaction[]>([]);
   const [total, setTotal] = useState(0);
@@ -119,12 +130,28 @@ export default function ConsumptionTransactionPage() {
     }
   };
 
-  const loadTransactions = async (page: number, size: number) => {
+  const loadTransactions = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.member_id) {
+          params.set("member_id", String(filters.member_id));
+        }
+        if (filters.card_no) {
+          params.set("card_no", filters.card_no);
+        }
+        if (filters.pay_channel && filters.pay_channel.length > 0) {
+          params.set("pay_channel", filters.pay_channel.join(","));
+        }
+        if (filters.status && filters.status.length > 0) {
+          params.set("status", filters.status.join(","));
+        }
+      }
 
       const res = await fetch(`/api/admin/member/consumption_transaction?${params.toString()}`);
       const data = await res.json();
@@ -237,7 +264,8 @@ export default function ConsumptionTransactionPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadTransactions(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadTransactions(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -290,7 +318,8 @@ export default function ConsumptionTransactionPage() {
         form.resetFields();
         setPreviewDaysToAdd(null);
         setPreviewExpiredDate(null);
-        loadTransactions(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadTransactions(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -301,7 +330,18 @@ export default function ConsumptionTransactionPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadTransactions(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadTransactions(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadTransactions(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadTransactions(1, pageSize);
   };
 
   const getMemberName = (memberId: number) => {
@@ -386,89 +426,100 @@ export default function ConsumptionTransactionPage() {
       key: "consumption_id",
       width: 80,
       fixed: "left",
+      align: "center",
     },
     {
       title: "会员",
       dataIndex: "member_id",
       key: "member_id",
-      width: 150,
+      width: 180,
       render: (value: number) => getMemberName(value),
     },
     {
       title: "会员卡号",
       dataIndex: "card_id",
       key: "card_id",
-      width: 120,
+      width: 220,
       render: (value: number | null) => getCardNo(value),
     },
     {
       title: "原始金额",
       dataIndex: "original_amount",
       key: "original_amount",
-      width: 120,
+      width: 130,
+      align: "right",
       render: (value: number) => `¥${Number(value).toFixed(2)}`,
     },
     {
       title: "优惠金额",
       dataIndex: "discount_amount",
       key: "discount_amount",
-      width: 120,
+      width: 130,
+      align: "right",
       render: (value: number) => `¥${Number(value).toFixed(2)}`,
     },
     {
       title: "应付金额",
       dataIndex: "payable_amount",
       key: "payable_amount",
-      width: 120,
+      width: 130,
+      align: "right",
       render: (value: number) => `¥${Number(value).toFixed(2)}`,
     },
     {
       title: "实付金额",
       dataIndex: "paid_amount",
       key: "paid_amount",
-      width: 120,
+      width: 130,
+      align: "right",
       render: (value: number) => `¥${Number(value).toFixed(2)}`,
     },
     {
-      title: "支付渠道",
+      title: "支付方式",
       dataIndex: "pay_channel",
       key: "pay_channel",
-      width: 100,
+      width: 120,
+      align: "center",
       render: (value: string) => getPayChannelName(value),
     },
     {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      width: 80,
+      width: 100,
+      align: "center",
       render: (value: number) => (value === 1 ? "成功" : "作废/撤销"),
     },
     {
       title: "使用积分",
       dataIndex: "points_used",
       key: "points_used",
-      width: 100,
+      width: 120,
+      align: "right",
       render: (value: number) => value.toLocaleString(),
     },
     {
       title: "获得积分",
       dataIndex: "points_earned",
       key: "points_earned",
-      width: 100,
+      width: 120,
+      align: "right",
       render: (value: number) => value.toLocaleString(),
     },
     {
       title: "外部订单号",
       dataIndex: "external_order_no",
       key: "external_order_no",
-      width: 150,
+      width: 180,
       ellipsis: true,
+      render: (value: string | null) => value || "-",
     },
     {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
       width: 180,
+      align: "center",
       // 后端返回的 created_at 为 UTC 时间字符串，这里按照配置的时区展示
       render: (value: string) => {
         if (!value) return "-";
@@ -495,13 +546,15 @@ export default function ConsumptionTransactionPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 180,
+      align: "center",
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -509,7 +562,12 @@ export default function ConsumptionTransactionPage() {
             title="确定要删除该消费记录吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button 
+              type="link" 
+              danger 
+              icon={<DeleteOutlined />}
+              style={{ padding: 0 }}
+            >
               删除
             </Button>
           </Popconfirm>
@@ -535,6 +593,77 @@ export default function ConsumptionTransactionPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="member_id" label="会员" style={{ marginBottom: '10px' }}>
+                      <Select
+                        showSearch
+                        placeholder="请选择会员"
+                        allowClear
+                        optionFilterProp="label"
+                        filterOption={(input, option) =>
+                          (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+                        }
+                        options={members.map((m) => ({
+                          value: m.member_id,
+                          label: `${m.full_name || ""} ${m.mobile || ""} (ID: ${m.member_id})`.trim(),
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="card_no" label="会员卡号" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入会员卡号" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="pay_channel" label="支付方式" style={{ marginBottom: '10px' }}>
+                      <Select
+                        mode="multiple"
+                        placeholder="请选择支付方式"
+                        allowClear
+                      >
+                        <Select.Option value="BALANCE">余额</Select.Option>
+                        <Select.Option value="CASH">现金</Select.Option>
+                        <Select.Option value="WECHAT">微信</Select.Option>
+                        <Select.Option value="ALIPAY">支付宝</Select.Option>
+                        <Select.Option value="CARD">银行卡</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="status" label="状态" style={{ marginBottom: '10px' }}>
+                      <Select
+                        mode="multiple"
+                        placeholder="请选择状态"
+                        allowClear
+                      >
+                        <Select.Option value={1}>成功</Select.Option>
+                        <Select.Option value={0}>作废/撤销</Select.Option>
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<ConsumptionTransaction>
               columns={columns}
               dataSource={transactions}
@@ -557,7 +686,7 @@ export default function ConsumptionTransactionPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1600 }}
+              scroll={{ x: 1750 }}
             />
 
             <Modal
@@ -749,11 +878,11 @@ export default function ConsumptionTransactionPage() {
                   </div>
                 )}
                 <Form.Item
-                  label="支付渠道"
+                  label="支付方式"
                   name="pay_channel"
-                  rules={[{ required: true, message: "请选择支付渠道" }]}
+                  rules={[{ required: true, message: "请选择支付方式" }]}
                 >
-                  <Select placeholder="请选择支付渠道">
+                  <Select placeholder="请选择支付方式">
                     <Select.Option value="BALANCE">余额</Select.Option>
                     <Select.Option value="CASH">现金</Select.Option>
                     <Select.Option value="WECHAT">微信</Select.Option>

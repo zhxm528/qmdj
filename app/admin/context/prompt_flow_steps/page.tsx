@@ -14,10 +14,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
@@ -42,8 +45,13 @@ interface PromptFlowStepFormValues {
   optional?: boolean;
 }
 
+interface QueryFormValues {
+  flow_id?: string;
+}
+
 export default function PromptFlowStepsPage() {
   const [form] = Form.useForm<PromptFlowStepFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [steps, setSteps] = useState<PromptFlowStep[]>([]);
   const [total, setTotal] = useState(0);
@@ -95,12 +103,19 @@ export default function PromptFlowStepsPage() {
     }
   };
 
-  const loadSteps = async (page: number, size: number) => {
+  const loadSteps = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.flow_id) {
+          params.set("flow_id", filters.flow_id);
+        }
+      }
 
       const res = await fetch(`/api/admin/context/prompt_flow_steps?${params.toString()}`);
       const data = await res.json();
@@ -127,6 +142,41 @@ export default function PromptFlowStepsPage() {
     loadVersions();
   }, []);
 
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      console.log("[prompt_flow_steps] Modal 打开，当前步骤:", editingStep);
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingStep) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            flow_id: editingStep.flow_id || undefined,
+            step_order: editingStep.step_order || undefined,
+            template_id: editingStep.template_id || undefined,
+            version_strategy: editingStep.version_strategy || "latest",
+            fixed_version_id: editingStep.fixed_version_id || undefined,
+            optional: editingStep.optional !== undefined ? editingStep.optional : false,
+          };
+          console.log("[prompt_flow_steps] Modal 打开后设置表单值:", formValues);
+          form.setFieldsValue(formValues);
+          // 加载对应模板的版本列表
+          if (editingStep.template_id) {
+            loadVersions(editingStep.template_id);
+          }
+          // 验证表单值是否设置成功
+          const currentValues = form.getFieldsValue();
+          console.log("[prompt_flow_steps] 表单值已设置，当前表单值:", currentValues);
+        } else {
+          // 新增模式，重置表单
+          form.resetFields();
+          form.setFieldsValue({ version_strategy: "latest", optional: false });
+        }
+      }, 100);
+    }
+  };
+
   const handleAdd = () => {
     setEditingStep(null);
     form.resetFields();
@@ -134,18 +184,55 @@ export default function PromptFlowStepsPage() {
     setModalVisible(true);
   };
 
-  const handleEdit = (record: PromptFlowStep) => {
-    setEditingStep(record);
-    form.setFieldsValue({
-      flow_id: record.flow_id,
-      step_order: record.step_order,
-      template_id: record.template_id,
-      version_strategy: record.version_strategy,
-      fixed_version_id: record.fixed_version_id || undefined,
-      optional: record.optional,
-    });
-    loadVersions(record.template_id);
-    setModalVisible(true);
+  const handleEdit = async (record: PromptFlowStep) => {
+    try {
+      console.log("[prompt_flow_steps] 点击编辑按钮，步骤ID:", record.id);
+      // 从后端重新查询记录，确保数据最新
+      const res = await fetch(`/api/admin/context/prompt_flow_steps?id=${record.id}`);
+      const data = await res.json();
+      
+      // 详细打印后端返回给前端的内容
+      console.log("[prompt_flow_steps] ========== 后端返回给前端的完整响应 ==========");
+      console.log("[prompt_flow_steps] 响应状态码:", res.status);
+      console.log("[prompt_flow_steps] 响应状态文本:", res.statusText);
+      console.log("[prompt_flow_steps] 响应数据 (JSON):", JSON.stringify(data, null, 2));
+      console.log("[prompt_flow_steps] 响应数据 (对象):", data);
+      if (data.success) {
+        console.log("[prompt_flow_steps] success:", data.success);
+        if (data.data) {
+          console.log("[prompt_flow_steps] data 字段内容:", data.data);
+          console.log("[prompt_flow_steps] data 字段类型:", typeof data.data);
+          console.log("[prompt_flow_steps] data 是否为数组:", Array.isArray(data.data));
+          if (typeof data.data === "object" && !Array.isArray(data.data)) {
+            console.log("[prompt_flow_steps] data 对象的所有字段:");
+            Object.keys(data.data).forEach((key) => {
+              console.log(`[prompt_flow_steps]   ${key}:`, data.data[key], `(类型: ${typeof data.data[key]})`);
+            });
+          }
+        } else {
+          console.log("[prompt_flow_steps] data 字段为空或未定义");
+        }
+      } else {
+        console.log("[prompt_flow_steps] success:", data.success);
+        console.log("[prompt_flow_steps] error:", data.error);
+      }
+      console.log("[prompt_flow_steps] ============================================");
+      
+      if (data.success && data.data) {
+        const step = data.data;
+        console.log("[prompt_flow_steps] 提取的步骤数据对象:", step);
+        
+        // 先设置 editingStep，然后打开 Modal
+        // handleModalAfterOpenChange 会在 Modal 打开后自动设置表单值
+        setEditingStep(step);
+        setModalVisible(true);
+      } else {
+        message.error(data.error || "查询流程步骤信息失败");
+      }
+    } catch (error) {
+      console.error("[prompt_flow_steps] 查询流程步骤信息失败:", error);
+      message.error("查询流程步骤信息失败");
+    }
   };
 
   const handleDelete = async (record: PromptFlowStep) => {
@@ -159,7 +246,8 @@ export default function PromptFlowStepsPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadSteps(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadSteps(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -204,7 +292,8 @@ export default function PromptFlowStepsPage() {
         message.success(editingStep ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
-        loadSteps(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadSteps(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -214,7 +303,18 @@ export default function PromptFlowStepsPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadSteps(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadSteps(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadSteps(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadSteps(1, pageSize);
   };
 
   const handleTemplateChange = (templateId: string) => {
@@ -246,31 +346,24 @@ export default function PromptFlowStepsPage() {
 
   const columns: ColumnsType<PromptFlowStep> = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 300,
-      fixed: "left",
-      ellipsis: true,
-    },
-    {
       title: "流程",
       dataIndex: "flow_id",
       key: "flow_id",
-      width: 250,
+      width: 300,
+      ellipsis: true,
       render: (value: string) => getFlowName(value),
     },
     {
       title: "步骤顺序",
       dataIndex: "step_order",
       key: "step_order",
-      width: 100,
+      width: 120,
     },
     {
       title: "模板",
       dataIndex: "template_id",
       key: "template_id",
-      width: 300,
+      width: 350,
       ellipsis: true,
       render: (value: string) => getTemplateName(value),
     },
@@ -278,20 +371,21 @@ export default function PromptFlowStepsPage() {
       title: "版本策略",
       dataIndex: "version_strategy",
       key: "version_strategy",
-      width: 120,
+      width: 150,
     },
     {
       title: "固定版本",
       dataIndex: "fixed_version_id",
       key: "fixed_version_id",
-      width: 150,
+      width: 200,
+      ellipsis: true,
       render: (value: string | null) => getVersionName(value),
     },
     {
       title: "是否可选",
       dataIndex: "optional",
       key: "optional",
-      width: 100,
+      width: 120,
       render: (value: boolean) => (value ? "是" : "否"),
     },
     {
@@ -308,11 +402,12 @@ export default function PromptFlowStepsPage() {
       fixed: "right",
       width: 160,
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -320,7 +415,7 @@ export default function PromptFlowStepsPage() {
             title="确定要删除该流程步骤吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }}>
               删除
             </Button>
           </Popconfirm>
@@ -351,6 +446,42 @@ export default function PromptFlowStepsPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="flow_id" label="流程" style={{ marginBottom: '10px' }}>
+                      <Select
+                        placeholder="请选择流程"
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        options={flows.map((f) => ({
+                          value: f.id,
+                          label: `${f.name} (${f.code})`,
+                        }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<PromptFlowStep>
               columns={columns}
               dataSource={steps}
@@ -373,7 +504,7 @@ export default function PromptFlowStepsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1500 }}
+              scroll={{ x: 1420 }}
             />
 
             <Modal
@@ -383,9 +514,24 @@ export default function PromptFlowStepsPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingStep(null);
               }}
+              afterOpenChange={handleModalAfterOpenChange}
+              maskClosable={false}
               destroyOnClose
               width={700}
+              footer={[
+                <Button key="close" onClick={() => {
+                  setModalVisible(false);
+                  form.resetFields();
+                  setEditingStep(null);
+                }}>
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  {editingStep ? "更新" : "创建"}
+                </Button>,
+              ]}
             >
               <Form<PromptFlowStepFormValues>
                 form={form}

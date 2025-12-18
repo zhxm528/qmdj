@@ -13,10 +13,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
@@ -43,8 +46,14 @@ interface PromptTemplateVersionFormValues {
   created_by?: string;
 }
 
+interface QueryFormValues {
+  template_logical_key?: string;
+  status?: string;
+}
+
 export default function PromptTemplateVersionsPage() {
   const [form] = Form.useForm<PromptTemplateVersionFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [versions, setVersions] = useState<PromptTemplateVersion[]>([]);
   const [total, setTotal] = useState(0);
@@ -66,12 +75,22 @@ export default function PromptTemplateVersionsPage() {
     }
   };
 
-  const loadVersions = async (page: number, size: number) => {
+  const loadVersions = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.template_logical_key) {
+          params.set("template_logical_key", filters.template_logical_key);
+        }
+        if (filters.status) {
+          params.set("status", filters.status);
+        }
+      }
 
       const res = await fetch(`/api/admin/context/prompt_template_versions?${params.toString()}`);
       const data = await res.json();
@@ -96,6 +115,40 @@ export default function PromptTemplateVersionsPage() {
     loadVersions(1, 10);
   }, []);
 
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      console.log("[prompt_template_versions] Modal 打开，当前版本:", editingVersion);
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingVersion) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            template_id: editingVersion.template_id || undefined,
+            version: editingVersion.version || undefined,
+            template_text: editingVersion.template_text || undefined,
+            config: editingVersion.config ? JSON.stringify(editingVersion.config, null, 2) : undefined,
+            status: editingVersion.status || undefined,
+            changelog: editingVersion.changelog || undefined,
+            created_by: editingVersion.created_by || undefined,
+          };
+          console.log("[prompt_template_versions] Modal 打开后设置表单值:", formValues);
+          form.setFieldsValue(formValues);
+          // 验证表单值是否设置成功
+          const currentValues = form.getFieldsValue();
+          console.log("[prompt_template_versions] 表单值已设置，当前表单值:", currentValues);
+        } else {
+          // 新增模式，重置表单
+          form.resetFields();
+          form.setFieldsValue({
+            status: "active",
+          });
+        }
+      }, 100);
+    }
+  };
+
   const handleAdd = () => {
     setEditingVersion(null);
     form.resetFields();
@@ -105,18 +158,55 @@ export default function PromptTemplateVersionsPage() {
     setModalVisible(true);
   };
 
-  const handleEdit = (record: PromptTemplateVersion) => {
-    setEditingVersion(record);
-    form.setFieldsValue({
-      template_id: record.template_id,
-      version: record.version,
-      template_text: record.template_text,
-      config: record.config ? JSON.stringify(record.config, null, 2) : undefined,
-      status: record.status,
-      changelog: record.changelog || undefined,
-      created_by: record.created_by || undefined,
-    });
-    setModalVisible(true);
+  const handleEdit = async (record: PromptTemplateVersion) => {
+    try {
+      console.log("[prompt_template_versions] 点击编辑按钮，版本ID:", record.id);
+      // 从后端重新查询记录，确保数据最新
+      const res = await fetch(`/api/admin/context/prompt_template_versions?id=${record.id}`);
+      const data = await res.json();
+      
+      // 详细打印后端返回给前端的内容
+      console.log("[prompt_template_versions] ========== 后端返回给前端的完整响应 ==========");
+      console.log("[prompt_template_versions] 响应状态码:", res.status);
+      console.log("[prompt_template_versions] 响应状态文本:", res.statusText);
+      console.log("[prompt_template_versions] 响应数据 (JSON):", JSON.stringify(data, null, 2));
+      console.log("[prompt_template_versions] 响应数据 (对象):", data);
+      if (data.success) {
+        console.log("[prompt_template_versions] success:", data.success);
+        if (data.data) {
+          console.log("[prompt_template_versions] data 字段内容:", data.data);
+          console.log("[prompt_template_versions] data 字段类型:", typeof data.data);
+          console.log("[prompt_template_versions] data 是否为数组:", Array.isArray(data.data));
+          if (typeof data.data === "object" && !Array.isArray(data.data)) {
+            console.log("[prompt_template_versions] data 对象的所有字段:");
+            Object.keys(data.data).forEach((key) => {
+              console.log(`[prompt_template_versions]   ${key}:`, data.data[key], `(类型: ${typeof data.data[key]})`);
+            });
+          }
+        } else {
+          console.log("[prompt_template_versions] data 字段为空或未定义");
+        }
+      } else {
+        console.log("[prompt_template_versions] success:", data.success);
+        console.log("[prompt_template_versions] error:", data.error);
+      }
+      console.log("[prompt_template_versions] ============================================");
+      
+      if (data.success && data.data) {
+        const version = data.data;
+        console.log("[prompt_template_versions] 提取的版本数据对象:", version);
+        
+        // 先设置 editingVersion，然后打开 Modal
+        // handleModalAfterOpenChange 会在 Modal 打开后自动设置表单值
+        setEditingVersion(version);
+        setModalVisible(true);
+      } else {
+        message.error(data.error || "查询模板版本信息失败");
+      }
+    } catch (error) {
+      console.error("[prompt_template_versions] 查询模板版本信息失败:", error);
+      message.error("查询模板版本信息失败");
+    }
   };
 
   const handleDelete = async (record: PromptTemplateVersion) => {
@@ -130,7 +220,8 @@ export default function PromptTemplateVersionsPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadVersions(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadVersions(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -186,7 +277,8 @@ export default function PromptTemplateVersionsPage() {
         message.success(editingVersion ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
-        loadVersions(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadVersions(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -196,7 +288,18 @@ export default function PromptTemplateVersionsPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadVersions(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadVersions(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadVersions(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadVersions(1, pageSize);
   };
 
   const getTemplateName = (templateId: string) => {
@@ -206,38 +309,24 @@ export default function PromptTemplateVersionsPage() {
 
   const columns: ColumnsType<PromptTemplateVersion> = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 300,
-      fixed: "left",
-      ellipsis: true,
-    },
-    {
       title: "模板",
       dataIndex: "template_id",
       key: "template_id",
-      width: 200,
+      width: 300,
+      ellipsis: true,
       render: (value: string) => getTemplateName(value),
     },
     {
       title: "版本号",
       dataIndex: "version",
       key: "version",
-      width: 120,
+      width: 150,
     },
     {
       title: "状态",
       dataIndex: "status",
       key: "status",
-      width: 100,
-    },
-    {
-      title: "创建者",
-      dataIndex: "created_by",
-      key: "created_by",
       width: 120,
-      render: (value: string | null) => value || "-",
     },
     {
       title: "创建时间",
@@ -253,11 +342,12 @@ export default function PromptTemplateVersionsPage() {
       fixed: "right",
       width: 160,
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -265,7 +355,7 @@ export default function PromptTemplateVersionsPage() {
             title="确定要删除该模板版本吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }}>
               删除
             </Button>
           </Popconfirm>
@@ -290,6 +380,46 @@ export default function PromptTemplateVersionsPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="template_logical_key" label="模板" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入模板逻辑键" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="status" label="状态" style={{ marginBottom: '10px' }}>
+                      <Select
+                        placeholder="请选择状态"
+                        allowClear
+                        options={[
+                          { value: "active", label: "active" },
+                          { value: "testing", label: "testing" },
+                          { value: "deprecated", label: "deprecated" },
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<PromptTemplateVersion>
               columns={columns}
               dataSource={versions}
@@ -312,7 +442,7 @@ export default function PromptTemplateVersionsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1500 }}
+              scroll={{ x: 910 }}
             />
 
             <Modal
@@ -322,9 +452,24 @@ export default function PromptTemplateVersionsPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingVersion(null);
               }}
+              afterOpenChange={handleModalAfterOpenChange}
+              maskClosable={false}
               destroyOnClose
               width={900}
+              footer={[
+                <Button key="close" onClick={() => {
+                  setModalVisible(false);
+                  form.resetFields();
+                  setEditingVersion(null);
+                }}>
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  {editingVersion ? "更新" : "创建"}
+                </Button>,
+              ]}
             >
               <Form<PromptTemplateVersionFormValues>
                 form={form}

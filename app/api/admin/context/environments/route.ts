@@ -33,6 +33,8 @@ async function getCurrentUserId(): Promise<number | null> {
 interface QueryParams {
   page?: number;
   pageSize?: number;
+  code?: string;
+  name?: string;
 }
 
 // GET：查询环境列表
@@ -47,6 +49,8 @@ export async function GET(request: NextRequest) {
     const params: QueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
+      code: searchParams.get("code") || undefined,
+      name: searchParams.get("name") || undefined,
     };
 
     const page = params.page || 1;
@@ -62,11 +66,32 @@ export async function GET(request: NextRequest) {
       limit = pageSize;
     }
 
+    // 构建 WHERE 条件
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
+    let paramIndex = 1;
+
+    // 环境代号模糊查询
+    if (params.code) {
+      whereConditions.push(`code ILIKE $${paramIndex}`);
+      queryValues.push(`%${params.code}%`);
+      paramIndex++;
+    }
+
+    // 环境名称模糊查询
+    if (params.name) {
+      whereConditions.push(`name ILIKE $${paramIndex}`);
+      queryValues.push(`%${params.name}%`);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : "";
+
     // 计算总数
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM environments`,
-      []
-    );
+    const countQuery = `SELECT COUNT(*) as total FROM environments ${whereClause}`;
+    const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
     // 查询数据
@@ -77,19 +102,20 @@ export async function GET(request: NextRequest) {
         name,
         description
       FROM environments
+      ${whereClause}
       ORDER BY code ASC
     `;
 
-    const values: any[] = [];
+    const dataValues = [...queryValues];
     if (limit !== null) {
-      dataQuery += ` LIMIT $1 OFFSET $2`;
-      values.push(limit, offset);
+      dataQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      dataValues.push(limit, offset);
     } else {
-      dataQuery += ` OFFSET $1`;
-      values.push(offset);
+      dataQuery += ` OFFSET $${paramIndex}`;
+      dataValues.push(offset);
     }
 
-    const environments = await query(dataQuery, values);
+    const environments = await query(dataQuery, dataValues);
 
     return NextResponse.json({
       success: true,

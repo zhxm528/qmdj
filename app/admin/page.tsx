@@ -61,18 +61,6 @@ export default function Admin() {
           title: "充值记录",
           path: "/admin/member/recharge_transaction",
         },
-        {
-          title: "会员积分",
-          path: "/admin/member/points",
-        },
-        {
-          title: "会员充值",
-          path: "/admin/member/recharge",
-        },
-        {
-          title: "会员消费",
-          path: "/admin/member/consume",
-        },
       ],
     },
     {

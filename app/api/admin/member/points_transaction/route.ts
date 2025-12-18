@@ -33,6 +33,10 @@ async function getCurrentUserId(): Promise<number | null> {
 interface PointsTransactionQueryParams {
   page?: number;
   pageSize?: number;
+  member_id?: number;
+  card_no?: string;
+  change_type?: string; // comma-separated values
+  related_type?: string; // comma-separated values
 }
 
 // GET：查询积分变动记录列表
@@ -47,6 +51,10 @@ export async function GET(request: NextRequest) {
     const params: PointsTransactionQueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
+      member_id: searchParams.get("member_id") ? parseInt(searchParams.get("member_id")!, 10) : undefined,
+      card_no: searchParams.get("card_no") || undefined,
+      change_type: searchParams.get("change_type") || undefined,
+      related_type: searchParams.get("related_type") || undefined,
     };
 
     const page = params.page || 1;
@@ -62,40 +70,91 @@ export async function GET(request: NextRequest) {
       limit = pageSize;
     }
 
+    // 构建 WHERE 条件
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
+    let paramIndex = 1;
+
+    // 会员ID过滤
+    if (params.member_id) {
+      whereConditions.push(`pt.member_id = $${paramIndex}`);
+      queryValues.push(params.member_id);
+      paramIndex++;
+    }
+
+    // 会员卡号模糊查询
+    if (params.card_no) {
+      whereConditions.push(`mc.card_no ILIKE $${paramIndex}`);
+      queryValues.push(`%${params.card_no}%`);
+      paramIndex++;
+    }
+
+    // 变动类型多选过滤
+    if (params.change_type) {
+      const changeTypes = params.change_type.split(",").filter(Boolean);
+      if (changeTypes.length > 0) {
+        whereConditions.push(`pt.change_type = ANY($${paramIndex})`);
+        queryValues.push(changeTypes);
+        paramIndex++;
+      }
+    }
+
+    // 关联类型多选过滤
+    if (params.related_type) {
+      const relatedTypes = params.related_type.split(",").filter(Boolean);
+      if (relatedTypes.length > 0) {
+        whereConditions.push(`pt.related_type = ANY($${paramIndex})`);
+        queryValues.push(relatedTypes);
+        paramIndex++;
+      }
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : "";
+
     // 计算总数
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM points_transaction`,
-      []
-    );
+    let countQuery = `SELECT COUNT(*) as total FROM points_transaction pt`;
+    if (params.card_no) {
+      countQuery += ` LEFT JOIN member_card mc ON pt.card_id = mc.card_id`;
+    }
+    countQuery += ` ${whereClause}`;
+
+    const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
     // 查询数据
     let dataQuery = `
       SELECT
-        points_txn_id,
-        member_id,
-        card_id,
-        change_type,
-        change_points,
-        balance_after,
-        related_type,
-        related_id,
-        remark,
-        created_at
-      FROM points_transaction
-      ORDER BY created_at DESC
+        pt.points_txn_id,
+        pt.member_id,
+        pt.card_id,
+        pt.change_type,
+        pt.change_points,
+        pt.balance_after,
+        pt.related_type,
+        pt.related_id,
+        pt.remark,
+        pt.created_at
+      FROM points_transaction pt
     `;
 
-    const values: any[] = [];
-    if (limit !== null) {
-      dataQuery += ` LIMIT $1 OFFSET $2`;
-      values.push(limit, offset);
-    } else {
-      dataQuery += ` OFFSET $1`;
-      values.push(offset);
+    if (params.card_no) {
+      dataQuery += ` LEFT JOIN member_card mc ON pt.card_id = mc.card_id`;
     }
 
-    const transactions = await query(dataQuery, values);
+    dataQuery += ` ${whereClause} ORDER BY pt.created_at DESC`;
+
+    const dataValues = [...queryValues];
+    if (limit !== null) {
+      dataQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      dataValues.push(limit, offset);
+    } else {
+      dataQuery += ` OFFSET $${paramIndex}`;
+      dataValues.push(offset);
+    }
+
+    const transactions = await query(dataQuery, dataValues);
 
     return NextResponse.json({
       success: true,

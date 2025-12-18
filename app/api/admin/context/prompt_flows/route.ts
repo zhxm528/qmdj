@@ -33,6 +33,8 @@ async function getCurrentUserId(): Promise<number | null> {
 interface QueryParams {
   page?: number;
   pageSize?: number;
+  code?: string;
+  name?: string;
 }
 
 // GET：查询流程列表
@@ -44,9 +46,32 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    
+    // 如果提供了 id，返回单个流程
+    if (id) {
+      const queryStr = `SELECT id, project_id, code, name, description, created_at FROM prompt_flows WHERE id = $1`;
+      console.log("[prompt_flows] 查询单个流程 SQL:", queryStr);
+      console.log("[prompt_flows] 查询参数:", [id]);
+      const result = await query(queryStr, [id]);
+      if (result && result.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: result[0],
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "流程不存在" },
+          { status: 404 }
+        );
+      }
+    }
+
     const params: QueryParams = {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
+      code: searchParams.get("code") || undefined,
+      name: searchParams.get("name") || undefined,
     };
 
     const page = params.page || 1;
@@ -62,11 +87,34 @@ export async function GET(request: NextRequest) {
       limit = pageSize;
     }
 
+    // 构建 WHERE 条件
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
+    let paramIndex = 1;
+
+    // 流程代码模糊查询
+    if (params.code) {
+      whereConditions.push(`code ILIKE $${paramIndex}`);
+      queryValues.push(`%${params.code}%`);
+      paramIndex++;
+    }
+
+    // 流程名称模糊查询
+    if (params.name) {
+      whereConditions.push(`name ILIKE $${paramIndex}`);
+      queryValues.push(`%${params.name}%`);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : "";
+
     // 计算总数
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM prompt_flows`,
-      []
-    );
+    const countQuery = `SELECT COUNT(*) as total FROM prompt_flows ${whereClause}`;
+    console.log("[prompt_flows] 查询总数 SQL:", countQuery);
+    console.log("[prompt_flows] 查询总数参数:", queryValues);
+    const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
     // 查询数据
@@ -79,18 +127,21 @@ export async function GET(request: NextRequest) {
         description,
         created_at
       FROM prompt_flows
+      ${whereClause}
       ORDER BY created_at DESC
     `;
 
-    const values: any[] = [];
+    const values: any[] = [...queryValues];
     if (limit !== null) {
-      dataQuery += ` LIMIT $1 OFFSET $2`;
+      dataQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       values.push(limit, offset);
     } else {
-      dataQuery += ` OFFSET $1`;
+      dataQuery += ` OFFSET $${paramIndex}`;
       values.push(offset);
     }
 
+    console.log("[prompt_flows] 查询数据 SQL:", dataQuery);
+    console.log("[prompt_flows] 查询数据参数:", values);
     const flows = await query(dataQuery, values);
 
     return NextResponse.json({

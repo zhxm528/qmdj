@@ -37,8 +37,31 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    
+    // 如果提供了 id，返回单个版本
+    if (id) {
+      const queryStr = `SELECT id, template_id, version, template_text, config, status, changelog, created_by, created_at FROM prompt_template_versions WHERE id = $1`;
+      console.log("[prompt_template_versions] 查询单个版本 SQL:", queryStr);
+      console.log("[prompt_template_versions] 查询参数:", [id]);
+      const result = await query(queryStr, [id]);
+      if (result && result.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: result[0],
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "版本不存在" },
+          { status: 404 }
+        );
+      }
+    }
+
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const template_logical_key = searchParams.get("template_logical_key") || undefined;
+    const status = searchParams.get("status") || undefined;
 
     let offset = 0;
     let limit: number | null = null;
@@ -50,36 +73,70 @@ export async function GET(request: NextRequest) {
       limit = pageSize;
     }
 
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM prompt_template_versions`,
-      []
-    );
+    // 构建 WHERE 条件
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
+    let paramIndex = 1;
+
+    // 模板逻辑键模糊查询（需要 JOIN）
+    if (template_logical_key) {
+      whereConditions.push(`pt.logical_key ILIKE $${paramIndex}`);
+      queryValues.push(`%${template_logical_key}%`);
+      paramIndex++;
+    }
+
+    // 状态查询
+    if (status) {
+      whereConditions.push(`ptv.status = $${paramIndex}`);
+      queryValues.push(status);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : "";
+
+    // 计算总数（需要 JOIN prompt_templates 表）
+    const countQuery = `
+      SELECT COUNT(*) as total 
+      FROM prompt_template_versions ptv
+      LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id
+      ${whereClause}
+    `;
+    console.log("[prompt_template_versions] 查询总数 SQL:", countQuery);
+    console.log("[prompt_template_versions] 查询总数参数:", queryValues);
+    const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
+    // 查询数据（需要 JOIN prompt_templates 表以支持按 logical_key 搜索）
     let dataQuery = `
       SELECT
-        id,
-        template_id,
-        version,
-        template_text,
-        config,
-        status,
-        changelog,
-        created_by,
-        created_at
-      FROM prompt_template_versions
-      ORDER BY created_at DESC
+        ptv.id,
+        ptv.template_id,
+        ptv.version,
+        ptv.template_text,
+        ptv.config,
+        ptv.status,
+        ptv.changelog,
+        ptv.created_by,
+        ptv.created_at
+      FROM prompt_template_versions ptv
+      LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id
+      ${whereClause}
+      ORDER BY ptv.created_at DESC
     `;
 
-    const values: any[] = [];
+    const values: any[] = [...queryValues];
     if (limit !== null) {
-      dataQuery += ` LIMIT $1 OFFSET $2`;
+      dataQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       values.push(limit, offset);
     } else {
-      dataQuery += ` OFFSET $1`;
+      dataQuery += ` OFFSET $${paramIndex}`;
       values.push(offset);
     }
 
+    console.log("[prompt_template_versions] 查询数据 SQL:", dataQuery);
+    console.log("[prompt_template_versions] 查询数据参数:", values);
     const versions = await query(dataQuery, values);
 
     return NextResponse.json({

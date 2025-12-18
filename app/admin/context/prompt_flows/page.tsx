@@ -13,10 +13,13 @@ import {
   Space,
   Popconfirm,
   message,
+  Card,
+  Row,
+  Col,
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { TextArea } = Input;
@@ -37,8 +40,14 @@ interface PromptFlowFormValues {
   description?: string;
 }
 
+interface QueryFormValues {
+  code?: string;
+  name?: string;
+}
+
 export default function PromptFlowsPage() {
   const [form] = Form.useForm<PromptFlowFormValues>();
+  const [queryForm] = Form.useForm<QueryFormValues>();
   const [loading, setLoading] = useState(false);
   const [flows, setFlows] = useState<PromptFlow[]>([]);
   const [total, setTotal] = useState(0);
@@ -60,12 +69,22 @@ export default function PromptFlowsPage() {
     }
   };
 
-  const loadFlows = async (page: number, size: number) => {
+  const loadFlows = async (page: number, size: number, filters?: QueryFormValues) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
       params.set("page", String(page));
       params.set("pageSize", String(size));
+
+      // 添加查询条件
+      if (filters) {
+        if (filters.code) {
+          params.set("code", filters.code);
+        }
+        if (filters.name) {
+          params.set("name", filters.name);
+        }
+      }
 
       const res = await fetch(`/api/admin/context/prompt_flows?${params.toString()}`);
       const data = await res.json();
@@ -90,21 +109,95 @@ export default function PromptFlowsPage() {
     loadProjects();
   }, []);
 
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      console.log("[prompt_flows] Modal 打开，当前流程:", editingFlow);
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingFlow) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            project_id: editingFlow.project_id || undefined,
+            code: editingFlow.code || undefined,
+            name: editingFlow.name || undefined,
+            description: editingFlow.description || undefined,
+          };
+          console.log("[prompt_flows] Modal 打开后设置表单值:", formValues);
+          form.setFieldsValue(formValues);
+          // 验证表单值是否设置成功
+          const currentValues = form.getFieldsValue();
+          console.log("[prompt_flows] 表单值已设置，当前表单值:", currentValues);
+          console.log("[prompt_flows] 表单值设置验证:", {
+            project_id: currentValues.project_id === formValues.project_id,
+            code: currentValues.code === formValues.code,
+            name: currentValues.name === formValues.name,
+            description: currentValues.description === formValues.description,
+          });
+        } else {
+          // 新增模式，重置表单
+          form.resetFields();
+        }
+      }, 100);
+    }
+  };
+
   const handleAdd = () => {
     setEditingFlow(null);
     form.resetFields();
     setModalVisible(true);
   };
 
-  const handleEdit = (record: PromptFlow) => {
-    setEditingFlow(record);
-    form.setFieldsValue({
-      project_id: record.project_id || undefined,
-      code: record.code,
-      name: record.name,
-      description: record.description || undefined,
-    });
-    setModalVisible(true);
+  const handleEdit = async (record: PromptFlow) => {
+    try {
+      console.log("[prompt_flows] 点击编辑按钮，流程ID:", record.id);
+      // 从后端重新查询记录，确保数据最新
+      const res = await fetch(`/api/admin/context/prompt_flows?id=${record.id}`);
+      const data = await res.json();
+      
+      // 详细打印后端返回给前端的内容
+      console.log("[prompt_flows] ========== 后端返回给前端的完整响应 ==========");
+      console.log("[prompt_flows] 响应状态码:", res.status);
+      console.log("[prompt_flows] 响应状态文本:", res.statusText);
+      console.log("[prompt_flows] 响应数据 (JSON):", JSON.stringify(data, null, 2));
+      console.log("[prompt_flows] 响应数据 (对象):", data);
+      if (data.success) {
+        console.log("[prompt_flows] success:", data.success);
+        if (data.data) {
+          console.log("[prompt_flows] data 字段内容:", data.data);
+          console.log("[prompt_flows] data 字段类型:", typeof data.data);
+          console.log("[prompt_flows] data 是否为数组:", Array.isArray(data.data));
+          if (typeof data.data === "object" && !Array.isArray(data.data)) {
+            console.log("[prompt_flows] data 对象的所有字段:");
+            Object.keys(data.data).forEach((key) => {
+              console.log(`[prompt_flows]   ${key}:`, data.data[key], `(类型: ${typeof data.data[key]})`);
+            });
+          }
+        } else {
+          console.log("[prompt_flows] data 字段为空或未定义");
+        }
+      } else {
+        console.log("[prompt_flows] success:", data.success);
+        console.log("[prompt_flows] error:", data.error);
+      }
+      console.log("[prompt_flows] ============================================");
+      
+      if (data.success && data.data) {
+        const flow = data.data;
+        console.log("[prompt_flows] 提取的流程数据对象:", flow);
+        
+        // 先设置 editingFlow，然后打开 Modal
+        // handleModalAfterOpenChange 会在 Modal 打开后自动设置表单值
+        setEditingFlow(flow);
+        setModalVisible(true);
+      } else {
+        message.error(data.error || "查询流程信息失败");
+      }
+    } catch (error) {
+      console.error("[prompt_flows] 查询流程信息失败:", error);
+      message.error("查询流程信息失败");
+    }
   };
 
   const handleDelete = async (record: PromptFlow) => {
@@ -118,7 +211,8 @@ export default function PromptFlowsPage() {
       const data = await res.json();
       if (data.success) {
         message.success("删除成功");
-        loadFlows(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadFlows(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "删除失败");
       }
@@ -161,7 +255,8 @@ export default function PromptFlowsPage() {
         message.success(editingFlow ? "更新成功" : "创建成功");
         setModalVisible(false);
         form.resetFields();
-        loadFlows(currentPage, pageSize);
+        const filters = queryForm.getFieldsValue();
+        loadFlows(currentPage, pageSize, filters);
       } else {
         message.error(data.error || "保存失败");
       }
@@ -171,7 +266,18 @@ export default function PromptFlowsPage() {
   };
 
   const handlePageChange = (page: number, size: number) => {
-    loadFlows(page, size);
+    const filters = queryForm.getFieldsValue();
+    loadFlows(page, size, filters);
+  };
+
+  const handleSearch = () => {
+    const filters = queryForm.getFieldsValue();
+    loadFlows(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    queryForm.resetFields();
+    loadFlows(1, pageSize);
   };
 
   const getProjectName = (id: string | null) => {
@@ -182,37 +288,32 @@ export default function PromptFlowsPage() {
 
   const columns: ColumnsType<PromptFlow> = [
     {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 300,
-      fixed: "left",
-      ellipsis: true,
-    },
-    {
       title: "所属项目",
       dataIndex: "project_id",
       key: "project_id",
-      width: 200,
+      width: 250,
+      ellipsis: true,
       render: (value: string | null) => getProjectName(value),
     },
     {
       title: "流程代码",
       dataIndex: "code",
       key: "code",
-      width: 250,
+      width: 350,
+      ellipsis: true,
     },
     {
       title: "流程名称",
       dataIndex: "name",
       key: "name",
-      width: 250,
+      width: 350,
+      ellipsis: true,
     },
     {
       title: "描述",
       dataIndex: "description",
       key: "description",
-      width: 400,
+      width: 600,
       ellipsis: true,
       render: (value: string | null) => value || "-",
     },
@@ -230,11 +331,12 @@ export default function PromptFlowsPage() {
       fixed: "right",
       width: 160,
       render: (_, record) => (
-        <Space>
+        <Space size="small">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => handleEdit(record)}
+            style={{ padding: 0 }}
           >
             编辑
           </Button>
@@ -242,7 +344,7 @@ export default function PromptFlowsPage() {
             title="确定要删除该流程吗？"
             onConfirm={() => handleDelete(record)}
           >
-            <Button type="link" danger icon={<DeleteOutlined />}>
+            <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }}>
               删除
             </Button>
           </Popconfirm>
@@ -267,6 +369,38 @@ export default function PromptFlowsPage() {
               </Button>
             </div>
 
+            {/* 查询条件 */}
+            <Card title="查询条件" className="mb-6">
+              <Form<QueryFormValues>
+                form={queryForm}
+                layout="vertical"
+                onFinish={handleSearch}
+              >
+                <Row gutter={[16, 0]}>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="code" label="流程代码" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入流程代码" />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="name" label="流程名称" style={{ marginBottom: '10px' }}>
+                      <Input placeholder="请输入流程名称" />
+                    </Form.Item>
+                  </Col>
+                </Row>
+                <Row>
+                  <Col span={24}>
+                    <Space>
+                      <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch}>
+                        查询
+                      </Button>
+                      <Button onClick={handleReset}>重置</Button>
+                    </Space>
+                  </Col>
+                </Row>
+              </Form>
+            </Card>
+
             <Table<PromptFlow>
               columns={columns}
               dataSource={flows}
@@ -289,7 +423,7 @@ export default function PromptFlowsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 1500 }}
+              scroll={{ x: 1540 }}
             />
 
             <Modal
@@ -299,9 +433,24 @@ export default function PromptFlowsPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingFlow(null);
               }}
+              afterOpenChange={handleModalAfterOpenChange}
+              maskClosable={false}
               destroyOnClose
               width={700}
+              footer={[
+                <Button key="close" onClick={() => {
+                  setModalVisible(false);
+                  form.resetFields();
+                  setEditingFlow(null);
+                }}>
+                  关闭
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleModalOk}>
+                  {editingFlow ? "更新" : "创建"}
+                </Button>,
+              ]}
             >
               <Form<PromptFlowFormValues>
                 form={form}
@@ -331,7 +480,7 @@ export default function PromptFlowsPage() {
                     { required: true, message: "请输入流程代码" },
                     { max: 100, message: "流程代码不能超过100个字符" },
                   ]}
-                  tooltip="流程代码用于在代码中引用，如 'qmdj.analyze_chart_flow'"
+                  tooltip='Flow = 把多个提示词按角色和顺序组织成一次 LLM 调用的"流程配置"，它是提示词管理系统里，从"单条文案"上升到"完整场景能力"的关键抽象。'
                 >
                   <Input placeholder="请输入流程代码（如：qmdj.analyze_chart_flow）" />
                 </Form.Item>

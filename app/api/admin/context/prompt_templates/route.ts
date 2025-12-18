@@ -37,8 +37,37 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    
+    // 如果提供了 id，返回单个模板
+    if (id) {
+      const queryStr = `SELECT id, logical_key, scope, project_id, scene_code, role, language, description, current_version_id, status, task_type, sensitivity, metadata, created_at, updated_at FROM prompt_templates WHERE id = $1`;
+      console.log("[prompt_templates] 查询单个模板 SQL:", queryStr);
+      console.log("[prompt_templates] 查询参数:", [id]);
+      const result = await query(queryStr, [id]);
+      if (result && result.length > 0) {
+        return NextResponse.json({
+          success: true,
+          data: result[0],
+        });
+      } else {
+        return NextResponse.json(
+          { success: false, error: "模板不存在" },
+          { status: 404 }
+        );
+      }
+    }
+
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const logical_key = searchParams.get("logical_key") || undefined;
+    const status = searchParams.get("status") || undefined;
+    const scene_code = searchParams.get("scene_code") || undefined;
+    const scope = searchParams.get("scope") || undefined;
+    const role = searchParams.get("role") || undefined;
+    const project_id = searchParams.get("project_id") || undefined;
+    const language = searchParams.get("language") || undefined;
+    const current_version_id = searchParams.get("current_version_id") || undefined;
 
     let offset = 0;
     let limit: number | null = null;
@@ -50,10 +79,76 @@ export async function GET(request: NextRequest) {
       limit = pageSize;
     }
 
-    const countResult = await query(
-      `SELECT COUNT(*) as total FROM prompt_templates`,
-      []
-    );
+    // 构建 WHERE 条件
+    const whereConditions: string[] = [];
+    const queryValues: any[] = [];
+    let paramIndex = 1;
+
+    // 逻辑键模糊查询
+    if (logical_key) {
+      whereConditions.push(`logical_key ILIKE $${paramIndex}`);
+      queryValues.push(`%${logical_key}%`);
+      paramIndex++;
+    }
+
+    // 状态查询
+    if (status) {
+      whereConditions.push(`status = $${paramIndex}`);
+      queryValues.push(status);
+      paramIndex++;
+    }
+
+    // 场景代码模糊查询
+    if (scene_code) {
+      whereConditions.push(`scene_code ILIKE $${paramIndex}`);
+      queryValues.push(`%${scene_code}%`);
+      paramIndex++;
+    }
+
+    // 作用范围查询
+    if (scope) {
+      whereConditions.push(`scope = $${paramIndex}`);
+      queryValues.push(scope);
+      paramIndex++;
+    }
+
+    // 角色查询
+    if (role) {
+      whereConditions.push(`role = $${paramIndex}`);
+      queryValues.push(role);
+      paramIndex++;
+    }
+
+    // 项目ID查询
+    if (project_id) {
+      whereConditions.push(`project_id = $${paramIndex}`);
+      queryValues.push(project_id);
+      paramIndex++;
+    }
+
+    // 语言查询
+    if (language) {
+      whereConditions.push(`language = $${paramIndex}`);
+      queryValues.push(language);
+      paramIndex++;
+    }
+
+    // 当前版本ID查询
+    if (current_version_id) {
+      whereConditions.push(`current_version_id = $${paramIndex}`);
+      queryValues.push(current_version_id);
+      paramIndex++;
+    }
+
+    const whereClause = whereConditions.length > 0 
+      ? `WHERE ${whereConditions.join(" AND ")}`
+      : "";
+
+    // 计算总数
+    const countQuery = `SELECT COUNT(*) as total FROM prompt_templates ${whereClause}`;
+    console.log("[prompt_templates] 查询总数 SQL:", countQuery);
+    console.log("[prompt_templates] 查询总数参数:", queryValues);
+    const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
     let dataQuery = `
@@ -74,18 +169,21 @@ export async function GET(request: NextRequest) {
         created_at,
         updated_at
       FROM prompt_templates
+      ${whereClause}
       ORDER BY created_at DESC
     `;
 
-    const values: any[] = [];
+    const values: any[] = [...queryValues];
     if (limit !== null) {
-      dataQuery += ` LIMIT $1 OFFSET $2`;
+      dataQuery += ` LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
       values.push(limit, offset);
     } else {
-      dataQuery += ` OFFSET $1`;
+      dataQuery += ` OFFSET $${paramIndex}`;
       values.push(offset);
     }
 
+    console.log("[prompt_templates] 查询数据 SQL:", dataQuery);
+    console.log("[prompt_templates] 查询数据参数:", values);
     const templates = await query(dataQuery, values);
 
     return NextResponse.json({
@@ -162,6 +260,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (current_version_id) {
+      // 验证 UUID 格式
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(current_version_id)) {
+        return NextResponse.json(
+          { success: false, error: "当前版本ID必须是有效的UUID格式" },
+          { status: 400 }
+        );
+      }
       const versionCheck = await query(
         `SELECT id FROM prompt_template_versions WHERE id = $1`,
         [current_version_id]
@@ -296,6 +402,14 @@ export async function PUT(request: NextRequest) {
     }
 
     if (current_version_id) {
+      // 验证 UUID 格式
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(current_version_id)) {
+        return NextResponse.json(
+          { success: false, error: "当前版本ID必须是有效的UUID格式" },
+          { status: 400 }
+        );
+      }
       const versionCheck = await query(
         `SELECT id FROM prompt_template_versions WHERE id = $1`,
         [current_version_id]
