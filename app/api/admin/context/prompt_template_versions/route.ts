@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     
     // 如果提供了 id，返回单个版本
     if (id) {
-      const queryStr = `SELECT id, template_id, version, template_text, config, status, changelog, created_by, created_at FROM prompt_template_versions WHERE id = $1`;
+      const queryStr = `SELECT id, template_id, version, template_text, config, status, changelog, created_by, created_at, updated_at FROM prompt_template_versions WHERE id = $1`;
       console.log("[prompt_template_versions] 查询单个版本 SQL:", queryStr);
       console.log("[prompt_template_versions] 查询参数:", [id]);
       const result = await query(queryStr, [id]);
@@ -119,7 +119,8 @@ export async function GET(request: NextRequest) {
         ptv.status,
         ptv.changelog,
         ptv.created_by,
-        ptv.created_at
+        ptv.created_at,
+        ptv.updated_at
       FROM prompt_template_versions ptv
       LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id
       ${whereClause}

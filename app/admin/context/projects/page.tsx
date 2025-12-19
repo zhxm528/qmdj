@@ -20,6 +20,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import ContextTimeline from "@/components/ContextTimeline";
 
 interface Project {
   id: string;
@@ -336,6 +337,9 @@ export default function ProjectsPage() {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+            {/* 时间轴导航 */}
+            <ContextTimeline currentStep={0} />
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">项目管理</h1>
               <Button

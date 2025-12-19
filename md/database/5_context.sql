@@ -187,6 +187,9 @@ CREATE TABLE prompt_template_versions (
 
   , created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
         -- 创建时间
+
+  , updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        -- 创建时间
 );
 
 -- 在同一模板下，版本号唯一

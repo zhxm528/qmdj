@@ -22,6 +22,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import ContextTimeline from "@/components/ContextTimeline";
 
 const { TextArea } = Input;
 
@@ -47,6 +48,9 @@ interface PromptFlowStepFormValues {
 
 interface QueryFormValues {
   flow_id?: string;
+  template_logical_key?: string; // 改为模板逻辑键，支持模糊查询
+  version_strategy?: string;
+  fixed_version?: string; // 改为版本号，支持模糊查询
 }
 
 export default function PromptFlowStepsPage() {
@@ -87,7 +91,7 @@ export default function PromptFlowStepsPage() {
     }
   };
 
-  const loadVersions = async (templateId?: string) => {
+  const loadVersions = async (templateId?: string): Promise<void> => {
     try {
       let url = "/api/admin/context/prompt_template_versions?pageSize=-1";
       if (templateId) {
@@ -114,6 +118,15 @@ export default function PromptFlowStepsPage() {
       if (filters) {
         if (filters.flow_id) {
           params.set("flow_id", filters.flow_id);
+        }
+        if (filters.template_logical_key) {
+          params.set("template_logical_key", filters.template_logical_key);
+        }
+        if (filters.version_strategy) {
+          params.set("version_strategy", filters.version_strategy);
+        }
+        if (filters.fixed_version) {
+          params.set("fixed_version", filters.fixed_version);
         }
       }
 
@@ -143,28 +156,37 @@ export default function PromptFlowStepsPage() {
   }, []);
 
   // 处理 Modal 打开后的表单值设置
-  const handleModalAfterOpenChange = (open: boolean) => {
+  const handleModalAfterOpenChange = async (open: boolean) => {
     if (open) {
       console.log("[prompt_flow_steps] Modal 打开，当前步骤:", editingStep);
       // Modal 完全打开后，设置表单值
       // 使用 setTimeout 确保 Form 组件完全渲染和初始化
-      setTimeout(() => {
+      setTimeout(async () => {
         if (editingStep) {
-          // 编辑模式：设置表单值
-          const formValues = {
+          // 编辑模式：先设置基础字段
+          form.setFieldsValue({
             flow_id: editingStep.flow_id || undefined,
             step_order: editingStep.step_order || undefined,
             template_id: editingStep.template_id || undefined,
             version_strategy: editingStep.version_strategy || "latest",
-            fixed_version_id: editingStep.fixed_version_id || undefined,
             optional: editingStep.optional !== undefined ? editingStep.optional : false,
-          };
-          console.log("[prompt_flow_steps] Modal 打开后设置表单值:", formValues);
-          form.setFieldsValue(formValues);
-          // 加载对应模板的版本列表
+          });
+          
+          // 如果有模板ID，先加载版本列表
           if (editingStep.template_id) {
-            loadVersions(editingStep.template_id);
+            await loadVersions(editingStep.template_id);
+            // 等待一个渲染周期，确保 filteredVersions 已更新
+            await new Promise(resolve => setTimeout(resolve, 50));
           }
+          
+          // 在版本列表加载完成后，再设置 fixed_version_id
+          if (editingStep.fixed_version_id) {
+            form.setFieldsValue({
+              fixed_version_id: editingStep.fixed_version_id,
+            });
+          }
+          
+          console.log("[prompt_flow_steps] Modal 打开后设置表单值完成");
           // 验证表单值是否设置成功
           const currentValues = form.getFieldsValue();
           console.log("[prompt_flow_steps] 表单值已设置，当前表单值:", currentValues);
@@ -260,9 +282,14 @@ export default function PromptFlowStepsPage() {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
+      // 确保步骤顺序是整数
+      const stepOrder = values.step_order !== undefined && values.step_order !== null 
+        ? parseInt(String(values.step_order), 10) 
+        : null;
+      
       const payload: any = {
         flow_id: values.flow_id || null,
-        step_order: values.step_order || null,
+        step_order: stepOrder,
         template_id: values.template_id || null,
         version_strategy: values.version_strategy || "latest",
         fixed_version_id: values.version_strategy === "pinned" ? (values.fixed_version_id || null) : null,
@@ -372,6 +399,11 @@ export default function PromptFlowStepsPage() {
       dataIndex: "version_strategy",
       key: "version_strategy",
       width: 150,
+      render: (value: string) => {
+        if (value === "pinned") return "固定版本";
+        if (value === "latest") return "最新版本";
+        return value;
+      },
     },
     {
       title: "固定版本",
@@ -424,17 +456,22 @@ export default function PromptFlowStepsPage() {
     },
   ];
 
-  const filteredVersions = form.getFieldValue("template_id")
-    ? versions.filter((v) => v.template_id === form.getFieldValue("template_id"))
-    : versions;
+  // 使用 Form.useWatch 实时监听模板ID和版本策略的变化
+  const templateId = Form.useWatch("template_id", form);
+  const versionStrategy = Form.useWatch("version_strategy", form);
 
-  const versionStrategy = form.getFieldValue("version_strategy");
+  const filteredVersions = templateId
+    ? versions.filter((v) => v.template_id === templateId)
+    : versions;
 
   return (
     <ConfigProvider locale={zhCN}>
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+            {/* 时间轴导航 */}
+            <ContextTimeline currentStep={4} />
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">流程步骤</h1>
               <Button
@@ -465,6 +502,34 @@ export default function PromptFlowStepsPage() {
                           value: f.id,
                           label: `${f.name} (${f.code})`,
                         }))}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="template_logical_key" label="模板" style={{ marginBottom: '10px' }}>
+                      <Input
+                        placeholder="请输入模板逻辑键（支持模糊查询）"
+                        allowClear
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="version_strategy" label="版本策略" style={{ marginBottom: '10px' }}>
+                      <Select
+                        placeholder="请选择版本策略"
+                        allowClear
+                        options={[
+                          { value: "latest", label: "最新版本" },
+                          { value: "pinned", label: "固定版本" },
+                        ]}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} sm={12} md={6}>
+                    <Form.Item name="fixed_version" label="固定版本" style={{ marginBottom: '10px' }}>
+                      <Input
+                        placeholder="请输入版本号（支持模糊查询）"
+                        allowClear
                       />
                     </Form.Item>
                   </Col>
@@ -558,13 +623,37 @@ export default function PromptFlowStepsPage() {
                   name="step_order"
                   rules={[
                     { required: true, message: "请输入步骤顺序" },
-                    { type: "number", min: 1, message: "步骤顺序必须大于0" },
+                    {
+                      validator: (_, value) => {
+                        if (value === undefined || value === null || value === "") {
+                          return Promise.reject(new Error("请输入步骤顺序"));
+                        }
+                        const numValue = Number(value);
+                        if (isNaN(numValue)) {
+                          return Promise.reject(new Error("步骤顺序必须是数字"));
+                        }
+                        if (!Number.isInteger(numValue)) {
+                          return Promise.reject(new Error("步骤顺序必须是正整数"));
+                        }
+                        if (numValue < 1) {
+                          return Promise.reject(new Error("步骤顺序必须大于0"));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
                   ]}
                 >
                   <Input
                     type="number"
                     min={1}
+                    step={1}
                     placeholder="请输入步骤顺序（从1开始，按数值大小排序执行）"
+                    onKeyPress={(e) => {
+                      // 阻止输入非数字字符（除了退格、删除、Tab等）
+                      if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                 </Form.Item>
                 <Form.Item
@@ -598,7 +687,7 @@ export default function PromptFlowStepsPage() {
                 </Form.Item>
                 {versionStrategy === "pinned" && (
                   <Form.Item
-                    label="固定版本ID"
+                    label="固定版本"
                     name="fixed_version_id"
                     rules={[
                       { required: true, message: "请选择固定版本" },

@@ -21,6 +21,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import ContextTimeline from "@/components/ContextTimeline";
 
 const { TextArea } = Input;
 
@@ -34,6 +35,7 @@ interface PromptTemplateVersion {
   changelog: string | null;
   created_by: string | null;
   created_at: string;
+  updated_at: string | null;
 }
 
 interface PromptTemplateVersionFormValues {
@@ -124,10 +126,17 @@ export default function PromptTemplateVersionsPage() {
       setTimeout(() => {
         if (editingVersion) {
           // 编辑模式：设置表单值
+          // 将模板内容中的 \n 字符串转换为实际的换行符
+          let templateText = editingVersion.template_text || undefined;
+          if (templateText) {
+            // 将字符串 "\n" 转换为实际的换行符
+            templateText = templateText.replace(/\\n/g, "\n");
+          }
+          
           const formValues = {
             template_id: editingVersion.template_id || undefined,
             version: editingVersion.version || undefined,
-            template_text: editingVersion.template_text || undefined,
+            template_text: templateText,
             config: editingVersion.config ? JSON.stringify(editingVersion.config, null, 2) : undefined,
             status: editingVersion.status || undefined,
             changelog: editingVersion.changelog || undefined,
@@ -244,10 +253,17 @@ export default function PromptTemplateVersionsPage() {
         }
       }
 
+      // 将模板内容中的换行符转换为 \n 字符串
+      let templateText = values.template_text || null;
+      if (templateText) {
+        // 将实际的换行符（\r\n 或 \n）转换为字符串 "\n"
+        templateText = templateText.replace(/\r\n/g, "\\n").replace(/\n/g, "\\n");
+      }
+
       const payload: any = {
         template_id: values.template_id || null,
         version: values.version || null,
-        template_text: values.template_text || null,
+        template_text: templateText,
         config: config,
         status: values.status || "active",
         changelog: values.changelog || null,
@@ -337,6 +353,14 @@ export default function PromptTemplateVersionsPage() {
         value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
     },
     {
+      title: "更新时间",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: 180,
+      render: (value: string | null) =>
+        value ? dayjs(value).format("YYYY-MM-DD HH:mm:ss") : "-",
+    },
+    {
       title: "操作",
       key: "action",
       fixed: "right",
@@ -369,6 +393,9 @@ export default function PromptTemplateVersionsPage() {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+            {/* 时间轴导航 */}
+            <ContextTimeline currentStep={2} />
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">模板版本管理</h1>
               <Button
@@ -442,7 +469,7 @@ export default function PromptTemplateVersionsPage() {
                   handlePageChange(1, s);
                 },
               }}
-              scroll={{ x: 910 }}
+              scroll={{ x: 1090 }}
             />
 
             <Modal
