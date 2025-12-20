@@ -48,9 +48,9 @@ interface PromptFlowStepFormValues {
 
 interface QueryFormValues {
   flow_id?: string;
-  template_logical_key?: string; // 改为模板逻辑键，支持模糊查询
+  template_id?: string; // 改为模板ID，下拉选择
   version_strategy?: string;
-  fixed_version?: string; // 改为版本号，支持模糊查询
+  fixed_version_id?: string; // 改为固定版本ID，下拉选择
 }
 
 export default function PromptFlowStepsPage() {
@@ -66,6 +66,7 @@ export default function PromptFlowStepsPage() {
   const [flows, setFlows] = useState<Array<{ id: string; code: string; name: string }>>([]);
   const [templates, setTemplates] = useState<Array<{ id: string; logical_key: string }>>([]);
   const [versions, setVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]);
+  const [queryVersions, setQueryVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]);
 
   const loadFlows = async () => {
     try {
@@ -119,14 +120,14 @@ export default function PromptFlowStepsPage() {
         if (filters.flow_id) {
           params.set("flow_id", filters.flow_id);
         }
-        if (filters.template_logical_key) {
-          params.set("template_logical_key", filters.template_logical_key);
+        if (filters.template_id) {
+          params.set("template_id", filters.template_id);
         }
         if (filters.version_strategy) {
           params.set("version_strategy", filters.version_strategy);
         }
-        if (filters.fixed_version) {
-          params.set("fixed_version", filters.fixed_version);
+        if (filters.fixed_version_id) {
+          params.set("fixed_version_id", filters.fixed_version_id);
         }
       }
 
@@ -349,6 +350,28 @@ export default function PromptFlowStepsPage() {
     loadVersions(templateId);
   };
 
+  // 查询条件中模板改变时的处理
+  const handleQueryTemplateChange = async (templateId: string) => {
+    queryForm.setFieldsValue({ fixed_version_id: undefined });
+    if (templateId) {
+      // 加载该模板关联的版本列表
+      try {
+        const res = await fetch(`/api/admin/context/prompt_template_versions?pageSize=-1&template_id=${templateId}`);
+        const data = await res.json();
+        if (data.success && data.data) {
+          setQueryVersions(data.data);
+        } else {
+          setQueryVersions([]);
+        }
+      } catch (error) {
+        console.error("加载查询条件版本列表失败:", error);
+        setQueryVersions([]);
+      }
+    } else {
+      setQueryVersions([]);
+    }
+  };
+
   const handleVersionStrategyChange = (strategy: string) => {
     if (strategy !== "pinned") {
       form.setFieldsValue({ fixed_version_id: undefined });
@@ -460,9 +483,17 @@ export default function PromptFlowStepsPage() {
   const templateId = Form.useWatch("template_id", form);
   const versionStrategy = Form.useWatch("version_strategy", form);
 
+  // 只显示与选中模板关联的版本
   const filteredVersions = templateId
     ? versions.filter((v) => v.template_id === templateId)
-    : versions;
+    : [];
+
+  // 查询条件中的模板ID和固定版本联动
+  const queryTemplateId = Form.useWatch("template_id", queryForm);
+  // 只显示与选中模板关联的版本
+  const filteredQueryVersions = queryTemplateId
+    ? queryVersions.filter((v) => v.template_id === queryTemplateId)
+    : [];
 
   return (
     <ConfigProvider locale={zhCN}>
@@ -506,10 +537,17 @@ export default function PromptFlowStepsPage() {
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12} md={6}>
-                    <Form.Item name="template_logical_key" label="模板" style={{ marginBottom: '10px' }}>
-                      <Input
-                        placeholder="请输入模板逻辑键（支持模糊查询）"
+                    <Form.Item name="template_id" label="模板" style={{ marginBottom: '10px' }}>
+                      <Select
+                        placeholder="请选择模板"
                         allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        onChange={handleQueryTemplateChange}
+                        options={templates.map((t) => ({
+                          value: t.id,
+                          label: t.logical_key || t.id,
+                        }))}
                       />
                     </Form.Item>
                   </Col>
@@ -526,10 +564,17 @@ export default function PromptFlowStepsPage() {
                     </Form.Item>
                   </Col>
                   <Col xs={24} sm={12} md={6}>
-                    <Form.Item name="fixed_version" label="固定版本" style={{ marginBottom: '10px' }}>
-                      <Input
-                        placeholder="请输入版本号（支持模糊查询）"
+                    <Form.Item name="fixed_version_id" label="固定版本" style={{ marginBottom: '10px' }}>
+                      <Select
+                        placeholder="请选择固定版本（先选择模板）"
                         allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        disabled={!queryTemplateId}
+                        options={filteredQueryVersions.map((v) => ({
+                          value: v.id,
+                          label: v.version,
+                        }))}
                       />
                     </Form.Item>
                   </Col>

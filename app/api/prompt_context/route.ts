@@ -18,6 +18,13 @@ interface RenderPromptParams {
   variables: Record<string, any>;
 }
 
+interface RenderFlowParams {
+  envCode: EnvCode;
+  projectCode: string;
+  flow: string; // 流程代码
+  variables: Record<string, any>;
+}
+
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
@@ -303,6 +310,152 @@ export class PromptService {
     return finalVars;
   }
 
+  // 根据流程生成 messages[]
+  async renderFlowToMessages(params: RenderFlowParams): Promise<ChatMessage[]> {
+    // 1. 获取 project_id
+    const projectId = await this.getProjectId(params.projectCode);
+    if (!projectId) {
+      throw new Error(`Project not found: ${params.projectCode}`);
+    }
+
+    // 2. 根据项目ID和流程代码获取流程
+    const flows = await query<{ id: string; code: string; name: string; project_id: string | null }>(
+      `SELECT id, code, name, project_id FROM prompt_flows WHERE code = $1 AND project_id = $2`,
+      [params.flow, projectId]
+    );
+
+    if (flows.length === 0) {
+      throw new Error(`Flow not found: projectCode=${params.projectCode}, flow=${params.flow}`);
+    }
+
+    const flow = flows[0];
+
+    // 3. 获取 environment_id
+    const environmentId = await this.getEnvironmentId(params.envCode);
+
+    // 4. 获取流程下的所有步骤（按 step_order 排序）
+    const steps = await query<{
+      id: string;
+      flow_id: string;
+      step_order: number;
+      template_id: string;
+      version_strategy: string;
+      fixed_version_id: string | null;
+      optional: boolean;
+    }>(
+      `SELECT id, flow_id, step_order, template_id, version_strategy, fixed_version_id, optional
+       FROM prompt_flow_steps
+       WHERE flow_id = $1
+       ORDER BY step_order ASC`,
+      [flow.id]
+    );
+
+    if (steps.length === 0) {
+      throw new Error(`No steps found for flow: ${flow.code}`);
+    }
+
+    // 5. 为每个步骤生成 message
+    const messages: ChatMessage[] = [];
+
+    for (const step of steps) {
+      // 5.1 获取模板信息（包含 role）
+      const templates = await query<{
+        id: string;
+        logical_key: string;
+        scope: Scope;
+        role: PromptRole;
+        current_version_id: string | null;
+      }>(
+        `SELECT id, logical_key, scope, role, current_version_id
+         FROM prompt_templates
+         WHERE id = $1 AND status <> 'deprecated'`,
+        [step.template_id]
+      );
+
+      if (templates.length === 0) {
+        console.warn(`Template not found for step ${step.id}, skipping`);
+        continue;
+      }
+
+      const template = templates[0];
+
+      // 5.2 根据版本策略获取模板版本
+      let versionId: string | null = null;
+
+      if (step.version_strategy === 'pinned' && step.fixed_version_id) {
+        // 使用固定版本
+        versionId = step.fixed_version_id;
+      } else {
+        // 使用 latest 策略：先查环境映射，再查 current_version_id，最后查最新 active 版本
+        const envVersions = await query<{ version_id: string; traffic_percent: number }>(
+          `SELECT version_id, traffic_percent
+           FROM prompt_env_versions
+           WHERE environment_id = $1
+             AND template_id = $2
+             AND enabled = TRUE`,
+          [environmentId, template.id]
+        );
+
+        if (envVersions.length > 0) {
+          // 简单加权随机
+          const total = envVersions.reduce((s, v) => s + v.traffic_percent, 0);
+          const r = Math.random() * total;
+          let acc = 0;
+          for (const v of envVersions) {
+            acc += v.traffic_percent;
+            if (r <= acc) {
+              versionId = v.version_id;
+              break;
+            }
+          }
+        }
+
+        // 如果环境映射为空，回退到模板的 current_version_id
+        if (!versionId && template.current_version_id) {
+          versionId = template.current_version_id;
+        }
+
+        // 如果依然没有，回退到最新 active 版本
+        if (!versionId) {
+          const latestVersions = await query<{ id: string }>(
+            `SELECT id
+             FROM prompt_template_versions
+             WHERE template_id = $1
+               AND status = 'active'
+             ORDER BY created_at DESC
+             LIMIT 1`,
+            [template.id]
+          );
+          if (latestVersions.length > 0) {
+            versionId = latestVersions[0].id;
+          }
+        }
+      }
+
+      if (!versionId) {
+        console.warn(`No version found for template ${template.id} in step ${step.id}, skipping`);
+        continue;
+      }
+
+      // 5.3 获取模板版本内容
+      const version = await this.getVersion(versionId);
+
+      // 5.4 拉取变量定义并校验
+      const finalVars = await this.resolveAndValidateVars(versionId, params.variables);
+
+      // 5.5 渲染模板
+      const content = renderTemplate(version.template_text, finalVars);
+
+      // 5.6 转换为 OpenAI messages[] 结构
+      messages.push({
+        role: mapRole(template.role),
+        content
+      });
+    }
+
+    return messages;
+  }
+
   // 对外：直接返回 OpenAI messages[]
   async renderToMessages(params: RenderPromptParams): Promise<ChatMessage[]> {
     // 1. 获取 project_id（如果需要）
@@ -354,6 +507,11 @@ export class PromptService {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // 打印入参日志
+    console.log("=== Prompt Context API 请求开始 ===");
+    console.log("入参:", JSON.stringify(body, null, 2));
+    
     const {
       envCode,
       logicalKey,
@@ -362,62 +520,111 @@ export async function POST(request: NextRequest) {
       sceneCode,
       role,
       language,
-      variables
+      variables,
+      flow // 新增：流程代码参数
     } = body;
 
-    // 参数验证
-    if (!envCode || !logicalKey || !scope || !role || !variables) {
-      return NextResponse.json(
-        { error: "缺少必需参数: envCode, logicalKey, scope, role, variables" },
-        { status: 400 }
-      );
-    }
-
-    // 验证枚举值
-    const validEnvCodes: EnvCode[] = ['dev', 'staging', 'prod'];
-    const validScopes: Scope[] = ['global', 'project', 'scene'];
-    const validRoles: PromptRole[] = ['system', 'user', 'assistant', 'tool', 'fewshot'];
-
-    if (!validEnvCodes.includes(envCode)) {
-      return NextResponse.json(
-        { error: `无效的 envCode: ${envCode}` },
-        { status: 400 }
-      );
-    }
-    if (!validScopes.includes(scope)) {
-      return NextResponse.json(
-        { error: `无效的 scope: ${scope}` },
-        { status: 400 }
-      );
-    }
-    if (!validRoles.includes(role)) {
-      return NextResponse.json(
-        { error: `无效的 role: ${role}` },
-        { status: 400 }
-      );
-    }
-
-    // 创建服务实例并渲染
+    // 创建服务实例
     const service = new PromptService();
-    const messages = await service.renderToMessages({
-      envCode,
-      logicalKey,
-      scope,
-      projectCode,
-      sceneCode,
-      role,
-      language: language || 'zh-CN',
-      variables
-    });
 
-    return NextResponse.json({
-      success: true,
-      messages
-    });
+    // 判断是流程模式还是单模板模式
+    if (flow && projectCode) {
+      // 流程模式：根据 projectCode 和 flow 生成 messages[]
+      if (!envCode || !variables) {
+        return NextResponse.json(
+          { error: "流程模式缺少必需参数: envCode, projectCode, flow, variables" },
+          { status: 400 }
+        );
+      }
+
+      // 验证枚举值
+      const validEnvCodes: EnvCode[] = ['dev', 'staging', 'prod'];
+      if (!validEnvCodes.includes(envCode)) {
+        return NextResponse.json(
+          { error: `无效的 envCode: ${envCode}` },
+          { status: 400 }
+        );
+      }
+
+      const messages = await service.renderFlowToMessages({
+        envCode,
+        projectCode,
+        flow,
+        variables
+      });
+
+      // 打印出参日志
+      console.log("=== Prompt Context API 请求成功（流程模式）===");
+      console.log("出参:", JSON.stringify({ success: true, messages }, null, 2));
+
+      return NextResponse.json({
+        success: true,
+        messages
+      });
+    } else {
+      // 单模板模式：原有逻辑
+      // 参数验证
+      if (!envCode || !logicalKey || !scope || !role || !variables) {
+        return NextResponse.json(
+          { error: "缺少必需参数: envCode, logicalKey, scope, role, variables" },
+          { status: 400 }
+        );
+      }
+
+      // 验证枚举值
+      const validEnvCodes: EnvCode[] = ['dev', 'staging', 'prod'];
+      const validScopes: Scope[] = ['global', 'project', 'scene'];
+      const validRoles: PromptRole[] = ['system', 'user', 'assistant', 'tool', 'fewshot'];
+
+      if (!validEnvCodes.includes(envCode)) {
+        return NextResponse.json(
+          { error: `无效的 envCode: ${envCode}` },
+          { status: 400 }
+        );
+      }
+      if (!validScopes.includes(scope)) {
+        return NextResponse.json(
+          { error: `无效的 scope: ${scope}` },
+          { status: 400 }
+        );
+      }
+      if (!validRoles.includes(role)) {
+        return NextResponse.json(
+          { error: `无效的 role: ${role}` },
+          { status: 400 }
+        );
+      }
+
+      const messages = await service.renderToMessages({
+        envCode,
+        logicalKey,
+        scope,
+        projectCode,
+        sceneCode,
+        role,
+        language: language || 'zh-CN',
+        variables
+      });
+
+      // 打印出参日志
+      console.log("=== Prompt Context API 请求成功（单模板模式）===");
+      console.log("出参:", JSON.stringify({ success: true, messages }, null, 2));
+
+      return NextResponse.json({
+        success: true,
+        messages
+      });
+    }
   } catch (error: any) {
-    console.error("Prompt context error:", error);
+    console.error("=== Prompt Context API 请求失败 ===");
+    console.error("错误信息:", error.message || "处理请求失败");
+    console.error("错误堆栈:", error.stack);
+    
+    const errorResponse = { error: error.message || "处理请求失败" };
+    console.log("出参:", JSON.stringify(errorResponse, null, 2));
+    
     return NextResponse.json(
-      { error: error.message || "处理请求失败" },
+      errorResponse,
       { status: 500 }
     );
   }

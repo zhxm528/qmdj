@@ -605,10 +605,10 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // 软删除对话（设置 deleted_at）
+    // 软删除对话（设置 deleted_at 和 status = 0）
     await query(
       `UPDATE conversations 
-       SET deleted_at = NOW()
+       SET deleted_at = NOW(), status = 0
        WHERE id = $1 AND user_id = $2`,
       [parseInt(conversationId, 10), userId]
     );

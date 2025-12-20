@@ -170,46 +170,82 @@ export async function POST(request: NextRequest) {
     }
 
     // 构建系统提示词（system prompt）
-    // 优先使用传入的 systemPrompt，其次从数据库获取，最后回退到硬编码的默认值
+    // 优先使用传入的 systemPrompt，其次从数据库获取流程，最后回退到硬编码的默认值
     const defaultSystemPrompt = `你是一位**资深的奇门遁甲大师，同时也是一位**经验丰富的心理咨询师。你精通传统奇门遁甲的理论与实战，并具备良好的同理心和沟通能力，能够在专业解盘的同时，给予问事者情绪上的支持与建设性引导。`;
     
-    // 从数据库获取系统提示词（带回退机制）
-    let finalSystemPrompt: string;
+    // 从数据库获取提示词（使用流程接口，带回退机制）
+    let messages: Array<{ role: "system" | "user" | "assistant" | "tool"; content: string }> = [];
     
     if (systemPrompt) {
-      // 优先使用传入的 systemPrompt
-      finalSystemPrompt = systemPrompt;
+      // 优先使用传入的 systemPrompt，构建单个 system message
+      messages = [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+      ];
     } else {
       try {
-        // 尝试从数据库获取提示词
+        // 尝试从数据库获取提示词（使用流程接口）
         const service = new PromptService();
         const envCode = (process.env.ENV as 'dev' | 'staging' | 'prod') || 'dev';
         
         // 使用传入的 sceneCode，如果没有则使用默认值 'analyze_chart'
         const finalSceneCode = sceneCode || 'analyze_chart';
-        console.log("从数据库获取提示词模板，使用的 sceneCode:", finalSceneCode);
+        console.log("从数据库获取提示词模板（流程模式），使用的 sceneCode:", finalSceneCode);
         
-        const messages = await service.renderToMessages({
+        // 构建流程代码，固定使用 'flow.qmdj.kanpan.default'
+        const flowCode = 'flow.qmdj.kanpan.default';
+        
+        // 构建 variables 对象，包含排盘信息和问事信息
+        const variables: Record<string, any> = {
+          chart_json: paipanDescription,
+          question: questionText || '',
+        };
+        
+        // 如果有问事详情，添加到 variables
+        if (questionData && typeof questionData === "object") {
+          if (questionData.category_code) {
+            variables.category_code = questionData.category_code;
+          }
+          if (questionData.subcategory_code) {
+            variables.subcategory_code = questionData.subcategory_code;
+          }
+          if (questionData.reason) {
+            variables.reason = questionData.reason;
+          }
+          if (questionData.extra) {
+            variables.extra = questionData.extra;
+          }
+        }
+        
+        const flowMessages = await service.renderFlowToMessages({
           envCode,
-          logicalKey: 'qmdj.master.analyze_chart',
-          scope: 'scene',
           projectCode: 'qmdj',
-          sceneCode: finalSceneCode,
-          role: 'system',
-          language: 'zh-CN',
-          variables: {}
+          flow: flowCode,
+          variables
         });
         
-        if (messages && messages.length > 0 && messages[0].content) {
-          finalSystemPrompt = messages[0].content;
+        if (flowMessages && flowMessages.length > 0) {
+          messages = flowMessages;
         } else {
           // 如果返回空，回退到默认值
-          finalSystemPrompt = defaultSystemPrompt;
+          messages = [
+            {
+              role: "system",
+              content: defaultSystemPrompt,
+            },
+          ];
         }
       } catch (error) {
         // 数据库获取失败，回退到硬编码的默认提示词
-        console.error('Failed to load prompt from database, using fallback:', error);
-        finalSystemPrompt = defaultSystemPrompt;
+        console.error('Failed to load prompt from database (flow mode), using fallback:', error);
+        messages = [
+          {
+            role: "system",
+            content: defaultSystemPrompt,
+          },
+        ];
       }
     }
     
@@ -255,17 +291,12 @@ export async function POST(request: NextRequest) {
       "Authorization": `Bearer ${deepseekConfig.apiKey}`,
     };
     
-    // 构建 messages 数组
-    const messages: Array<{ role: "system" | "user"; content: string }> = [
-      {
-        role: "system",
-        content: finalSystemPrompt,
-      },
-      {
-        role: "user",
-        content: paipanPrompt,
-      },
-    ];
+    // 在流程 messages 基础上，添加排盘信息和问事信息
+    // 添加排盘信息的 user message
+    messages.push({
+      role: "user",
+      content: paipanPrompt,
+    });
     
     // 如果有问事内容，单独作为一个 user message
     if (questionPrompt) {

@@ -34,9 +34,9 @@ interface QueryParams {
   page?: number;
   pageSize?: number;
   flow_id?: string;
-  template_logical_key?: string; // 模板逻辑键，支持模糊查询
+  template_id?: string; // 模板ID，精确查询
   version_strategy?: string;
-  fixed_version?: string; // 版本号，支持模糊查询
+  fixed_version_id?: string; // 固定版本ID，精确查询
 }
 
 // GET：查询流程步骤列表
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
       page: parseInt(searchParams.get("page") || "1", 10),
       pageSize: parseInt(searchParams.get("pageSize") || "10", 10),
       flow_id: searchParams.get("flow_id") || undefined,
-      template_logical_key: searchParams.get("template_logical_key") || undefined,
+      template_id: searchParams.get("template_id") || undefined,
       version_strategy: searchParams.get("version_strategy") || undefined,
-      fixed_version: searchParams.get("fixed_version") || undefined,
+      fixed_version_id: searchParams.get("fixed_version_id") || undefined,
     };
 
     const page = params.page || 1;
@@ -96,10 +96,6 @@ export async function GET(request: NextRequest) {
     const queryValues: any[] = [];
     let paramIndex = 1;
 
-    // 判断是否需要 JOIN 相关表
-    const needJoinTemplate = !!params.template_logical_key;
-    const needJoinVersion = !!params.fixed_version;
-
     // 流程ID查询
     if (params.flow_id) {
       whereConditions.push(`ptv.flow_id = $${paramIndex}`);
@@ -107,10 +103,10 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
-    // 模板逻辑键模糊查询（需要 JOIN prompt_templates）
-    if (params.template_logical_key) {
-      whereConditions.push(`pt.logical_key ILIKE $${paramIndex}`);
-      queryValues.push(`%${params.template_logical_key}%`);
+    // 模板ID精确查询
+    if (params.template_id) {
+      whereConditions.push(`ptv.template_id = $${paramIndex}`);
+      queryValues.push(params.template_id);
       paramIndex++;
     }
 
@@ -121,10 +117,10 @@ export async function GET(request: NextRequest) {
       paramIndex++;
     }
 
-    // 固定版本号模糊查询（需要 JOIN prompt_template_versions）
-    if (params.fixed_version) {
-      whereConditions.push(`pv.version ILIKE $${paramIndex}`);
-      queryValues.push(`%${params.fixed_version}%`);
+    // 固定版本ID精确查询
+    if (params.fixed_version_id) {
+      whereConditions.push(`ptv.fixed_version_id = $${paramIndex}`);
+      queryValues.push(params.fixed_version_id);
       paramIndex++;
     }
 
@@ -132,20 +128,10 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${whereConditions.join(" AND ")}`
       : "";
 
-    // JOIN 子句
-    let joinClause = "";
-    if (needJoinTemplate) {
-      joinClause += ` LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id`;
-    }
-    if (needJoinVersion) {
-      joinClause += ` LEFT JOIN prompt_template_versions pv ON ptv.fixed_version_id = pv.id`;
-    }
-
     // 计算总数
     const countQuery = `
       SELECT COUNT(*) as total 
       FROM prompt_flow_steps ptv
-      ${joinClause}
       ${whereClause}
     `;
     console.log("[prompt_flow_steps] 查询总数 SQL:", countQuery);
@@ -165,7 +151,6 @@ export async function GET(request: NextRequest) {
         ptv.optional,
         ptv.created_at
       FROM prompt_flow_steps ptv
-      ${joinClause}
       ${whereClause}
       ORDER BY ptv.flow_id, ptv.step_order ASC
     `;

@@ -169,7 +169,85 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { project_id, code, name, description } = body;
+    const { project_id, code, name, description, copy_from_id } = body;
+
+    // 如果是复制操作
+    if (copy_from_id) {
+      // 查询原始流程信息
+      const sourceFlow = await query(
+        `SELECT project_id, code, name, description FROM prompt_flows WHERE id = $1`,
+        [copy_from_id]
+      );
+
+      if (!sourceFlow || sourceFlow.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "源流程不存在" },
+          { status: 404 }
+        );
+      }
+
+      const source = sourceFlow[0];
+
+      // 生成新的流程代码和名称（添加副本标识）
+      const newCode = `${source.code}_copy_${Date.now()}`;
+      const newName = `${source.name} (副本)`;
+
+      // 创建新流程
+      const insertFlowQuery = `
+        INSERT INTO prompt_flows (project_id, code, name, description)
+        VALUES ($1, $2, $3, $4)
+        RETURNING *
+      `;
+
+      const newFlowResult = await query(insertFlowQuery, [
+        source.project_id,
+        newCode,
+        newName,
+        source.description,
+      ]);
+
+      if (!newFlowResult || newFlowResult.length === 0) {
+        return NextResponse.json(
+          { success: false, error: "复制流程失败" },
+          { status: 500 }
+        );
+      }
+
+      const newFlowId = newFlowResult[0].id;
+
+      // 查询原始流程的所有步骤
+      const sourceSteps = await query(
+        `SELECT flow_id, step_order, template_id, version_strategy, fixed_version_id, optional
+         FROM prompt_flow_steps
+         WHERE flow_id = $1
+         ORDER BY step_order ASC`,
+        [copy_from_id]
+      );
+
+      // 复制所有步骤
+      if (sourceSteps && sourceSteps.length > 0) {
+        for (const step of sourceSteps) {
+          const insertStepQuery = `
+            INSERT INTO prompt_flow_steps (flow_id, step_order, template_id, version_strategy, fixed_version_id, optional)
+            VALUES ($1, $2, $3, $4, $5, $6)
+          `;
+          await query(insertStepQuery, [
+            newFlowId,
+            step.step_order,
+            step.template_id,
+            step.version_strategy,
+            step.fixed_version_id,
+            step.optional,
+          ]);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        data: newFlowResult[0],
+        message: "复制成功",
+      });
+    }
 
     // 验证必填字段
     if (!code) {

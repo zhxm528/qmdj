@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, startTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Layout from "@/components/Layout";
@@ -12,10 +12,7 @@ import { getFourPillars } from "@/lib/ganzhi";
 import { Button, ConfigProvider, Input, Radio, Dropdown, MenuProps, Tooltip, Modal } from "antd";
 import {
   MoreOutlined,
-  ShareAltOutlined,
-  UserAddOutlined,
   EditOutlined,
-  FolderOutlined,
   InboxOutlined,
   DeleteOutlined,
   StarOutlined,
@@ -101,6 +98,9 @@ export default function HomePage() {
   const [hour, setHour] = useState(getCurrentHour());
   const [minute, setMinute] = useState(getCurrentMinute());
   const [dateInfo, setDateInfo] = useState<DateInfo | null>(null);
+  const isRestoringPaipanRef = useRef(false); // 使用 ref 来跟踪是否正在恢复盘面数据，避免触发重新渲染
+  const [isRestoringPaipan, setIsRestoringPaipan] = useState(false); // 用于阻止子组件的自动更新
+  const [restoreKey, setRestoreKey] = useState(0); // 用于强制重新渲染日期和时间选择器
   const [paipanResult, setPaipanResult] = useState<PaipanResult | null>(null);
   const [dipangan, setDipangan] = useState<Record<number, string> | null>(null);
   const [tianpangan, setTianpangan] = useState<Record<number, string> | null>(null);
@@ -117,6 +117,7 @@ export default function HomePage() {
   const [isQipanExpanded, setIsQipanExpanded] = useState(false);
   const [isPaipanExpanded, setIsPaipanExpanded] = useState(true);
   const [question, setQuestion] = useState<string>("");
+  const questionInputRef = useRef<any>(null); // 问事输入框的引用
   const [aiKanpanResult, setAiKanpanResult] = useState<string | null>(null);
   const [aiKanpanLoading, setAiKanpanLoading] = useState(false);
   const [promptWenshiResult, setPromptWenshiResult] = useState<any>(null);
@@ -158,6 +159,11 @@ export default function HomePage() {
 
   // 当日期和小时都选择后，自动获取日期信息
   useEffect(() => {
+    // 如果正在恢复盘面数据，不自动获取日期信息
+    if (isRestoringPaipanRef.current) {
+      return;
+    }
+
     if (!date || !hour) return;
 
     const parts = date.split("-");
@@ -662,59 +668,6 @@ export default function HomePage() {
         console.warn("问事提炼时出错:", promptWenshiError);
       }
 
-      // 获取提示词模板
-      let systemPrompt: string | null = null;
-      try {
-        const chartJson = {
-          dateInfo,
-          dipangan: dipangan || {},
-          tianpangan: tianpangan || {},
-          dibashen: dibashen || {},
-          tianbashen: tianbashen || {},
-          jiuxing: jiuxing || {},
-          bamen: bamen || {},
-          kongwang: kongwang || {},
-          yima: yima || {},
-          jigong: jigong || {},
-          zhiShiDoor,
-          zhiFuPalace,
-          grid: paipanResult.grid,
-        };
-
-        const promptContextResponse = await fetch("/api/prompt_context", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            envCode: "dev",
-            logicalKey: "qmdj.master.analyze_chart",
-            scope: "scene",
-            projectCode: "qmdj",
-            sceneCode: sceneCode, // 使用用户选择的场景代码
-            role: "system",
-            language: "zh-CN",
-            variables: {
-              chart_json: JSON.stringify(chartJson),
-              question: refinedQuestionData?.short_prompt_zh || refinedQuestion,
-              ask_time: new Date().toISOString(),
-            },
-          }),
-        });
-
-        if (promptContextResponse.ok) {
-          const promptContextData = await promptContextResponse.json();
-          if (promptContextData.success && promptContextData.messages) {
-            const systemMessage = promptContextData.messages.find(
-              (msg: any) => msg.role === "system"
-            );
-            if (systemMessage) {
-              systemPrompt = systemMessage.content;
-            }
-          }
-        }
-      } catch (promptContextError: any) {
-        console.warn("获取提示词模板时出错:", promptContextError);
-      }
-
       // 调用看盘 API
       const kanpanResponse = await fetch("/api/kanpan", {
         method: "POST",
@@ -735,7 +688,6 @@ export default function HomePage() {
           zhiShiDoor,
           zhiFuPalace,
           sceneCode: sceneCode, // 传递场景代码
-          ...(systemPrompt ? { systemPrompt } : {}),
         }),
       });
 
@@ -869,18 +821,278 @@ export default function HomePage() {
         if (data.success && data.conversation) {
           setConversationRecords(data.conversation.records || []);
           setSelectedConversationId(convId);
+          // 返回对话数据，包含 pan_id 和 pan_uid
+          return data.conversation;
         }
       }
     } catch (error) {
       console.error("加载对话记录失败:", error);
     }
+    return null;
+  };
+
+  // 从 pan_json 解析并回显盘面数据
+  const restorePaipanFromJson = (panJson: any) => {
+    try {
+      // 先设置标志，阻止自动获取日期信息和子组件的自动更新
+      isRestoringPaipanRef.current = true;
+      setIsRestoringPaipan(true);
+      
+      // 解析 dateInfo
+      if (panJson.input?.calendar) {
+        const calendar = panJson.input.calendar;
+        const gregorianTime = calendar.gregorian || "";
+        
+        // 解析日期时间：格式可能是 "2024-01-01 12:00:00" 或 "2024-01-01T12:00:00"
+        let dateStr = "";
+        let timeStr = "";
+        
+        if (gregorianTime) {
+          if (gregorianTime.includes("T")) {
+            // ISO 格式：2024-01-01T12:00:00
+            const parts = gregorianTime.split("T");
+            dateStr = parts[0] || "";
+            timeStr = parts[1] || "";
+            // 移除时区信息（如果有）
+            if (timeStr) {
+              timeStr = timeStr.split("+")[0].split("Z")[0];
+            }
+          } else if (gregorianTime.includes(" ")) {
+            // 空格分隔格式：2024-01-01 12:00:00
+            const parts = gregorianTime.split(" ");
+            dateStr = parts[0] || "";
+            timeStr = parts[1] || "";
+          } else {
+            // 只有日期
+            dateStr = gregorianTime;
+          }
+        }
+        
+        // 构建 dateInfo（先构建，避免依赖 useEffect）
+        const dunInfo = panJson.input.dun || {};
+        const dateInfoData: DateInfo = {
+          gregorian: calendar.gregorian || "",
+          lunar: calendar.lunar || "",
+          season: calendar.jieqi || "",
+          fourPillars: {
+            year: calendar.yearGanzhi || "",
+            month: calendar.monthGanzhi || "",
+            day: calendar.dayGanzhi || "",
+            hour: calendar.hourGanzhi || "",
+          },
+          dunType: dunInfo.yinYang === "yang" ? "阳遁" : "阴遁",
+          ju: dunInfo.juNumber || 0,
+        };
+        
+        // 解析日期和时间字符串
+        let formattedDate = date;
+        let hourStr = hour;
+        let minuteStr = minute;
+        
+        if (dateStr) {
+          const dateParts = dateStr.split("-");
+          if (dateParts.length >= 3) {
+            const year = dateParts[0]?.trim() || "";
+            const month = dateParts[1]?.trim() || "";
+            const day = dateParts[2]?.trim() || "";
+            
+            if (year && month && day) {
+              // 确保日期格式正确：YYYY-MM-DD（补零）
+              formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+            }
+          }
+        }
+        
+        if (timeStr) {
+          // 解析时间：格式可能是 "12:00:00" 或 "12:00"
+          const timeParts = timeStr.split(":");
+          if (timeParts.length >= 2) {
+            const hourRaw = timeParts[0]?.trim() || "0";
+            const minuteRaw = timeParts[1]?.trim() || "0";
+            
+            // 确保时间格式正确：HH 和 MM（补零）
+            hourStr = hourRaw.padStart(2, "0");
+            minuteStr = minuteRaw.padStart(2, "0");
+            
+            // 验证范围
+            const hourNum = parseInt(hourStr, 10);
+            const minuteNum = parseInt(minuteStr, 10);
+            
+            if (!(hourNum >= 0 && hourNum <= 23 && minuteNum >= 0 && minuteNum <= 59)) {
+              console.warn("时间范围无效:", hourStr, minuteStr);
+              hourStr = "00";
+              minuteStr = "00";
+            }
+          } else {
+            console.warn("时间格式不正确:", timeStr);
+            hourStr = "00";
+            minuteStr = "00";
+          }
+        } else {
+          console.warn("没有时间信息，使用默认值");
+          hourStr = "00";
+          minuteStr = "00";
+        }
+        
+        // 先设置 dateInfo（不触发 useEffect，因为 useEffect 只依赖 date 和 hour）
+        setDateInfo(dateInfoData);
+        
+        // 检查是否需要更新日期和时间（避免不必要的状态更新）
+        const needUpdateDate = formattedDate !== date;
+        const needUpdateHour = hourStr !== hour;
+        const needUpdateMinute = minuteStr !== minute;
+        
+        // 只有在值真正改变时才更新，避免触发不必要的 useEffect
+        if (needUpdateDate || needUpdateHour || needUpdateMinute) {
+          // 使用 requestAnimationFrame 确保在下一个渲染周期更新
+          // 这样可以确保 isRestoringPaipanRef.current 已经设置为 true
+          requestAnimationFrame(() => {
+            // 批量更新日期和时间状态
+            if (needUpdateDate) {
+              setDate(formattedDate);
+            }
+            if (needUpdateHour) {
+              setHour(hourStr);
+            }
+            if (needUpdateMinute) {
+              setMinute(minuteStr);
+            }
+            
+            // 更新 key 以强制重新渲染日期和时间选择器
+            // 这样可以避免它们内部的 useEffect 被触发
+            setRestoreKey(prev => prev + 1);
+            
+            // 延迟重置标志，确保所有 useEffect 检查都完成
+            // 使用较长的延迟，确保所有相关的 useEffect 都能检查到标志
+            setTimeout(() => {
+              isRestoringPaipanRef.current = false;
+              setIsRestoringPaipan(false);
+            }, 500);
+          });
+        } else {
+          // 如果不需要更新，直接重置标志
+          isRestoringPaipanRef.current = false;
+          setIsRestoringPaipan(false);
+        }
+      }
+
+      // 解析盘面数据
+      if (panJson.chart?.palaces) {
+        const palaces = panJson.chart.palaces;
+        // 宫位编号到 palaceId 的映射（palaceId 格式为 "row-col"）
+        // 根据 PALACE_TO_ROW_COL 映射：{4: {row:1, col:1}, 9: {row:1, col:2}, ...}
+        const palaceIdToNo: Record<string, number> = {
+          "1-1": 4, "1-2": 9, "1-3": 2,
+          "2-1": 3, "2-2": 5, "2-3": 7,
+          "3-1": 8, "3-2": 1, "3-3": 6,
+        };
+
+        const dipanganMap: Record<number, string> = {};
+        const tianpanganMap: Record<number, string> = {};
+        const dibashenMap: Record<number, string> = {};
+        const tianbashenMap: Record<number, string> = {};
+        const jiuxingMap: Record<number, string> = {};
+        const bamenMap: Record<number, string> = {};
+        const kongwangMap: Record<number, boolean> = {};
+        const yimaMap: Record<number, boolean> = {};
+        const jigongMap: Record<number, { diGan?: string; tianGan?: string }> = {};
+
+        palaces.forEach((palace: any) => {
+          const palaceNo = palaceIdToNo[palace.palaceId];
+          if (palaceNo) {
+            if (palace.earthPlateStem) dipanganMap[palaceNo] = palace.earthPlateStem;
+            if (palace.heavenPlateStem) tianpanganMap[palaceNo] = palace.heavenPlateStem;
+            if (palace.star) {
+              // 移除"星"字
+              jiuxingMap[palaceNo] = palace.star.replace("星", "");
+            }
+            if (palace.door) {
+              // 移除"门"字
+              bamenMap[palaceNo] = palace.door.replace("门", "");
+            }
+            if (palace.deity) {
+              // 判断是天八神还是地八神（这里简化处理，优先使用天八神）
+              tianbashenMap[palaceNo] = palace.deity;
+            }
+            if (palace.isVoid) kongwangMap[palaceNo] = true;
+            if (palace.isHorse) yimaMap[palaceNo] = true;
+            if (palace.hiddenStems && palace.hiddenStems.length > 0) {
+              jigongMap[palaceNo] = {
+                diGan: palace.hiddenStems[0] || undefined,
+                tianGan: palace.hiddenStems[1] || undefined,
+              };
+            }
+          }
+        });
+
+        setDipangan(dipanganMap);
+        setTianpangan(tianpanganMap);
+        setDibashen(dibashenMap);
+        setTianbashen(tianbashenMap);
+        setJiuxing(jiuxingMap);
+        setBamen(bamenMap);
+        setKongwang(kongwangMap);
+        setYima(yimaMap);
+        setJigong(jigongMap);
+
+        // 解析值符位置
+        if (panJson.chart.specialPositions?.zhiFu) {
+          const zhiFuPalaceId = panJson.chart.specialPositions.zhiFu.palaceId;
+          const zhiFuPalaceNo = palaceIdToNo[zhiFuPalaceId];
+          if (zhiFuPalaceNo) {
+            setZhiFuPalace(zhiFuPalaceNo);
+          }
+        }
+
+        // 构建 grid 数据用于显示
+        const DISPLAY_ORDER = [4, 9, 2, 3, 5, 7, 8, 1, 6];
+        const grid = DISPLAY_ORDER.map((palaceNo) => {
+          const diGan = dipanganMap[palaceNo] || "";
+          const tianGan = tianpanganMap[palaceNo] || "";
+          return {
+            palaceNo,
+            diGan,
+            tianGan,
+          };
+        });
+        setPaipanResult({ grid });
+      }
+      
+      // 注意：标志的重置已经在日期时间设置的回调中处理
+    } catch (error) {
+      console.error("解析盘面数据失败:", error);
+      // 即使出错也要重置标志
+      isRestoringPaipanRef.current = false;
+      setIsRestoringPaipan(false);
+    }
   };
 
   // 选择对话
-  const handleSelectConversation = (convId: number) => {
+  const handleSelectConversation = async (convId: number) => {
     setSelectedConversationId(convId);
     setCurrentConversationId(convId);
-    loadConversationRecords(convId);
+    const conversation = await loadConversationRecords(convId);
+    
+    // 如果对话有 pan_id 或 pan_uid，获取盘面数据并回显
+    if (conversation && (conversation.pan_id || conversation.pan_uid)) {
+      try {
+        // 通过 API 获取盘面数据
+        const panId = conversation.pan_id;
+        const panUid = conversation.pan_uid;
+        
+        // 查询数据库获取 pan_json
+        const response = await fetch(`/api/qimen_pan?pan_id=${panId || ""}&pan_uid=${panUid || ""}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.pan_json) {
+            // 解析并回显盘面数据
+            restorePaipanFromJson(data.pan_json);
+          }
+        }
+      } catch (error) {
+        console.error("获取盘面数据失败:", error);
+      }
+    }
   };
 
   // 创建新对话
@@ -890,6 +1102,18 @@ export default function HomePage() {
     setConversationRecords([]);
     setAiKanpanResult(null);
     setCurrentQuestion("");
+    
+    // 将焦点转移到问事输入框
+    // 使用 setTimeout 确保状态更新完成后再设置焦点
+    setTimeout(() => {
+      if (questionInputRef.current) {
+        // Ant Design Input 组件的 ref 需要通过 input 属性访问原生 input 元素
+        const inputElement = questionInputRef.current?.input || questionInputRef.current;
+        if (inputElement) {
+          inputElement.focus();
+        }
+      }
+    }, 100);
   };
 
   // 开始编辑对话标题（重命名）
@@ -942,18 +1166,6 @@ export default function HomePage() {
     switch (key) {
       case "rename":
         handleStartEditTitle(convId, convTitle);
-        break;
-      case "share":
-        // TODO: 实现分享功能
-        alert("分享功能待实现");
-        break;
-      case "groupChat":
-        // TODO: 实现群聊功能
-        alert("群聊功能待实现");
-        break;
-      case "moveToProject":
-        // TODO: 实现移至项目功能
-        alert("移至项目功能待实现");
         break;
       case "favorite":
         handleToggleFavorite(convId);
@@ -1090,7 +1302,7 @@ export default function HomePage() {
 
     const interval = setInterval(() => {
       setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-    }, 2000); // 每2秒切换一次
+    }, 5000); // 每2秒切换一次
 
     return () => clearInterval(interval);
   }, [aiKanpanLoading, loadingMessages.length]);
@@ -1106,8 +1318,14 @@ export default function HomePage() {
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <DateSelector
+                key={`date-${restoreKey}`}
                 value={date}
-                onChange={setDate}
+                onChange={(newDate) => {
+                  // 如果正在恢复盘面数据，阻止更新
+                  if (!isRestoringPaipan) {
+                    setDate(newDate);
+                  }
+                }}
                 required
               />
               <div className="space-y-2">
@@ -1116,16 +1334,28 @@ export default function HomePage() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <HourSelector
+                    key={`hour-${restoreKey}`}
                     value={hour}
-                    onChange={setHour}
+                    onChange={(newHour) => {
+                      // 如果正在恢复盘面数据，阻止更新
+                      if (!isRestoringPaipan) {
+                        setHour(newHour);
+                      }
+                    }}
                     year={year}
                     month={month}
                     day={day}
                     required
                   />
                   <MinuteSelector
+                    key={`minute-${restoreKey}`}
                     value={minute}
-                    onChange={setMinute}
+                    onChange={(newMinute) => {
+                      // 如果正在恢复盘面数据，阻止更新
+                      if (!isRestoringPaipan) {
+                        setMinute(newMinute);
+                      }
+                    }}
                   />
                 </div>
               </div>
@@ -1141,7 +1371,7 @@ export default function HomePage() {
                 disabled={!date || !hour}
                 className="bg-amber-600 hover:bg-amber-700"
               >
-                启局排盘
+                起局排盘
               </Button>
             </div>
           </div>
@@ -1327,24 +1557,9 @@ export default function HomePage() {
                                   menu={{
                                     items: [
                                       {
-                                        key: "share",
-                                        label: "分享",
-                                        icon: <ShareAltOutlined />,
-                                      },
-                                      {
-                                        key: "groupChat",
-                                        label: "开始群聊",
-                                        icon: <UserAddOutlined />,
-                                      },
-                                      {
                                         key: "rename",
                                         label: "重命名",
                                         icon: <EditOutlined />,
-                                      },
-                                      {
-                                        key: "moveToProject",
-                                        label: "移至项目",
-                                        icon: <FolderOutlined />,
                                       },
                                       {
                                         key: "favorite",
@@ -1413,48 +1628,72 @@ export default function HomePage() {
 
               {/* 右侧：AI分析结果内容区 */}
               <div className="lg:col-span-3">
-                {aiKanpanLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600"></div>
-                    <span className="ml-3 text-gray-600">{loadingMessages[loadingMessageIndex]}</span>
-                  </div>
-                ) : (selectedConversationId && conversationRecords.length > 0) || (aiKanpanResult && currentConversationId) ? (
-                  <div className="space-y-6">
-                    {(selectedConversationId || currentConversationId) && (
-                      <h2 className="text-xl font-bold text-gray-900 mb-4">
-                        {conversations.find((c: any) => c.id === (selectedConversationId || currentConversationId))?.title || "对话详情"}
-                      </h2>
-                    )}
-                    
-                    {/* 显示所有历史记录（从旧到新排序） */}
-                    {conversationRecords.length > 0 && (
-                      <>
-                        {conversationRecords
-                          .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                          .map((record: any) => (
-                            <div key={record.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
-                              {/* 问题 - 靠右对齐，显示原始输入的问题 */}
-                              <div className="flex justify-end">
-                                <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
-                                  <div className="text-gray-800 text-right">{record.original_question || record.question_title}</div>
+                <div className="space-y-6">
+                  {/* 显示对话内容（如果有） */}
+                  {(selectedConversationId && conversationRecords.length > 0) || (aiKanpanResult && currentConversationId) ? (
+                    <>
+                      {(selectedConversationId || currentConversationId) && (
+                        <h2 className="text-xl font-bold text-gray-900 mb-4">
+                          {conversations.find((c: any) => c.id === (selectedConversationId || currentConversationId))?.title || "对话详情"}
+                        </h2>
+                      )}
+                      
+                      {/* 显示所有历史记录（从旧到新排序） */}
+                      {conversationRecords.length > 0 && (
+                        <>
+                          {conversationRecords
+                            .sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                            .map((record: any) => (
+                              <div key={record.id} className="border border-gray-200 rounded-lg p-4 space-y-3">
+                                {/* 问题 - 靠右对齐，显示原始输入的问题 */}
+                                <div className="flex justify-end">
+                                  <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
+                                    <div className="text-gray-800 text-right">{record.original_question || record.question_title}</div>
+                                  </div>
+                                </div>
+                                {/* AI回答 */}
+                                <div className="bg-gray-50 rounded-lg p-4">
+                                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                    {record.ai_analysis}
+                                  </div>
+                                </div>
+                                <div className="text-xs text-gray-500 text-right">
+                                  {new Date(record.created_at).toLocaleString()}
                                 </div>
                               </div>
-                              {/* AI回答 */}
-                              <div className="bg-gray-50 rounded-lg p-4">
-                                <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                  {record.ai_analysis}
-                                </div>
-                              </div>
-                              <div className="text-xs text-gray-500 text-right">
-                                {new Date(record.created_at).toLocaleString()}
-                              </div>
+                            ))}
+                        </>
+                      )}
+                      
+                      {/* 显示当前最新的问事和AI分析（如果有且尚未保存到记录中） */}
+                      {aiKanpanResult && (
+                        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                          {/* 问题 - 靠右对齐，显示原始输入的问题 */}
+                          <div className="flex justify-end">
+                            <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
+                              <div className="text-gray-800 text-right">{currentQuestion || question}</div>
                             </div>
-                          ))}
-                      </>
-                    )}
-                    
-                    {/* 显示当前最新的问事和AI分析（如果有且尚未保存到记录中） */}
-                    {aiKanpanResult && (
+                          </div>
+                          {/* AI回答 */}
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                              {aiKanpanResult}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* AI分析时，在最下方显示轮播提示语 */}
+                      {aiKanpanLoading && (
+                        <div className="flex items-center justify-center py-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
+                          <span className="ml-3 text-gray-700 font-medium">{loadingMessages[loadingMessageIndex]}</span>
+                        </div>
+                      )}
+                    </>
+                  ) : aiKanpanResult ? (
+                    <>
+                      {/* 如果没有对话ID，只显示当前结果 */}
                       <div className="border border-gray-200 rounded-lg p-4 space-y-3">
                         {/* 问题 - 靠右对齐，显示原始输入的问题 */}
                         <div className="flex justify-end">
@@ -1469,32 +1708,23 @@ export default function HomePage() {
                           </div>
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : aiKanpanResult ? (
-                  <div className="space-y-6">
-                    {/* 如果没有对话ID，只显示当前结果 */}
-                    <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-                      {/* 问题 - 靠右对齐，显示原始输入的问题 */}
-                      <div className="flex justify-end">
-                        <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
-                          <div className="text-gray-800 text-right">{currentQuestion || question}</div>
+                      
+                      {/* AI分析时，在最下方显示轮播提示语 */}
+                      {aiKanpanLoading && (
+                        <div className="flex items-center justify-center py-4 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
+                          <span className="ml-3 text-gray-700 font-medium">{loadingMessages[loadingMessageIndex]}</span>
                         </div>
-                      </div>
-                      {/* AI回答 */}
-                      <div className="bg-gray-50 rounded-lg p-4">
-                        <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
-                          {aiKanpanResult}
-                        </div>
-                      </div>
+                      )}
+                    </>
+                  ) : !aiKanpanLoading && (
+                    /* 只有在不加载且没有内容时才显示提示 */
+                    <div className="text-center py-12 text-gray-500">
+                      <p>你的感受很重要，我们从最想解决的地方开始</p>
+                      <p className="text-sm mt-2">点击&ldquo;看盘&rdquo;获取解读；也可以打开左侧&ldquo;历史对话&rdquo;接着聊</p>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <p>你的感受很重要，我们从最想解决的地方开始</p>
-                    <p className="text-sm mt-2">点击&ldquo;看盘&rdquo;获取解读；也可以打开左侧&ldquo;历史对话&rdquo;接着聊</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1512,6 +1742,7 @@ export default function HomePage() {
                   </span>
                 </div>
                 <Input
+                  ref={questionInputRef}
                   value={question}
                   onChange={(e) => {
                     if (e.target.value.length <= 200) {
@@ -1579,7 +1810,7 @@ export default function HomePage() {
                               content: (
                                 <div className="space-y-2 mt-4">
                                   <p>1. 选择日期和时间</p>
-                                  <p>2. 点击&ldquo;启局排盘&rdquo;按钮完成排盘</p>
+                                  <p>2. 点击&ldquo;起局排盘&rdquo;按钮完成排盘</p>
                                   <p>3. 在&ldquo;问事&rdquo;输入框中输入要问的事情</p>
                                   <p>4. 点击&ldquo;看盘&rdquo;按钮进行分析</p>
                                 </div>

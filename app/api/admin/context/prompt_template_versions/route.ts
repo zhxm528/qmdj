@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
 
     const page = parseInt(searchParams.get("page") || "1", 10);
     const pageSize = parseInt(searchParams.get("pageSize") || "10", 10);
+    const template_id = searchParams.get("template_id") || undefined;
     const template_logical_key = searchParams.get("template_logical_key") || undefined;
     const status = searchParams.get("status") || undefined;
 
@@ -77,6 +78,16 @@ export async function GET(request: NextRequest) {
     const whereConditions: string[] = [];
     const queryValues: any[] = [];
     let paramIndex = 1;
+
+    // 判断是否需要 JOIN prompt_templates 表
+    const needJoinTemplate = !!template_logical_key;
+
+    // 模板ID精确查询
+    if (template_id) {
+      whereConditions.push(`ptv.template_id = $${paramIndex}`);
+      queryValues.push(template_id);
+      paramIndex++;
+    }
 
     // 模板逻辑键模糊查询（需要 JOIN）
     if (template_logical_key) {
@@ -96,11 +107,16 @@ export async function GET(request: NextRequest) {
       ? `WHERE ${whereConditions.join(" AND ")}`
       : "";
 
-    // 计算总数（需要 JOIN prompt_templates 表）
+    // JOIN 子句
+    const joinClause = needJoinTemplate 
+      ? `LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id`
+      : "";
+
+    // 计算总数
     const countQuery = `
       SELECT COUNT(*) as total 
       FROM prompt_template_versions ptv
-      LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id
+      ${joinClause}
       ${whereClause}
     `;
     console.log("[prompt_template_versions] 查询总数 SQL:", countQuery);
@@ -108,7 +124,7 @@ export async function GET(request: NextRequest) {
     const countResult = await query(countQuery, queryValues);
     const total = parseInt(countResult[0]?.total || "0", 10);
 
-    // 查询数据（需要 JOIN prompt_templates 表以支持按 logical_key 搜索）
+    // 查询数据
     let dataQuery = `
       SELECT
         ptv.id,
@@ -122,7 +138,7 @@ export async function GET(request: NextRequest) {
         ptv.created_at,
         ptv.updated_at
       FROM prompt_template_versions ptv
-      LEFT JOIN prompt_templates pt ON ptv.template_id = pt.id
+      ${joinClause}
       ${whereClause}
       ORDER BY ptv.created_at DESC
     `;

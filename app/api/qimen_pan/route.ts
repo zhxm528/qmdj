@@ -509,3 +509,70 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * GET /api/qimen_pan
+ * 根据 pan_id 或 pan_uid 获取排盘数据
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const panId = searchParams.get("pan_id");
+    const panUid = searchParams.get("pan_uid");
+
+    if (!panId && !panUid) {
+      return NextResponse.json(
+        { error: "pan_id 或 pan_uid 为必填项" },
+        { status: 400 }
+      );
+    }
+
+    let querySql = "";
+    let params: any[] = [];
+
+    if (panId) {
+      querySql = `SELECT id, uid, pan_json FROM qimen_pan WHERE id = $1 LIMIT 1`;
+      params = [parseInt(panId, 10)];
+    } else if (panUid) {
+      querySql = `SELECT id, uid, pan_json FROM qimen_pan WHERE uid = $1 LIMIT 1`;
+      params = [panUid];
+    }
+
+    const result = await query(querySql, params);
+
+    if (!result || result.length === 0) {
+      return NextResponse.json(
+        { error: "排盘数据不存在" },
+        { status: 404 }
+      );
+    }
+
+    const panData = result[0] as { id: number; uid: string; pan_json: any };
+    
+    // 解析 pan_json（如果是字符串）
+    let panJson = panData.pan_json;
+    if (typeof panJson === "string") {
+      try {
+        panJson = JSON.parse(panJson);
+      } catch (e) {
+        return NextResponse.json(
+          { error: "pan_json 解析失败" },
+          { status: 500 }
+        );
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      id: panData.id,
+      uid: panData.uid,
+      pan_json: panJson,
+    });
+  } catch (error: any) {
+    console.error("[qimen_pan] 获取排盘数据失败:", error);
+    return NextResponse.json(
+      { error: error.message || "获取排盘数据失败" },
+      { status: 500 }
+    );
+  }
+}
+

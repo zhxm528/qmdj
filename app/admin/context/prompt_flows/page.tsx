@@ -19,7 +19,7 @@ import {
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import ContextTimeline from "@/components/ContextTimeline";
 
@@ -223,6 +223,37 @@ export default function PromptFlowsPage() {
     }
   };
 
+  const handleCopy = (record: PromptFlow) => {
+    Modal.confirm({
+      title: "复制流程",
+      content: "复制流程，同时也复制流程下的所有步骤",
+      okText: "确定",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          const res = await fetch("/api/admin/context/prompt_flows", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              copy_from_id: record.id,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) {
+            message.success("复制成功");
+            const filters = queryForm.getFieldsValue();
+            loadFlows(currentPage, pageSize, filters);
+          } else {
+            message.error(data.error || "复制失败");
+          }
+        } catch (error) {
+          console.error("复制失败:", error);
+          message.error("复制失败");
+        }
+      },
+    });
+  };
+
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
@@ -330,7 +361,7 @@ export default function PromptFlowsPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -340,6 +371,14 @@ export default function PromptFlowsPage() {
             style={{ padding: 0 }}
           >
             编辑
+          </Button>
+          <Button
+            type="link"
+            icon={<CopyOutlined />}
+            onClick={() => handleCopy(record)}
+            style={{ padding: 0 }}
+          >
+            复制
           </Button>
           <Popconfirm
             title="确定要删除该流程吗？"
