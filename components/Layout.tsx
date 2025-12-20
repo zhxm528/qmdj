@@ -43,18 +43,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-amber-600">
-                时来运转
+                缘来
               </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/" className="text-gray-700 hover:text-amber-600">
-              奇门
+              问
               </Link>
               <Link href="/products" className="text-gray-700 hover:text-amber-600">
-              运势
-              </Link>
-              <Link href="/pricing" className="text-gray-700 hover:text-amber-600">
-              价格
+              运
               </Link>
               {!loading && user && user.role === 'qmdj' && (
                 <>
@@ -96,6 +93,12 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </>
               ) : (
                 <>
+                  <Link
+                    href="/pricing"
+                    className="text-gray-700 hover:text-amber-600"
+                  >
+                    价格
+                  </Link>
                   <Link
                     href="/login"
                     className="text-gray-700 hover:text-amber-600"

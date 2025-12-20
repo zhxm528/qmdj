@@ -79,7 +79,19 @@ export default function PricingCard({ plan }: PricingCardProps) {
         </div>
       )}
 
-      <h3 className="text-2xl font-bold text-gray-900 mb-4">{plan.name}</h3>
+      <h3 
+        className={`text-2xl font-bold mb-4 ${
+          plan.name === "白银会员" 
+            ? "text-gray-400" 
+            : plan.name === "黄金会员"
+            ? "text-yellow-600"
+            : plan.name === "钻石会员"
+            ? "text-purple-500"
+            : "text-gray-900"
+        }`}
+      >
+        {plan.name}
+      </h3>
 
       <div className="mb-6">
         <span 
