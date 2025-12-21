@@ -343,7 +343,7 @@ export default function Member() {
   return (
     <ConfigProvider locale={zhCN}>
       <Layout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+        <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">会员信息</h1>
@@ -558,7 +558,8 @@ export default function Member() {
                     {!showRechargeForm ? (
                       <Button
                         onClick={() => setShowRechargeForm(true)}
-                        className="w-full"
+                        className="w-full opacity-50 cursor-not-allowed"
+                        disabled
                       >
                         充值
                       </Button>

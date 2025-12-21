@@ -563,57 +563,57 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // 单模板模式：原有逻辑
-      // 参数验证
-      if (!envCode || !logicalKey || !scope || !role || !variables) {
-        return NextResponse.json(
-          { error: "缺少必需参数: envCode, logicalKey, scope, role, variables" },
-          { status: 400 }
-        );
-      }
+    // 参数验证
+    if (!envCode || !logicalKey || !scope || !role || !variables) {
+      return NextResponse.json(
+        { error: "缺少必需参数: envCode, logicalKey, scope, role, variables" },
+        { status: 400 }
+      );
+    }
 
-      // 验证枚举值
-      const validEnvCodes: EnvCode[] = ['dev', 'staging', 'prod'];
-      const validScopes: Scope[] = ['global', 'project', 'scene'];
-      const validRoles: PromptRole[] = ['system', 'user', 'assistant', 'tool', 'fewshot'];
+    // 验证枚举值
+    const validEnvCodes: EnvCode[] = ['dev', 'staging', 'prod'];
+    const validScopes: Scope[] = ['global', 'project', 'scene'];
+    const validRoles: PromptRole[] = ['system', 'user', 'assistant', 'tool', 'fewshot'];
 
-      if (!validEnvCodes.includes(envCode)) {
-        return NextResponse.json(
-          { error: `无效的 envCode: ${envCode}` },
-          { status: 400 }
-        );
-      }
-      if (!validScopes.includes(scope)) {
-        return NextResponse.json(
-          { error: `无效的 scope: ${scope}` },
-          { status: 400 }
-        );
-      }
-      if (!validRoles.includes(role)) {
-        return NextResponse.json(
-          { error: `无效的 role: ${role}` },
-          { status: 400 }
-        );
-      }
+    if (!validEnvCodes.includes(envCode)) {
+      return NextResponse.json(
+        { error: `无效的 envCode: ${envCode}` },
+        { status: 400 }
+      );
+    }
+    if (!validScopes.includes(scope)) {
+      return NextResponse.json(
+        { error: `无效的 scope: ${scope}` },
+        { status: 400 }
+      );
+    }
+    if (!validRoles.includes(role)) {
+      return NextResponse.json(
+        { error: `无效的 role: ${role}` },
+        { status: 400 }
+      );
+    }
 
-      const messages = await service.renderToMessages({
-        envCode,
-        logicalKey,
-        scope,
-        projectCode,
-        sceneCode,
-        role,
-        language: language || 'zh-CN',
-        variables
-      });
+    const messages = await service.renderToMessages({
+      envCode,
+      logicalKey,
+      scope,
+      projectCode,
+      sceneCode,
+      role,
+      language: language || 'zh-CN',
+      variables
+    });
 
       // 打印出参日志
       console.log("=== Prompt Context API 请求成功（单模板模式）===");
       console.log("出参:", JSON.stringify({ success: true, messages }, null, 2));
 
-      return NextResponse.json({
-        success: true,
-        messages
-      });
+    return NextResponse.json({
+      success: true,
+      messages
+    });
     }
   } catch (error: any) {
     console.error("=== Prompt Context API 请求失败 ===");

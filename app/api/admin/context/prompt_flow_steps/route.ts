@@ -476,23 +476,23 @@ export async function PUT(request: NextRequest) {
     // 只有当版本策略是 "pinned" 时，才处理 fixed_version_id
     // 如果版本策略被更新为 "latest"，上面已经设置了 fixed_version_id = NULL，这里跳过避免重复
     if (finalVersionStrategy === "pinned" && (!versionStrategyUpdated || version_strategy === "pinned")) {
-      if (fixed_version_id !== undefined) {
-        if (fixed_version_id) {
-          // 检查版本是否存在
-          const versionCheck = await query(
-            `SELECT id FROM prompt_template_versions WHERE id = $1`,
-            [fixed_version_id]
+    if (fixed_version_id !== undefined) {
+      if (fixed_version_id) {
+        // 检查版本是否存在
+        const versionCheck = await query(
+          `SELECT id FROM prompt_template_versions WHERE id = $1`,
+          [fixed_version_id]
+        );
+        if (!versionCheck || versionCheck.length === 0) {
+          return NextResponse.json(
+            { success: false, error: "版本不存在" },
+            { status: 400 }
           );
-          if (!versionCheck || versionCheck.length === 0) {
-            return NextResponse.json(
-              { success: false, error: "版本不存在" },
-              { status: 400 }
-            );
-          }
-          updates.push(`fixed_version_id = $${paramIndex}`);
-          values.push(fixed_version_id);
-          paramIndex++;
-        } else {
+        }
+        updates.push(`fixed_version_id = $${paramIndex}`);
+        values.push(fixed_version_id);
+        paramIndex++;
+      } else {
           return NextResponse.json(
             { success: false, error: "版本策略为固定版本时，必须提供固定版本ID" },
             { status: 400 }

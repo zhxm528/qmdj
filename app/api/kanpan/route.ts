@@ -294,8 +294,8 @@ export async function POST(request: NextRequest) {
     // 在流程 messages 基础上，添加排盘信息和问事信息
     // 添加排盘信息的 user message
     messages.push({
-      role: "user",
-      content: paipanPrompt,
+        role: "user",
+        content: paipanPrompt,
     });
     
     // 如果有问事内容，单独作为一个 user message

@@ -10,7 +10,7 @@ import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import NineGrid from "@/components/NineGrid";
 import { getFourPillars } from "@/lib/ganzhi";
-import { Button, ConfigProvider, Input, Radio, Dropdown, MenuProps, Tooltip, Modal, Carousel } from "antd";
+import { Button, ConfigProvider, Input, Radio, Dropdown, MenuProps, Tooltip, Modal } from "antd";
 import {
   MoreOutlined,
   EditOutlined,
@@ -115,6 +115,7 @@ export default function HomePage() {
   const [yima, setYima] = useState<Record<number, boolean> | null>(null);
   const [jigong, setJigong] = useState<Record<number, { diGan?: string; tianGan?: string }> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isQipanExpanded, setIsQipanExpanded] = useState(false);
   const [isPaipanExpanded, setIsPaipanExpanded] = useState(true);
   const [question, setQuestion] = useState<string>("");
   const questionInputRef = useRef<any>(null); // 问事输入框的引用
@@ -136,7 +137,6 @@ export default function HomePage() {
   const [editingConversationId, setEditingConversationId] = useState<number | null>(null); // 正在编辑的对话ID
   const [editingTitle, setEditingTitle] = useState<string>(""); // 正在编辑的标题
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // 用户登录状态
-  const [userRole, setUserRole] = useState<string | null>(null); // 用户角色
   const [loadingMessageIndex, setLoadingMessageIndex] = useState<number>(0); // 加载提示语索引
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false); // 是否只显示收藏的对话
   const [favoriteConversationIds, setFavoriteConversationIds] = useState<Set<number>>(new Set()); // 收藏的对话ID集合
@@ -1256,17 +1256,9 @@ export default function HomePage() {
   const checkLoginStatus = async () => {
     try {
       const response = await fetch("/api/user/me");
-      if (response.ok) {
-        const userData = await response.json();
-        setIsLoggedIn(true);
-        setUserRole(userData.role || null);
-      } else {
-        setIsLoggedIn(false);
-        setUserRole(null);
-      }
+      setIsLoggedIn(response.ok);
     } catch (error) {
       setIsLoggedIn(false);
-      setUserRole(null);
     }
   };
 
@@ -1323,66 +1315,6 @@ export default function HomePage() {
       <Layout>
         <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Banner 轮播图 */}
-          <div className="mb-8">
-            <Carousel autoplay effect="fade" autoplaySpeed={10000} className="rounded-lg overflow-hidden shadow-md">
-              <div>
-                <div className="relative w-full h-[400px] flex items-center justify-center" style={{ backgroundColor: '#1c2b3a' }}>
-                <video
-                    src="/carousel/qmdj_carousel_index.mp4"
-                    autoPlay
-                    loop
-                    muted={true}
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-10 rounded-lg backdrop-blur-sm">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">缘启天机 来定乾坤</h3>
-                      <p className="text-sm md:text-base">紫微定方向 . 奇门定当下 . 八字定轨道</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="relative w-full h-[400px] bg-gradient-to-r from-amber-100 to-amber-50 flex items-center justify-center">
-                  <video
-                    src="/carousel/qmdj_carousel_product.mp4"
-                    autoPlay
-                    loop
-                    muted={true}
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-30 rounded-lg backdrop-blur-sm">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">专业服务 精准解答</h3>
-                      <p className="text-sm md:text-base">看清感情走向与人生节奏，抓住关键时机，温柔却坚定地把未来握在自己手里。</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div className="relative w-full h-[400px] bg-gradient-to-r from-amber-100 to-amber-50 flex items-center justify-center">
-                  <video
-                    src="/carousel/qmdj_carousel_price.mp4"
-                    autoPlay
-                    loop
-                    muted={true}
-                    playsInline
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-50 rounded-lg backdrop-blur-sm">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">会员价格计划</h3>
-                      <p className="text-sm md:text-base">从轻柔的陪伴到更深入、更全面的专属解读，把关键问题看清、把心安稳下来，完整的深度方案，会更贴近你。</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Carousel>
-          </div>
-
           {/* 日期选择框和小时选择框 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1920,7 +1852,7 @@ export default function HomePage() {
           </div>
 
           {/* 排盘结果面板 - 可折叠面板 */}
-          {paipanResult && userRole === 'qmdj' && (
+          {paipanResult && (
             <div className="bg-white rounded-lg shadow-md mb-6">
               <button
                 type="button"
@@ -1945,6 +1877,158 @@ export default function HomePage() {
             </div>
           )}
 
+          {/* 奇盘一览 - 可折叠面板 */}
+          {(dipangan || tianpangan || dibashen || tianbashen || jiuxing || bamen || kongwang || yima) && (
+            <div className="bg-white rounded-lg shadow-md mt-6">
+              <button
+                type="button"
+                onClick={() => setIsQipanExpanded(!isQipanExpanded)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
+              >
+                <h2 className="text-xl font-bold text-gray-900">更多</h2>
+                <svg
+                  className={`w-5 h-5 text-gray-500 transition-transform ${isQipanExpanded ? "transform rotate-180" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {isQipanExpanded && (
+                <div className="px-6 pb-6 space-y-6">
+                  {dipangan && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地盘干一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-amber-200 rounded-lg px-4 py-3 bg-amber-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{dipangan[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tianpangan && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天盘干一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-sky-200 rounded-lg px-4 py-3 bg-sky-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{tianpangan[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {dibashen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地八神一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-purple-200 rounded-lg px-4 py-3 bg-purple-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{dibashen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {tianbashen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天八神一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-green-200 rounded-lg px-4 py-3 bg-green-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{tianbashen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {jiuxing && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">九星一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{jiuxing[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {bamen && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">八门一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-rose-200 rounded-lg px-4 py-3 bg-rose-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{bamen[palace] || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {kongwang && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">空亡一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{kongwang[palace] ? "空亡" : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {yima && (
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">驿马一览</h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        {displayOrder.map((palace: number) => (
+                          <div
+                            key={palace}
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                          >
+                            <span className="font-semibold mr-2">宫{palace}</span>
+                            <span>{yima[palace] ? "驿马" : "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
       </Layout>

@@ -41,12 +41,12 @@ export default function Pricing() {
       features: [
         "查看万年历",
         "奇门遁甲在线排盘",
-        "问姻缘",
-        "问财运",
-        "问事业",
-        "问官司",
+        "问姻缘、问感情",
+        "问财运、问事业",
         "问学业",
-        "生辰八字看运势",
+        "问官司",
+        "问健康",
+        "大运流年深度解析",
         "紫微斗数",
         "商品享受【90%】折扣",
       ],
@@ -57,11 +57,11 @@ export default function Pricing() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">价格方案</h1>
-            <p className="text-lg text-gray-600">选择适合您的计划</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">价格计划</h1>
+            <p className="text-lg text-gray-600">从轻柔的陪伴到深入解读，把关键问题看清、把心安稳下来，更完整的深度方案，会更贴近你。</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

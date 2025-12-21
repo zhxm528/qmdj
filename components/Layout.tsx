@@ -43,11 +43,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-amber-600">
-                缘来
+              缘来运势
               </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">
-              <Link href="/" className="text-gray-700 hover:text-amber-600">
+              <Link href="/qimen" className="text-gray-700 hover:text-amber-600">
               问事
               </Link>
               <Link href="/products" className="text-gray-700 hover:text-amber-600">
@@ -163,7 +163,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2024 奇门遁甲. All rights reserved.</p>
+            <p>&copy; 2026 缘来运势. 保留所有权利 All rights reserved.</p>
           </div>
         </div>
       </footer>
