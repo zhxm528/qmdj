@@ -1728,7 +1728,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-
+          
           {/* 问事输入框和看盘按钮 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="w-full">
