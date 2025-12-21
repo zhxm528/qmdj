@@ -121,8 +121,8 @@ export default function PrivacyPage() {
                 如果您对本隐私政策有任何问题、意见或投诉，或希望行使您的权利，请通过以下方式联系我们：
               </p>
               <ul className="list-none pl-0 space-y-2 mt-4">
-                <li>邮箱：privacy@example.com</li>
-                <li>地址：[您的公司地址]</li>
+                <li>邮箱：yuanlaiyunshi@gmail.com</li>
+                <li>地址：Boca Chica Boulevard, Brownsville, TX 78521</li>
               </ul>
             </section>
           </div>

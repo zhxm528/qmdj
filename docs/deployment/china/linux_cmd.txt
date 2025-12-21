@@ -1,0 +1,6 @@
+## 跟新git并重启服务
+- git pull --ff-only    //从git上拉取最新文件
+- rm -rf .next   //删除历史编译文件，可选
+- npm install    //安装最新npm包，可选
+- npm run build    //重新编译项目
+- pm2 restart qmdj --update-env    //用pm2重启项目

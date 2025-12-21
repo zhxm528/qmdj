@@ -1728,7 +1728,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          
+
           {/* 问事输入框和看盘按钮 */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6">
             <div className="w-full">
@@ -1786,7 +1786,7 @@ export default function HomePage() {
             </div>
             <div className="mt-4 flex justify-center">
               {(() => {
-                const isButtonDisabled = !paipanResult || !question || question.trim().length === 0;
+                const isButtonDisabled = !paipanResult || !question || question.trim().length === 0 || !isLoggedIn;
                 const tooltipTitle = isButtonDisabled && !isLoggedIn ? (
                   <div>
                     <div className="mb-2 text-left">我已经准备好为你看盘了，登录后即可开始，还能一键查看历史盘与收藏哦。</div>
