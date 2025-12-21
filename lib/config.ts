@@ -27,15 +27,15 @@ export const dbConfig = {
 
 // 邮件配置
 export const mailConfig = {
-  from: "zhxm528@126.com",
-  fromName: "奇门遁甲",
+  from: "yuanlaiyunshi@126.com",
+  fromName: "缘来运势",
   smtp: {
     host: "smtp.126.com",
     port: parseInt("465", 10),
     secure: true,
     auth: {
-      user: "zhxm528@126.com",
-      pass: "ATvG95L8HSDqNWxn",
+      user: "yuanlaiyunshi@126.com",
+      pass: "VU2EP65PciTBBWK6",
     },
   },
   baseUrl: "http://47.120.18.202:3000",
