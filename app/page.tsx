@@ -1736,6 +1736,11 @@ export default function HomePage() {
                 <div className="flex items-center justify-between mb-2">
                   <label className="block text-sm font-medium text-gray-700">
                     问事：
+                    {!isLoggedIn && (
+                      <span className="ml-2 text-xs text-amber-600 font-normal">
+                        （先登录 再问事）
+                      </span>
+                    )}
                   </label>
                   <span className="text-xs text-gray-500">
                     {question.length}/200
