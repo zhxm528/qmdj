@@ -38,7 +38,7 @@ export const mailConfig = {
       pass: "ATvG95L8HSDqNWxn",
     },
   },
-  baseUrl: "http://localhost:3000",
+  baseUrl: "http://47.120.18.202:3000",
 };
 
 // 时区配置
