@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
+// 强制标记为动态路由，避免任何缓存行为
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 可选：避免任何缓存行为
+
 interface TermQueryParams {
   q?: string; // 搜索关键词
   category_id?: number; // 分类ID

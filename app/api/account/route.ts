@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { query, transaction } from "@/lib/db";
 
+// 强制标记为动态路由，避免任何缓存行为
+export const dynamic = 'force-dynamic';
+export const revalidate = 0; // 可选：避免任何缓存行为
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Layout from "@/components/Layout";
 import {
   ConfigProvider,
@@ -60,8 +60,18 @@ export default function UsersManagement() {
   const [allPageSizeOptions] = useState<number[]>([10, 100, -1]); // -1 表示全部
   const [isQueryExpanded, setIsQueryExpanded] = useState(true); // 默认展开
 
-  // 加载用户列表
-  const loadUsers = async (params: QueryParams, page: number, size: number) => {
+  // 使用 useMemo 稳定化 queryParams 的引用，避免无限循环
+  const stableQueryParams = useMemo(() => queryParams, [
+    queryParams.name,
+    queryParams.email,
+    queryParams.role,
+    queryParams.status,
+    queryParams.isEmailVerified,
+    queryParams.isPaid,
+  ]);
+
+  // 加载用户列表 - 使用 useCallback 稳定化函数引用
+  const loadUsers = useCallback(async (params: QueryParams, page: number, size: number) => {
     setLoading(true);
     try {
       const searchParams = new URLSearchParams();
@@ -92,7 +102,7 @@ export default function UsersManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // 更新活动过滤器
   const updateActiveFilters = (params: QueryParams) => {
@@ -153,7 +163,7 @@ export default function UsersManagement() {
   // 分页变化
   const handlePageChange = (page: number, size?: number) => {
     const newPageSize = size !== undefined ? size : pageSize;
-    loadUsers(queryParams, page, newPageSize);
+    loadUsers(stableQueryParams, page, newPageSize);
   };
 
   // 页面大小变化
@@ -169,13 +179,13 @@ export default function UsersManagement() {
       newPageSize = -1; // 大于 100 的其他值也认为是"全部"
     }
     setPageSize(newPageSize);
-    loadUsers(queryParams, 1, newPageSize); // 切换每页条数时回到第一页
+    loadUsers(stableQueryParams, 1, newPageSize); // 切换每页条数时回到第一页
   };
 
-  // 初始加载
+  // 初始加载 - 使用稳定化的 queryParams 和完整的依赖数组
   useEffect(() => {
-    loadUsers(queryParams, 1, pageSize);
-  }, []);
+    loadUsers(stableQueryParams, 1, pageSize);
+  }, [stableQueryParams, pageSize, loadUsers]);
 
   // 表格列定义
   const columns: ColumnsType<User> = [

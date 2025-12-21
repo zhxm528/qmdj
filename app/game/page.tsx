@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import Layout from "@/components/Layout";
 
 export default function Game() {
@@ -40,12 +41,13 @@ export default function Game() {
               <div
                 key={item.id}
                 onClick={() => handleImageClick(item.id)}
-                className="aspect-square bg-white rounded-lg shadow-md overflow-hidden border-2 border-gray-200 hover:border-amber-500 transition-colors cursor-pointer"
+                className="aspect-square bg-white rounded-lg shadow-md overflow-hidden border-2 border-gray-200 hover:border-amber-500 transition-colors cursor-pointer relative"
               >
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={`图片 ${item.id}`}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
             ))}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Layout from "@/components/Layout";
 import {
   ConfigProvider,
@@ -55,7 +55,7 @@ export default function MemberAccountPage() {
   } | null>(null);
 
   // 加载会员列表（用于下拉选择）
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/member/member?pageSize=-1");
       const data = await res.json();
@@ -65,9 +65,9 @@ export default function MemberAccountPage() {
     } catch (error) {
       console.error("加载会员列表失败:", error);
     }
-  };
+  }, []);
 
-  const loadAccounts = async (page: number, size: number) => {
+  const loadAccounts = useCallback(async (page: number, size: number) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -90,7 +90,7 @@ export default function MemberAccountPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     // 加载时区配置
@@ -117,7 +117,7 @@ export default function MemberAccountPage() {
     loadTimezoneConfig();
     loadMembers();
     loadAccounts(1, 10);
-  }, []);
+  }, [loadMembers, loadAccounts]);
 
   // 处理 Modal 打开后的表单值设置
   const handleModalAfterOpenChange = (open: boolean) => {
@@ -164,7 +164,7 @@ export default function MemberAccountPage() {
     setModalVisible(true);
   };
 
-  const handleEdit = async (record: MemberAccount) => {
+  const handleEdit = useCallback(async (record: MemberAccount) => {
     try {
       console.log("[member_account] 点击编辑按钮，会员ID:", record.member_id);
       // 从后端重新查询记录，确保数据最新
@@ -218,9 +218,9 @@ export default function MemberAccountPage() {
       console.error("[member_account] 查询会员账户信息失败:", error);
       message.error("查询会员账户信息失败");
     }
-  };
+  }, []);
 
-  const handleDelete = async (record: MemberAccount) => {
+  const handleDelete = useCallback(async (record: MemberAccount) => {
     try {
       const res = await fetch(
         `/api/admin/member/member_account?member_id=${record.member_id}`,
@@ -239,7 +239,7 @@ export default function MemberAccountPage() {
       console.error("删除失败:", error);
       message.error("删除失败");
     }
-  };
+  }, [currentPage, pageSize, loadAccounts]);
 
   const handleModalOk = async () => {
     try {
@@ -312,7 +312,7 @@ export default function MemberAccountPage() {
     loadAccounts(page, size);
   };
 
-  const getMemberName = (memberId: number, account?: MemberAccount) => {
+  const getMemberName = useCallback((memberId: number, account?: MemberAccount) => {
     // 优先使用账户数据中的会员信息（如果从后端查询时已包含）
     if (account) {
       if (account.full_name) {
@@ -333,7 +333,7 @@ export default function MemberAccountPage() {
       }
     }
     return `ID: ${memberId}`;
-  };
+  }, [members]);
 
   const columns: ColumnsType<MemberAccount> = useMemo(() => [
     {
