@@ -112,9 +112,38 @@ export default function PromptTemplateVersionsPage() {
     }
   };
 
+  // 根据 URL 参数中的 id 加载并打开编辑弹窗
+  const loadVersionById = async (versionId: string) => {
+    try {
+      const res = await fetch(`/api/admin/context/prompt_template_versions?id=${versionId}`);
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        const version = data.data;
+        setEditingVersion(version);
+        setModalVisible(true);
+      } else {
+        // 查不到数据时，不打开弹窗，只显示空（静默处理）
+        console.log("[prompt_template_versions] URL 参数中的 ID 对应的记录不存在:", versionId);
+      }
+    } catch (error) {
+      console.error("[prompt_template_versions] 根据 URL 参数加载模板版本信息失败:", error);
+    }
+  };
+
   useEffect(() => {
     loadTemplates();
     loadVersions(1, 10);
+    
+    // 检查 URL 参数中是否有 id
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const idParam = searchParams.get("id");
+      if (idParam) {
+        loadVersionById(idParam);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 处理 Modal 打开后的表单值设置

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import Layout from "@/components/Layout";
 import {
   ConfigProvider,
@@ -340,6 +341,14 @@ export default function PromptFlowsPage() {
       key: "name",
       width: 350,
       ellipsis: true,
+      render: (value: string, record: PromptFlow) => (
+        <Link
+          href={`/admin/context/prompt_flow_steps?flow_id=${record.id}`}
+          className="text-amber-600 hover:text-amber-700 hover:underline"
+        >
+          {value}
+        </Link>
+      ),
     },
     {
       title: "描述",

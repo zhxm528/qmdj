@@ -4,7 +4,7 @@
 - 数据库表结构：`/md/database/5_context.sql`
 - 配置文件： `/lib/config.ts`
 ## 需要执行的操作
-- “固定版本”下拉框时是查询“prompt_template_versions”表中的数据，需要满足 `template_id`等于选中的“模板”
+- 列表中“操作”列，点击“编辑”按钮，“固定版本”这列不应该刷新成类似“d10bba98-0ea8-4d02-a4f6-8...”
 
 
 ## 已执行完毕、忽略不执行的操作
@@ -41,3 +41,6 @@
 
  - "固定版本"字段从“字符串类型”改为查询“prompt_template_versions”表，且满足“prompt_templates”表关联的“prompt_template_versions”
 - 新增和编辑页面中，实现“prompt_templates”和“prompt_template_versions”的联动，即“模板”和“固定版本”的联动，每次选择“模板”，只把选中的“模板”关联的“模板版本”查询出来供“固定版本”下拉框中选择
+
+- “固定版本”下拉框时是查询“prompt_template_versions”表中的数据，需要满足 `template_id`等于选中的“模板”
+- 编辑页面中，增加一个按钮“编辑模板版本”，点击后以新页签打开选择的“prompt_template_versions”记录的编辑页面；

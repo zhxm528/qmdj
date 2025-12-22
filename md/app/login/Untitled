@@ -1,0 +1,10 @@
+# 核心功能
+- 前端页面：`/app/member/page.tsx`
+- 后台程序：`/app/api/member/route.ts`
+- 数据库表结构： `/md/database/6_member.sql`
+- 配置文件： `/lib/config.ts`
+## 需要执行的操作
+- 读取配置文件中的时区，在写入
+
+
+## 已执行完毕、忽略不执行的操作

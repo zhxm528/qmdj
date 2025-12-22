@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Modal, ConfigProvider, Pagination } from "antd";
+import { Modal, ConfigProvider, Pagination, Input, Form, message } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import Layout from "@/components/Layout";
 import Button from "@/components/Button";
@@ -132,6 +132,10 @@ export default function Member() {
     birthDate: "",
   });
   const [saveLoading, setSaveLoading] = useState(false);
+  const [changePasswordModalVisible, setChangePasswordModalVisible] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changePasswordLoading, setChangePasswordLoading] = useState(false);
 
   const loadMemberData = useCallback((rechargePageNum: number = rechargePage, consumptionPageNum: number = consumptionPage) => {
     setLoading(true);
@@ -179,6 +183,46 @@ export default function Member() {
       gender: "",
       birthDate: "",
     });
+  };
+
+  const handleChangePassword = async () => {
+    // 验证密码是否相同
+    if (newPassword !== confirmPassword) {
+      message.error("两次输入的密码不一致");
+      return;
+    }
+
+    // 验证密码长度
+    if (newPassword.length < 6) {
+      message.error("密码长度至少为6位");
+      return;
+    }
+
+    setChangePasswordLoading(true);
+    try {
+      const response = await fetch("/api/account/change-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ password: newPassword }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        message.success("密码修改成功");
+        setChangePasswordModalVisible(false);
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        message.error(data.error || "密码修改失败");
+      }
+    } catch (error) {
+      console.error("修改密码失败:", error);
+      message.error("修改密码失败，请重试");
+    } finally {
+      setChangePasswordLoading(false);
+    }
   };
 
   const handleSaveEdit = async () => {
@@ -354,7 +398,10 @@ export default function Member() {
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">基本信息</h2>
                   {!isEditing && (
-                    <Button onClick={handleEdit}>编辑</Button>
+                    <div className="flex gap-2">
+                      <Button onClick={handleEdit}>编辑</Button>
+                      <Button onClick={() => setChangePasswordModalVisible(true)}>修改密码</Button>
+                    </div>
                   )}
                 </div>
                 {isEditing ? (
@@ -817,6 +864,72 @@ export default function Member() {
           </div>
         </div>
       </div>
+
+      {/* 修改密码弹窗 */}
+      <Modal
+        title="修改密码"
+        open={changePasswordModalVisible}
+        onOk={handleChangePassword}
+        onCancel={() => {
+          setChangePasswordModalVisible(false);
+          setNewPassword("");
+          setConfirmPassword("");
+        }}
+        confirmLoading={changePasswordLoading}
+        maskClosable={false}
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button
+              onClick={() => {
+                setChangePasswordModalVisible(false);
+                setNewPassword("");
+                setConfirmPassword("");
+              }}
+              style={{ 
+                backgroundColor: "#ffffff", 
+                border: "1px solid #d9d9d9",
+                color: "#595959"
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              type="primary"
+              loading={changePasswordLoading}
+              onClick={handleChangePassword}
+              style={{ backgroundColor: "#1890ff" }}
+            >
+              确定
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              新密码
+            </label>
+            <Input.Password
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="请输入新密码（至少6位）"
+              className="w-full"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              确认密码
+            </label>
+            <Input.Password
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="请再次输入新密码"
+              className="w-full"
+              onPressEnter={handleChangePassword}
+            />
+          </div>
+        </div>
+      </Modal>
       </Layout>
     </ConfigProvider>
   );

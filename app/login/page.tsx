@@ -102,26 +102,6 @@ export default function Login() {
               </a>
             </p>
           </div>
-
-          <div className="mt-6 pt-6 border-t">
-            <p className="text-center text-sm text-gray-600 mb-3">或使用第三方登录</p>
-            <div className="space-y-2">
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => alert("Google 登录功能即将上线")}
-              >
-                Google 登录
-              </Button>
-              <Button
-                variant="secondary"
-                className="w-full"
-                onClick={() => alert("Apple 登录功能即将上线")}
-              >
-                Apple 登录
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </Layout>

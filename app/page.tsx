@@ -132,7 +132,7 @@ export default function HomePage() {
   const [currentQuestion, setCurrentQuestion] = useState<string>(""); // 保存当前问事的原始文本
   const [conversationPage, setConversationPage] = useState<number>(1); // 对话列表当前页码
   const CONVERSATIONS_PER_PAGE = 7; // 每页显示7条对话记录
-  const [sceneCode, setSceneCode] = useState<string>("analyze_chart"); // 场景代码，默认选择"综合"
+  const [sceneCode, setSceneCode] = useState<string>("flow.qmdj.kanpan.default"); // 场景代码，默认选择"综合"
   const [editingConversationId, setEditingConversationId] = useState<number | null>(null); // 正在编辑的对话ID
   const [editingTitle, setEditingTitle] = useState<string>(""); // 正在编辑的标题
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // 用户登录状态
@@ -1843,13 +1843,13 @@ export default function HomePage() {
                   size="large"
                   className="flex flex-wrap gap-2"
                 >
-                  <Radio value="analyze_chart">综合</Radio>
-                  <Radio value="career">事业</Radio>
-                  <Radio value="wealth">财运</Radio>
-                  <Radio value="relationship">感情</Radio>
-                  <Radio value="study">学业</Radio>
-                  <Radio value="health">健康</Radio>
-                  <Radio value="lawsuit">官司</Radio>
+                  <Radio value="flow.qmdj.kanpan.default">综合</Radio>
+                  <Radio value="flow.qmdj.kanpan.career">事业</Radio>
+                  <Radio value="flow.qmdj.kanpan.wealth">财运</Radio>
+                  <Radio value="flow.qmdj.kanpan.relationship">感情</Radio>
+                  <Radio value="flow.qmdj.kanpan.study">学业</Radio>
+                  <Radio value="flow.qmdj.kanpan.health">健康</Radio>
+                  <Radio value="flow.qmdj.kanpan.lawsuit">官司</Radio>
                 </Radio.Group>
               </div>
             </div>

@@ -66,6 +66,7 @@ export default function PromptFlowStepsPage() {
   const [flows, setFlows] = useState<Array<{ id: string; code: string; name: string }>>([]);
   const [templates, setTemplates] = useState<Array<{ id: string; logical_key: string }>>([]);
   const [versions, setVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]);
+  const [allVersions, setAllVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]); // 用于表格显示，包含所有版本
   const [queryVersions, setQueryVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]);
 
   const loadFlows = async () => {
@@ -105,6 +106,19 @@ export default function PromptFlowStepsPage() {
       }
     } catch (error) {
       console.error("加载版本列表失败:", error);
+    }
+  };
+
+  // 加载所有版本，用于表格显示
+  const loadAllVersions = async (): Promise<void> => {
+    try {
+      const res = await fetch("/api/admin/context/prompt_template_versions?pageSize=-1");
+      const data = await res.json();
+      if (data.success && data.data) {
+        setAllVersions(data.data);
+      }
+    } catch (error) {
+      console.error("加载所有版本列表失败:", error);
     }
   };
 
@@ -150,10 +164,27 @@ export default function PromptFlowStepsPage() {
   };
 
   useEffect(() => {
-    loadSteps(1, 10);
     loadFlows();
     loadTemplates();
     loadVersions();
+    loadAllVersions(); // 加载所有版本用于表格显示
+    
+    // 检查 URL 参数中是否有 flow_id
+    if (typeof window !== "undefined") {
+      const searchParams = new URLSearchParams(window.location.search);
+      const flowIdParam = searchParams.get("flow_id");
+      if (flowIdParam) {
+        // 设置查询条件中的 flow_id
+        queryForm.setFieldsValue({ flow_id: flowIdParam });
+        // 使用该 flow_id 查询步骤列表
+        loadSteps(1, 10, { flow_id: flowIdParam });
+      } else {
+        loadSteps(1, 10);
+      }
+    } else {
+      loadSteps(1, 10);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 处理 Modal 打开后的表单值设置
@@ -390,7 +421,8 @@ export default function PromptFlowStepsPage() {
 
   const getVersionName = (id: string | null) => {
     if (!id) return "-";
-    const version = versions.find((v) => v.id === id);
+    // 优先从 allVersions 中查找（包含所有版本），如果找不到再从 versions 中查找
+    const version = allVersions.find((v) => v.id === id) || versions.find((v) => v.id === id);
     return version ? version.version : id;
   };
 
@@ -482,6 +514,7 @@ export default function PromptFlowStepsPage() {
   // 使用 Form.useWatch 实时监听模板ID和版本策略的变化
   const templateId = Form.useWatch("template_id", form);
   const versionStrategy = Form.useWatch("version_strategy", form);
+  const fixedVersionId = Form.useWatch("fixed_version_id", form);
 
   // 只显示与选中模板关联的版本
   const filteredVersions = templateId
@@ -737,6 +770,25 @@ export default function PromptFlowStepsPage() {
                     rules={[
                       { required: true, message: "请选择固定版本" },
                     ]}
+                    extra={
+                      fixedVersionId ? (
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={() => {
+                            if (fixedVersionId) {
+                              window.open(
+                                `/admin/context/prompt_template_versions?id=${fixedVersionId}`,
+                                "_blank"
+                              );
+                            }
+                          }}
+                          style={{ padding: 0, height: "auto" }}
+                        >
+                          编辑模板版本
+                        </Button>
+                      ) : null
+                    }
                   >
                     <Select
                       placeholder="请选择固定版本（先选择模板）"

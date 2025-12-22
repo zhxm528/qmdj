@@ -62,7 +62,7 @@ export default function Account() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-8">账户信息</h1>
