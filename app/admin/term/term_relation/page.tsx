@@ -17,6 +17,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import TermTimeline from "@/components/TermTimeline";
 
 interface Term {
   id: string;
@@ -276,6 +277,9 @@ export default function TermRelationPage() {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+            {/* 时间轴导航 */}
+            <TermTimeline currentStep={2} />
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">术语关系</h1>
               <Button

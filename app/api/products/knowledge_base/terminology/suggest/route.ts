@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // 搜索名称、别名、拼音，限制返回10条
+    // 搜索术语Key、名称、别名、拼音，限制返回10条
     const suggestions = await query(
       `SELECT 
         t.id, t.term_key, t.name, t.short_desc, t.category_id,
@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
        FROM term t
        LEFT JOIN term_category tc ON t.category_id = tc.id
        WHERE t.status = 1 AND (
+         t.term_key ILIKE $1 OR 
          t.name ILIKE $1 OR 
          t.alias ILIKE $1 OR 
          t.pinyin ILIKE $1

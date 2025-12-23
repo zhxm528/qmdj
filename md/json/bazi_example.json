@@ -1,0 +1,308 @@
+{
+    "meta": {
+      "spec_version": "bazi_reading_flow_v1",
+      "created_at_local": "2025-12-24T21:00:00",
+      "timezone": "Asia/Shanghai",
+      "method_notes": {
+        "month_rule": "jieqi",
+        "true_solar_time_corrected": false,
+        "school": "generic",
+        "confidence_scale": "0-1"
+      }
+    },
+    "input": {
+      "four_pillars": {
+        "year": { "stem": "甲", "branch": "子" },
+        "month": { "stem": "丙", "branch": "寅" },
+        "day": { "stem": "辛", "branch": "酉" },
+        "hour": { "stem": "癸", "branch": "巳" }
+      },
+      "optional_context": {
+        "sex": "unknown",
+        "birth_place": "unknown",
+        "notes": "示例数据，仅用于展示字段结构"
+      }
+    },
+    "steps": [
+      {
+        "step": 1,
+        "name": "定日主（命主）",
+        "annotations": "以日干为核心",
+        "result": {
+          "day_master": { "stem": "辛", "element": "金", "yin_yang": "阴" },
+          "day_pillar": { "stem": "辛", "branch": "酉" }
+        },
+        "confidence": 0.95
+      },
+      {
+        "step": 2,
+        "name": "补齐基础盘面信息",
+        "annotations": "十神、藏干、合冲刑害等",
+        "result": {
+          "five_elements": {
+            "stems": {
+              "year_stem": { "stem": "甲", "element": "木" },
+              "month_stem": { "stem": "丙", "element": "火" },
+              "day_stem": { "stem": "辛", "element": "金" },
+              "hour_stem": { "stem": "癸", "element": "水" }
+            },
+            "branches": {
+              "year_branch": { "branch": "子", "element": "水" },
+              "month_branch": { "branch": "寅", "element": "木" },
+              "day_branch": { "branch": "酉", "element": "金" },
+              "hour_branch": { "branch": "巳", "element": "火" }
+            },
+            "optional_summary": {
+              "count_by_element": { "木": 2, "火": 2, "土": 0, "金": 2, "水": 2 },
+              "notes": "统计口径：天干1次+地支主五行1次；未把藏干计入"
+            }
+          },
+          "hidden_stems": {
+            "year_branch": ["癸"],
+            "month_branch": ["甲", "丙", "戊"],
+            "day_branch": ["辛"],
+            "hour_branch": ["丙", "戊", "庚"]
+          },
+          "ten_gods": {
+            "year_stem": "正财",
+            "month_stem": "正官",
+            "hour_stem": "伤官",
+            "branches_main": {
+              "year_branch": "食神",
+              "month_branch": "正财",
+              "day_branch": "比肩",
+              "hour_branch": "正官"
+            }
+          },
+          "relations": {
+            "stem_combos": [],
+            "stem_clashes": [],
+            "branch_combos": [],
+            "branch_clashes": ["子酉冲"],
+            "branch_harms": [],
+            "branch_punishments": [],
+            "branch_breaks": []
+          },
+          "optional": {
+            "twelve_growth": { "辛": "帝旺(酉)" },
+            "na_yin": { "year": "海中金", "month": "炉中火", "day": "石榴木", "hour": "长流水" }
+          }
+        },
+        "confidence": 0.6
+      },
+      {
+        "step": 3,
+        "name": "抓月令与季节（定大方向）",
+        "annotations": "月支月令为第一权重",
+        "result": {
+          "month_command": {
+            "month_branch": "寅",
+            "season": "春",
+            "dominant_qi": "木旺",
+            "supporting_elements_rank": ["木", "火", "水", "土", "金"]
+          }
+        },
+        "confidence": 0.7
+      },
+      {
+        "step": 4,
+        "name": "判旺衰：日主强弱与身态",
+        "annotations": "得令/通根/得助/生克泄耗综合",
+        "result": {
+          "strength_judgement": {
+            "body_state": "身偏弱",
+            "score_summary": {
+              "favorable_to_dm": { "resource": 1, "peer": 1, "rooting": 2, "season": 0 },
+              "unfavorable_to_dm": { "output": 2, "wealth": 2, "power": 2, "control": 1 }
+            },
+            "key_reasons": [
+              "月令在寅，木火之气偏旺，对金有克泄压力",
+              "日支酉为金根，提供一定通根",
+              "盘中官财与食伤引动较多，消耗/制约日主"
+            ]
+          }
+        },
+        "confidence": 0.45
+      },
+      {
+        "step": 5,
+        "name": "看寒暖燥湿与调候",
+        "annotations": "季节偏性与五行分布修正取用",
+        "result": {
+          "climate_balance": {
+            "temperature": "偏温",
+            "humidity": "中等",
+            "dry_wet": "偏燥",
+            "needs": ["适度水润", "避免火过旺"],
+            "notes": ["示例：仅演示字段，不代表真实结论"]
+          }
+        },
+        "confidence": 0.35
+      },
+      {
+        "step": 6,
+        "name": "定格局/成局（结构判断）",
+        "annotations": "格局清纯、成局、破格与否",
+        "result": {
+          "structure": {
+            "primary_pattern": "官财相见（示例表述）",
+            "secondary_patterns": ["伤官见官（可能性提示）"],
+            "formed_combinations": [],
+            "breakers": ["子酉冲可能引动波动"],
+            "purity": "一般",
+            "notes": ["示例：此处通常需更严谨判格"]
+          }
+        },
+        "confidence": 0.3
+      },
+      {
+        "step": 7,
+        "name": "取用神、喜神、忌神",
+        "annotations": "强弱+格局+调候+合冲影响综合定性",
+        "result": {
+          "useful_gods": {
+            "yong_shen": { "element": "土", "ten_god": "印", "why": "示例：用于承托日主与缓冲克泄" },
+            "xi_shen": [
+              { "element": "金", "ten_god": "比劫", "why": "示例：助身" },
+              { "element": "水", "ten_god": "食伤/润调", "why": "示例：调候或疏导" }
+            ],
+            "ji_shen": [
+              { "element": "火", "ten_god": "官杀", "why": "示例：对弱金压力偏大" },
+              { "element": "木", "ten_god": "财", "why": "示例：进一步泄耗或引动压力" }
+            ]
+          },
+          "element_preference": {
+            "favorable": ["土", "金", "水"],
+            "neutral": [],
+            "unfavorable": ["火", "木"]
+          }
+        },
+        "confidence": 0.25
+      },
+      {
+        "step": 8,
+        "name": "验盘：病药是否自洽",
+        "annotations": "用神能否解决主要矛盾、是否被合冲绑架等",
+        "result": {
+          "consistency_check": {
+            "main_conflict": "示例：日主承压与结构波动并存",
+            "medicine": "示例：以印比为托、控制火木过旺",
+            "risk_points": ["子酉冲引动人际/居所/合作波动（示例）", "伤官与官的矛盾需要处理（示例）"],
+            "self_consistency": "needs_review",
+            "notes": ["示例：真实验盘建议结合具体事件验证"]
+          }
+        },
+        "confidence": 0.3
+      },
+      {
+        "step": 9,
+        "name": "十神专题解读（静态画像）",
+        "annotations": "十神强弱+位置+透藏→性格/事业/财/关系等",
+        "result": {
+          "ten_god_profile": {
+            "strong": ["官", "财（示例）"],
+            "weak": ["印（示例）"],
+            "balanced": ["比劫（示例）"],
+            "themes": {
+              "personality": ["示例：重规则/责任感，但易紧绷"],
+              "career": ["示例：适合制度化环境；注意表达方式与上级关系"],
+              "wealth": ["示例：重视资源与目标，但不宜过度冒进"],
+              "relationship_family": ["示例：沟通与边界感很关键"],
+              "health_tendencies": ["示例：注意压力管理与作息"]
+            }
+          }
+        },
+        "confidence": 0.25
+      },
+      {
+        "step": 10,
+        "name": "动态：排大运（10年一运）",
+        "annotations": "看扶格/破格、引动喜忌、阶段主旋律",
+        "result": {
+          "da_yun": {
+            "start_age": 8,
+            "direction": "forward",
+            "cycles": [
+              {
+                "age_range": "8-17",
+                "pillar": { "stem": "丁", "branch": "卯" },
+                "element_effect": "木火偏旺（示例）",
+                "ten_god_effect": "财官偏强（示例）",
+                "key_triggers": ["示例：学业/规训主题增强"],
+                "summary": "示例：压力与机会并存，需稳住基本盘"
+              },
+              {
+                "age_range": "18-27",
+                "pillar": { "stem": "戊", "branch": "辰" },
+                "element_effect": "土增（示例）",
+                "ten_god_effect": "印增强（示例）",
+                "key_triggers": ["示例：证照/技能/贵人资源"],
+                "summary": "示例：更利于积累与转型"
+              }
+            ]
+          }
+        },
+        "confidence": 0.2
+      },
+      {
+        "step": 11,
+        "name": "动态：叠流年（落到年份）",
+        "annotations": "大运框架下看流年合冲刑害与主题触发",
+        "result": {
+          "liu_nian": [
+            {
+              "year": 2026,
+              "pillar": { "stem": "丙", "branch": "午" },
+              "with_natal": { "combos": [], "clashes": ["午酉破（示例）"], "punishments": [], "harms": [] },
+              "with_da_yun": { "combos": [], "clashes": [], "punishments": [], "harms": [] },
+              "theme": ["示例：曝光度/竞争/规则压力"],
+              "risk": ["示例：与权威/制度摩擦"],
+              "notes": "示例：以喜忌为准做取舍"
+            },
+            {
+              "year": 2027,
+              "pillar": { "stem": "丁", "branch": "未" },
+              "with_natal": { "combos": [], "clashes": [], "punishments": [], "harms": [] },
+              "with_da_yun": { "combos": ["示例：土气加强"], "clashes": [], "punishments": [], "harms": [] },
+              "theme": ["示例：学习/资质/稳定化"],
+              "risk": ["示例：保守过头错失机会"],
+              "notes": "示例：更适合做基础建设"
+            }
+          ]
+        },
+        "confidence": 0.2
+      },
+      {
+        "step": 12,
+        "name": "需要更细再看流月/流日（可选）",
+        "annotations": "择时/复盘用；粒度越细噪声越大",
+        "result": {
+          "enabled": false,
+          "liu_yue_or_liu_ri": [],
+          "notes": "示例：未启用"
+        },
+        "confidence": 0.9
+      },
+      {
+        "step": 13,
+        "name": "输出结论与建议（可执行）",
+        "annotations": "主结构、病药、节奏、策略与行动建议",
+        "result": {
+          "summary": {
+            "core_structure": "示例：财官较显、日主承压，宜先稳后进",
+            "main_conflict": "示例：目标推进与压力管理的平衡",
+            "key_levers": ["示例：补印（土）", "示例：助身（金）", "示例：适度用水做调节"],
+            "timing_strategy": ["示例：喜运做扩张，忌运做防守与蓄力"]
+          },
+          "actionable_advice": {
+            "do_more": ["示例：系统化学习/证照/技能积累", "示例：建立可复用流程与工具"],
+            "do_less": ["示例：硬碰硬的冲突式表达", "示例：高杠杆高波动投入"],
+            "risk_management": ["示例：重要年份提前做预算与预案", "示例：把健康与作息当成硬约束"],
+            "resource_allocation": ["示例：把资源投向长期复利（技能、人脉、现金流）"]
+          }
+        },
+        "confidence": 0.25
+      }
+    ]
+  }
+  

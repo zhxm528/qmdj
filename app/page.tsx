@@ -337,231 +337,49 @@ export default function HomePage() {
 
     try {
       setLoading(true);
-      // 排地盘干
-      const dipanganResponse = await fetch("/api/dipangan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          ju: dateInfo.ju,
-        }),
-      });
-
-      if (!dipanganResponse.ok) {
-        const err = await dipanganResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排地盘干失败");
-      }
-
-      const dipanganData = await dipanganResponse.json();
-      const dipanganMap: Record<number, string> = dipanganData.dipangan || {};
-      setDipangan(dipanganMap);
-
-      // 排天盘干
-      const tianpanganResponse = await fetch("/api/tianpangan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          hourPillar: dateInfo.fourPillars.hour,
-          dipangan: dipanganMap,
-        }),
-      });
-
-      if (!tianpanganResponse.ok) {
-        const err = await tianpanganResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排天盘干失败");
-      }
-
-      const tianpanganData = await tianpanganResponse.json();
-      const tianpanganMap: Record<number, string> = tianpanganData.tianpangan || {};
-      setTianpangan(tianpanganMap);
-
-      // 排地八神
-      const dibashenResponse = await fetch("/api/dibashen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          hourPillar: dateInfo.fourPillars.hour,
-          dipangan: dipanganMap,
-        }),
-      });
-
-      if (!dibashenResponse.ok) {
-        const err = await dibashenResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排地八神失败");
-      }
-
-      const dibashenData = await dibashenResponse.json();
-      const dibashenMap: Record<number, string> = dibashenData.dibashen || {};
-      setDibashen(dibashenMap);
       
-      // 从地八神中找到值符所在的宫位
-      let zhiFuPalaceFound: number | null = null;
-      for (const [key, value] of Object.entries(dibashenMap)) {
-        const palace = Number(key);
-        if (!Number.isNaN(palace) && value === "值符") {
-          zhiFuPalaceFound = palace;
-          break;
-        }
-      }
-      setZhiFuPalace(zhiFuPalaceFound);
-
-      // 排天八神
-      const tianbashenResponse = await fetch("/api/tianbashen", {
+      // 调用统一的排盘 API
+      const paipanResponse = await fetch("/api/paipan", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          hourPillar: dateInfo.fourPillars.hour,
-          tianpangan: tianpanganMap,
+          date,
+          hour,
+          minute,
+          dateInfo,
         }),
       });
 
-      if (!tianbashenResponse.ok) {
-        const err = await tianbashenResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排天八神失败");
+      if (!paipanResponse.ok) {
+        const err = await paipanResponse.json().catch(() => ({}));
+        throw new Error(err.error || "排盘失败");
       }
 
-      const tianbashenData = await tianbashenResponse.json();
-      const tianbashenMap: Record<number, string> = tianbashenData.tianbashen || {};
-      setTianbashen(tianbashenMap);
-
-      // 排九星
-      const jiuxingResponse = await fetch("/api/jiuxing", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          dibashen: dibashenMap,
-          tianbashen: tianbashenMap,
-        }),
-      });
-
-      if (!jiuxingResponse.ok) {
-        const err = await jiuxingResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排九星失败");
+      const paipanData = await paipanResponse.json();
+      
+      if (!paipanData.success) {
+        throw new Error(paipanData.error || "排盘失败");
       }
 
-      const jiuxingData = await jiuxingResponse.json();
-      const jiuxingMap: Record<number, string> = jiuxingData.jiuxing || {};
-      setJiuxing(jiuxingMap);
-
-      // 排八门
-      const bamenResponse = await fetch("/api/bamen", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dunType: dateInfo.dunType,
-          hourPillar: dateInfo.fourPillars.hour,
-          dibashen: dibashenMap,
-        }),
-      });
-
-      if (!bamenResponse.ok) {
-        const err = await bamenResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排八门失败");
+      // 设置各个排盘结果
+      if (paipanData.dipangan) setDipangan(paipanData.dipangan);
+      if (paipanData.tianpangan) setTianpangan(paipanData.tianpangan);
+      if (paipanData.dibashen) setDibashen(paipanData.dibashen);
+      if (paipanData.tianbashen) setTianbashen(paipanData.tianbashen);
+      if (paipanData.jiuxing) setJiuxing(paipanData.jiuxing);
+      if (paipanData.bamen) setBamen(paipanData.bamen);
+      if (paipanData.kongwang) setKongwang(paipanData.kongwang);
+      if (paipanData.yima) setYima(paipanData.yima);
+      if (paipanData.jigong) setJigong(paipanData.jigong);
+      if (paipanData.zhiShiDoor) setZhiShiDoor(paipanData.zhiShiDoor);
+      if (paipanData.zhiFuPalace !== undefined) setZhiFuPalace(paipanData.zhiFuPalace);
+      
+      // 设置排盘结果
+      if (paipanData.grid) {
+        setPaipanResult({ grid: paipanData.grid });
       }
-
-      const bamenData = await bamenResponse.json();
-      const bamenMap: Record<number, string> = bamenData.bamen || {};
-      setBamen(bamenMap);
-      setZhiShiDoor(bamenData.zhiShiDoor || "");
-
-      // 排空亡
-      const kongwangResponse = await fetch("/api/kongwang", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hourPillar: dateInfo.fourPillars.hour,
-        }),
-      });
-
-      if (!kongwangResponse.ok) {
-        const err = await kongwangResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排空亡失败");
-      }
-
-      const kongwangData = await kongwangResponse.json();
-      const kongwangMap: Record<number, boolean> = kongwangData.kongwang || {};
-      setKongwang(kongwangMap);
-
-      // 排驿马
-      const yimaResponse = await fetch("/api/yima", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          hourPillar: dateInfo.fourPillars.hour,
-        }),
-      });
-
-      if (!yimaResponse.ok) {
-        const err = await yimaResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排驿马失败");
-      }
-
-      const yimaData = await yimaResponse.json();
-      const yimaMap: Record<number, boolean> = yimaData.yima || {};
-      setYima(yimaMap);
-
-      // 排寄宫
-      const jigongResponse = await fetch("/api/jigong", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          dipangan: dipanganMap,
-          tianpangan: tianpanganMap,
-          jiuxing: jiuxingMap,
-        }),
-      });
-
-      if (!jigongResponse.ok) {
-        const err = await jigongResponse.json().catch(() => ({}));
-        throw new Error(err.error || "排寄宫失败");
-      }
-
-      const jigongData = await jigongResponse.json();
-      const jigongMap: Record<number, { diGan?: string; tianGan?: string }> = jigongData.jigong || {};
-      setJigong(jigongMap);
-
-      const grid = DISPLAY_ORDER.map((palaceNo) => {
-        const diGan = dipanganMap[palaceNo] || "";
-        const tianGan = tianpanganMap[palaceNo] || "";
-        const diShen = dibashenMap[palaceNo] || "";
-        const tianShen = tianbashenMap[palaceNo] || "";
-        const star = jiuxingMap[palaceNo] || "";
-        const door = bamenMap[palaceNo] || "";
-        const kongWang = kongwangMap[palaceNo] || false;
-        const yiMa = yimaMap[palaceNo] || false;
-        const jiGongInfo = jigongMap[palaceNo] || null;
-        const parts: string[] = [];
-        if (diGan) parts.push(`地盘干：${diGan}`);
-        if (tianGan) parts.push(`天盘干：${tianGan}`);
-        if (diShen) parts.push(`地八神：${diShen}`);
-        if (tianShen) parts.push(`天八神：${tianShen}`);
-        if (star) parts.push(`九星：${star}`);
-        if (door) parts.push(`八门：${door}`);
-        return {
-          id: palaceNo,
-          name: ``, // 宫位名称
-          diGan,
-          tianGan,
-          diShen,
-          tianShen,
-          star,
-          door,
-          kongWang,
-          yiMa,
-          jiGong: jiGongInfo,
-          content: parts.join(" · ") || "暂无排盘数据",
-        };
-      });
-
-      setPaipanResult({ grid });
 
       // 保存排盘结果到数据库（可选，如果用户已登录则保存）
-      let savedPanId: number | null = null;
-      let savedPanUid: string | null = null;
       try {
         // 检查用户是否登录，如果登录了则保存排盘结果
         const userCheckResponse = await fetch("/api/user/me");
@@ -574,24 +392,22 @@ export default function HomePage() {
               hour,
               minute,
               dateInfo,
-              dipangan: dipanganMap,
-              tianpangan: tianpanganMap,
-              dibashen: dibashenMap,
-              tianbashen: tianbashenMap,
-              jiuxing: jiuxingMap,
-              bamen: bamenMap,
-              kongwang: kongwangMap,
-              yima: yimaMap,
-              jigong: jigongMap,
-              zhiShiDoor,
-              zhiFuPalace: zhiFuPalaceFound,
+              dipangan: paipanData.dipangan,
+              tianpangan: paipanData.tianpangan,
+              dibashen: paipanData.dibashen,
+              tianbashen: paipanData.tianbashen,
+              jiuxing: paipanData.jiuxing,
+              bamen: paipanData.bamen,
+              kongwang: paipanData.kongwang,
+              yima: paipanData.yima,
+              jigong: paipanData.jigong,
+              zhiShiDoor: paipanData.zhiShiDoor,
+              zhiFuPalace: paipanData.zhiFuPalace,
             }),
           });
 
           if (saveResponse.ok) {
             const saveData = await saveResponse.json();
-            savedPanId = saveData.id;
-            savedPanUid = saveData.uid;
             setCurrentPanId(saveData.id);
             setCurrentPanUid(saveData.uid);
             console.log("排盘结果已保存:", saveData);

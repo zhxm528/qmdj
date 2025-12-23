@@ -32,9 +32,10 @@ export async function GET(request: NextRequest) {
     const values: any[] = [];
     let paramIndex = 1;
 
-    // 搜索条件：支持名称、别名、拼音
+    // 搜索条件：支持术语Key、名称、别名、拼音
     if (params.q) {
       const searchCondition = `(
+        t.term_key ILIKE $${paramIndex} OR 
         t.name ILIKE $${paramIndex} OR 
         t.alias ILIKE $${paramIndex} OR 
         t.pinyin ILIKE $${paramIndex}
@@ -74,6 +75,21 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ${orderClause}
     `;
+
+    // 打印 SQL 语句和参数
+    console.log("[terminology] SQL 查询语句:");
+    console.log(dataQuery);
+    console.log("[terminology] SQL 参数值:", values);
+    
+    // 打印完整的 SQL（将参数替换到 SQL 中，用于调试）
+    let debugSql = dataQuery;
+    values.forEach((val, index) => {
+      const paramPlaceholder = `$${index + 1}`;
+      const sqlValue = typeof val === 'string' ? `'${val.replace(/'/g, "''")}'` : val;
+      debugSql = debugSql.replace(new RegExp(`\\$${index + 1}`, 'g'), sqlValue);
+    });
+    console.log("[terminology] 完整 SQL (参数已替换):");
+    console.log(debugSql);
 
     const terms = await query(dataQuery, values);
 

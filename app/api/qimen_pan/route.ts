@@ -407,99 +407,181 @@ export async function POST(request: NextRequest) {
       jigong,
       zhiShiDoor,
       zhiFuPalace,
+      bazi_json, // 八字排盘JSON数据
     } = body;
 
-    // 验证必填字段
-    if (!date || !hour || !dateInfo || !dipangan || !tianpangan) {
-      return NextResponse.json(
-        { error: "缺少必填字段" },
-        { status: 400 }
+    // 判断是八字排盘还是奇门排盘
+    const isBazi = !!bazi_json;
+
+    if (isBazi) {
+      // 八字排盘保存逻辑
+      if (!date || !hour || !bazi_json) {
+        return NextResponse.json(
+          { error: "缺少必填字段" },
+          { status: 400 }
+        );
+      }
+
+      // 获取当前用户ID（可选）
+      const clientId = await getCurrentUserId();
+
+      // 从bazi_json中提取四柱信息
+      const fourPillarsData = bazi_json.input?.four_pillars;
+      if (!fourPillarsData) {
+        return NextResponse.json(
+          { error: "八字排盘数据格式不正确" },
+          { status: 400 }
+        );
+      }
+
+      // 计算逻辑盘key（使用四柱格式："年柱 月柱 日柱 时柱"）
+      const yearPillar = `${fourPillarsData.year?.stem || ""}${fourPillarsData.year?.branch || ""}`;
+      const monthPillar = `${fourPillarsData.month?.stem || ""}${fourPillarsData.month?.branch || ""}`;
+      const dayPillar = `${fourPillarsData.day?.stem || ""}${fourPillarsData.day?.branch || ""}`;
+      const hourPillar = `${fourPillarsData.hour?.stem || ""}${fourPillarsData.hour?.branch || ""}`;
+      const logicKey = `${yearPillar} ${monthPillar} ${dayPillar} ${hourPillar}`;
+
+      // 构建cast_time（起局时间）
+      const castTime = new Date(`${date}T${hour.padStart(2, "0")}:${minute || "00"}:00`);
+
+      // 数据库插入所需的其他字段（八字排盘不需要dun_type和ju_number，设为默认值）
+      const timezone = "Asia/Shanghai";
+      const dunType = 0; // 八字排盘不使用
+      const juNumber = 0; // 八字排盘不使用
+      const bureauType = "bazi"; // 八字排盘
+      const method = "bazi_reading_flow_v1"; // 八字排盘方法
+
+      // 插入数据库
+      const result = await query(
+        `INSERT INTO qimen_pan (
+          cast_time, timezone, dun_type, ju_number, bureau_type, method,
+          client_id, operator, question, category,
+          pan_json, meta_json, schema_version, logic_key, status, remark
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING id, uid`,
+        [
+          castTime,
+          timezone,
+          dunType,
+          juNumber,
+          bureauType,
+          method,
+          clientId,
+          null, // operator
+          null, // question
+          "bazi", // category: 八字排盘
+          JSON.stringify(bazi_json), // pan_json: 直接保存八字排盘JSON
+          null, // meta_json
+          1, // schema_version
+          logicKey,
+          1, // status: 正常
+          null, // remark
+        ]
       );
+
+      if (!result || result.length === 0) {
+        throw new Error("保存失败");
+      }
+
+      const saved = result[0] as { id: number; uid: string };
+
+      console.log(`[qimen_pan] 八字排盘结果已保存: id=${saved.id}, uid=${saved.uid}`);
+
+      return NextResponse.json({
+        success: true,
+        id: saved.id,
+        uid: saved.uid,
+        message: "八字排盘结果已保存",
+      });
+    } else {
+      // 奇门排盘保存逻辑（原有逻辑）
+      // 验证必填字段
+      if (!date || !hour || !dateInfo || !dipangan || !tianpangan) {
+        return NextResponse.json(
+          { error: "缺少必填字段" },
+          { status: 400 }
+        );
+      }
+
+      // 获取当前用户ID（可选）
+      const clientId = await getCurrentUserId();
+
+      // 构建pan_json
+      const panJson = buildPanJson({
+        date,
+        hour,
+        minute: minute || "00",
+        dateInfo,
+        dipangan,
+        tianpangan,
+        dibashen: dibashen || {},
+        tianbashen: tianbashen || {},
+        jiuxing: jiuxing || {},
+        bamen: bamen || {},
+        kongwang: kongwang || {},
+        yima: yima || {},
+        jigong: jigong || {},
+        zhiShiDoor: zhiShiDoor || "",
+        zhiFuPalace: zhiFuPalace || null,
+      });
+
+      // 计算逻辑盘key（使用四柱）
+      const fourPillars = dateInfo.fourPillars;
+      const logicKey = `${fourPillars.year} ${fourPillars.month} ${fourPillars.day} ${fourPillars.hour}`;
+
+      // 构建cast_time（起局时间）
+      const castTime = new Date(`${date}T${hour.padStart(2, "0")}:${minute || "00"}:00`);
+
+      // 数据库插入所需的其他字段
+      const timezone = "Asia/Shanghai";
+      const dunType = dateInfo.dunType === "阳遁" ? 1 : 2;
+      const juNumber = dateInfo.ju;
+      const bureauType = "san_yuan"; // 默认三元
+      const method = "zirun_v1"; // 默认自润算法v1
+
+      // 插入数据库
+      const result = await query(
+        `INSERT INTO qimen_pan (
+          cast_time, timezone, dun_type, ju_number, bureau_type, method,
+          client_id, operator, question, category,
+          pan_json, meta_json, schema_version, logic_key, status, remark
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING id, uid`,
+        [
+          castTime,
+          timezone,
+          dunType,
+          juNumber,
+          bureauType,
+          method,
+          clientId,
+          null, // operator
+          null, // question
+          "qimendunjia", // category
+          JSON.stringify(panJson),
+          null, // meta_json
+          1, // schema_version
+          logicKey,
+          1, // status: 正常
+          null, // remark
+        ]
+      );
+
+      if (!result || result.length === 0) {
+        throw new Error("保存失败");
+      }
+
+      const saved = result[0] as { id: number; uid: string };
+
+      console.log(`[qimen_pan] 排盘结果已保存: id=${saved.id}, uid=${saved.uid}`);
+
+      return NextResponse.json({
+        success: true,
+        id: saved.id,
+        uid: saved.uid,
+        message: "排盘结果已保存",
+      });
     }
-
-    // 获取当前用户ID（可选）
-    const clientId = await getCurrentUserId();
-
-    // 构建pan_json
-    const panJson = buildPanJson({
-      date,
-      hour,
-      minute: minute || "00",
-      dateInfo,
-      dipangan,
-      tianpangan,
-      dibashen: dibashen || {},
-      tianbashen: tianbashen || {},
-      jiuxing: jiuxing || {},
-      bamen: bamen || {},
-      kongwang: kongwang || {},
-      yima: yima || {},
-      jigong: jigong || {},
-      zhiShiDoor: zhiShiDoor || "",
-      zhiFuPalace: zhiFuPalace || null,
-    });
-
-    // 计算逻辑盘key
-    const timezone = "Asia/Shanghai";
-    const dunType = dateInfo.dunType === "阳遁" ? 1 : 2;
-    const juNumber = dateInfo.ju;
-    const bureauType = "san_yuan"; // 默认三元
-    const method = "zirun_v1"; // 默认自润算法v1
-    const hourPillar = dateInfo.fourPillars.hour;
-    const logicKey = generateLogicKey(
-      hourPillar,
-      timezone,
-      dunType,
-      juNumber,
-      bureauType,
-      method
-    );
-
-    // 构建cast_time（起局时间）
-    const castTime = new Date(`${date}T${hour.padStart(2, "0")}:${minute || "00"}:00`);
-
-    // 插入数据库
-    const result = await query(
-      `INSERT INTO qimen_pan (
-        cast_time, timezone, dun_type, ju_number, bureau_type, method,
-        client_id, operator, question, category,
-        pan_json, meta_json, schema_version, logic_key, status, remark
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
-      RETURNING id, uid`,
-      [
-        castTime,
-        timezone,
-        dunType,
-        juNumber,
-        bureauType,
-        method,
-        clientId,
-        null, // operator
-        null, // question
-        null, // category
-        JSON.stringify(panJson),
-        null, // meta_json
-        1, // schema_version
-        logicKey,
-        1, // status: 正常
-        null, // remark
-      ]
-    );
-
-    if (!result || result.length === 0) {
-      throw new Error("保存失败");
-    }
-
-    const saved = result[0] as { id: number; uid: string };
-
-    console.log(`[qimen_pan] 排盘结果已保存: id=${saved.id}, uid=${saved.uid}`);
-
-    return NextResponse.json({
-      success: true,
-      id: saved.id,
-      uid: saved.uid,
-      message: "排盘结果已保存",
-    });
   } catch (error: any) {
     console.error("[qimen_pan] 保存排盘结果失败:", error);
     return NextResponse.json(

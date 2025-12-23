@@ -1,0 +1,281 @@
+{
+    "meta": {
+      "spec_version": "bazi_reading_flow_v1",
+      "created_at_local": "YYYY-MM-DDTHH:mm:ss",
+      "timezone": "Asia/Shanghai",
+      "method_notes": {
+        "month_rule": "jieqi",
+        "true_solar_time_corrected": false,
+        "school": "generic",
+        "confidence_scale": "0-1"
+      }
+    },
+    "input": {
+      "four_pillars": {
+        "year": { "stem": "", "branch": "" },
+        "month": { "stem": "", "branch": "" },
+        "day": { "stem": "", "branch": "" },
+        "hour": { "stem": "", "branch": "" }
+      },
+      "optional_context": {
+        "sex": "",
+        "birth_place": "",
+        "notes": ""
+      }
+    },
+    "steps": [
+      {
+        "step": 1,
+        "name": "定日主（命主）",
+        "annotations": "以日干为核心",
+        "result": {
+          "day_master": { "stem": "", "element": "", "yin_yang": "" },
+          "day_pillar": { "stem": "", "branch": "" }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 2,
+        "name": "补齐基础盘面信息",
+        "annotations": "十神、藏干、合冲刑害等",
+        "result": {
+          "five_elements": {
+            "stems": {
+              "year_stem": { "stem": "", "element": "" },
+              "month_stem": { "stem": "", "element": "" },
+              "day_stem": { "stem": "", "element": "" },
+              "hour_stem": { "stem": "", "element": "" }
+            },
+            "branches": {
+              "year_branch": { "branch": "", "element": "" },
+              "month_branch": { "branch": "", "element": "" },
+              "day_branch": { "branch": "", "element": "" },
+              "hour_branch": { "branch": "", "element": "" }
+            },
+            "optional_summary": {
+              "count_by_element": { "木": 0, "火": 0, "土": 0, "金": 0, "水": 0 },
+              "notes": ""
+            }
+          },
+          "hidden_stems": {
+            "year_branch": [],
+            "month_branch": [],
+            "day_branch": [],
+            "hour_branch": []
+          },
+          "ten_gods": {
+            "year_stem": "",
+            "month_stem": "",
+            "hour_stem": "",
+            "branches_main": {
+              "year_branch": "",
+              "month_branch": "",
+              "day_branch": "",
+              "hour_branch": ""
+            }
+          },
+          "relations": {
+            "stem_combos": [],
+            "stem_clashes": [],
+            "branch_combos": [],
+            "branch_clashes": [],
+            "branch_harms": [],
+            "branch_punishments": [],
+            "branch_breaks": []
+          },
+          "optional": {
+            "twelve_growth": {},
+            "na_yin": {}
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 3,
+        "name": "抓月令与季节（定大方向）",
+        "annotations": "月支月令为第一权重",
+        "result": {
+          "month_command": {
+            "month_branch": "",
+            "season": "",
+            "dominant_qi": "",
+            "supporting_elements_rank": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 4,
+        "name": "判旺衰：日主强弱与身态",
+        "annotations": "得令/通根/得助/生克泄耗综合",
+        "result": {
+          "strength_judgement": {
+            "body_state": "",
+            "score_summary": {
+              "favorable_to_dm": { "resource": 0, "peer": 0, "rooting": 0, "season": 0 },
+              "unfavorable_to_dm": { "output": 0, "wealth": 0, "power": 0, "control": 0 }
+            },
+            "key_reasons": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 5,
+        "name": "看寒暖燥湿与调候",
+        "annotations": "季节偏性与五行分布修正取用",
+        "result": {
+          "climate_balance": {
+            "temperature": "",
+            "humidity": "",
+            "dry_wet": "",
+            "needs": [],
+            "notes": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 6,
+        "name": "定格局/成局（结构判断）",
+        "annotations": "格局清纯、成局、破格与否",
+        "result": {
+          "structure": {
+            "primary_pattern": "",
+            "secondary_patterns": [],
+            "formed_combinations": [],
+            "breakers": [],
+            "purity": "",
+            "notes": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 7,
+        "name": "取用神、喜神、忌神",
+        "annotations": "强弱+格局+调候+合冲影响综合定性",
+        "result": {
+          "useful_gods": {
+            "yong_shen": { "element": "", "ten_god": "", "why": "" },
+            "xi_shen": [{ "element": "", "ten_god": "", "why": "" }],
+            "ji_shen": [{ "element": "", "ten_god": "", "why": "" }]
+          },
+          "element_preference": {
+            "favorable": [],
+            "neutral": [],
+            "unfavorable": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 8,
+        "name": "验盘：病药是否自洽",
+        "annotations": "用神能否解决主要矛盾、是否被合冲绑架等",
+        "result": {
+          "consistency_check": {
+            "main_conflict": "",
+            "medicine": "",
+            "risk_points": [],
+            "self_consistency": "",
+            "notes": []
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 9,
+        "name": "十神专题解读（静态画像）",
+        "annotations": "十神强弱+位置+透藏→性格/事业/财/关系等",
+        "result": {
+          "ten_god_profile": {
+            "strong": [],
+            "weak": [],
+            "balanced": [],
+            "themes": {
+              "personality": [],
+              "career": [],
+              "wealth": [],
+              "relationship_family": [],
+              "health_tendencies": []
+            }
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 10,
+        "name": "动态：排大运（10年一运）",
+        "annotations": "看扶格/破格、引动喜忌、阶段主旋律",
+        "result": {
+          "da_yun": {
+            "start_age": null,
+            "direction": "",
+            "cycles": [
+              {
+                "age_range": "",
+                "pillar": { "stem": "", "branch": "" },
+                "element_effect": "",
+                "ten_god_effect": "",
+                "key_triggers": [],
+                "summary": ""
+              }
+            ]
+          }
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 11,
+        "name": "动态：叠流年（落到年份）",
+        "annotations": "大运框架下看流年合冲刑害与主题触发",
+        "result": {
+          "liu_nian": [
+            {
+              "year": null,
+              "pillar": { "stem": "", "branch": "" },
+              "with_natal": { "combos": [], "clashes": [], "punishments": [], "harms": [] },
+              "with_da_yun": { "combos": [], "clashes": [], "punishments": [], "harms": [] },
+              "theme": [],
+              "risk": [],
+              "notes": ""
+            }
+          ]
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 12,
+        "name": "需要更细再看流月/流日（可选）",
+        "annotations": "择时/复盘用；粒度越细噪声越大",
+        "result": {
+          "enabled": false,
+          "liu_yue_or_liu_ri": [],
+          "notes": ""
+        },
+        "confidence": 0.0
+      },
+      {
+        "step": 13,
+        "name": "输出结论与建议（可执行）",
+        "annotations": "主结构、病药、节奏、策略与行动建议",
+        "result": {
+          "summary": {
+            "core_structure": "",
+            "main_conflict": "",
+            "key_levers": [],
+            "timing_strategy": []
+          },
+          "actionable_advice": {
+            "do_more": [],
+            "do_less": [],
+            "risk_management": [],
+            "resource_allocation": []
+          }
+        },
+        "confidence": 0.0
+      }
+    ]
+  }
+  

@@ -79,6 +79,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center space-x-4">
               {!loading && user ? (
                 <>
+                  {/* 升级按钮：登录后显示在用户名左侧，跳转到价格页 */}
+                  <Link
+                    href="/pricing"
+                    className="px-3 py-1.5 text-sm border border-amber-600 text-amber-600 rounded-full hover:bg-amber-50 transition-colors"
+                  >
+                    升级
+                  </Link>
                   <Link href="/account" className="text-gray-700 hover:text-amber-600">
                     {user?.name || "账户"}
                   </Link>

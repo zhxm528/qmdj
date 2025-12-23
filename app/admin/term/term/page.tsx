@@ -20,6 +20,7 @@ import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
 import { PlusOutlined, EditOutlined, DeleteOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
+import TermTimeline from "@/components/TermTimeline";
 
 const { TextArea } = Input;
 
@@ -110,29 +111,47 @@ export default function TermPage() {
     loadCategories();
   }, []);
 
+  // 处理 Modal 打开后的表单值设置
+  const handleModalAfterOpenChange = (open: boolean) => {
+    if (open) {
+      // Modal 完全打开后，设置表单值
+      // 使用 setTimeout 确保 Form 组件完全渲染和初始化
+      setTimeout(() => {
+        if (editingTerm) {
+          // 编辑模式：设置表单值
+          const formValues = {
+            term_key: editingTerm.term_key || undefined,
+            name: editingTerm.name || undefined,
+            alias: editingTerm.alias || undefined,
+            pinyin: editingTerm.pinyin || undefined,
+            category_id: editingTerm.category_id || null,
+            short_desc: editingTerm.short_desc || undefined,
+            full_desc: editingTerm.full_desc || undefined,
+            status: editingTerm.status === 1,
+            sort_order: editingTerm.sort_order,
+          };
+          form.setFieldsValue(formValues);
+        } else {
+          // 新增模式，设置默认值
+          form.setFieldsValue({
+            status: true,
+            sort_order: 1000,
+          });
+        }
+      }, 100);
+    }
+  };
+
   const handleAdd = () => {
     setEditingTerm(null);
     form.resetFields();
-    form.setFieldsValue({
-      status: true,
-      sort_order: 1000,
-    });
     setModalVisible(true);
   };
 
   const handleEdit = (record: Term) => {
+    // 先设置 editingTerm，然后打开 Modal
+    // handleModalAfterOpenChange 会在 Modal 打开后自动设置表单值
     setEditingTerm(record);
-    form.setFieldsValue({
-      term_key: record.term_key,
-      name: record.name,
-      alias: record.alias || undefined,
-      pinyin: record.pinyin || undefined,
-      category_id: record.category_id || null,
-      short_desc: record.short_desc || undefined,
-      full_desc: record.full_desc || undefined,
-      status: record.status === 1,
-      sort_order: record.sort_order,
-    });
     setModalVisible(true);
   };
 
@@ -160,6 +179,11 @@ export default function TermPage() {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
+      // 新增时，如果 status 未设置，默认为 1（启用）
+      const statusValue = editingTerm 
+        ? (values.status ? 1 : 0) 
+        : (values.status !== undefined ? (values.status ? 1 : 0) : 1);
+      
       const payload: any = {
         term_key: values.term_key || null,
         name: values.name || null,
@@ -168,7 +192,7 @@ export default function TermPage() {
         category_id: values.category_id || null,
         short_desc: values.short_desc || null,
         full_desc: values.full_desc || null,
-        status: values.status ? 1 : 0,
+        status: statusValue,
         sort_order: values.sort_order ?? 1000,
       };
 
@@ -321,6 +345,9 @@ export default function TermPage() {
       <Layout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
           <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+            {/* 时间轴导航 */}
+            <TermTimeline currentStep={1} />
+
             <div className="flex items-center justify-between mb-6">
               <h1 className="text-3xl font-bold text-gray-900">术语管理</h1>
               <Button
@@ -364,7 +391,10 @@ export default function TermPage() {
               onCancel={() => {
                 setModalVisible(false);
                 form.resetFields();
+                setEditingTerm(null);
               }}
+              afterOpenChange={handleModalAfterOpenChange}
+              maskClosable={false}
               destroyOnClose
               width={800}
             >
@@ -373,11 +403,6 @@ export default function TermPage() {
                 layout="vertical"
                 preserve={false}
               >
-                {editingTerm && (
-                  <Form.Item label="ID" name="id">
-                    <Input value={editingTerm.id} disabled />
-                  </Form.Item>
-                )}
                 <Form.Item
                   label="术语Key"
                   name="term_key"

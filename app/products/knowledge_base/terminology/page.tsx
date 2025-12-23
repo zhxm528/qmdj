@@ -208,13 +208,13 @@ export default function TerminologyPage() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-7xl mx-auto">
           {/* 顶部搜索区 */}
           <div className="mb-6">
             <div className="relative">
               <Search
-                placeholder="请输入名词、缩写或拼音进行搜索（例如：VIP、会员等级、huiyuan dengji）"
+                placeholder="请输入术语Key、名称、别名或拼音进行搜索（例如：member_level、会员等级、VIP、huiyuan dengji）"
                 allowClear
                 enterButton={<SearchOutlined />}
                 size="large"
@@ -286,7 +286,7 @@ export default function TerminologyPage() {
                     value={sortOrder}
                     onChange={(value) => setSortOrder(value)}
                   >
-                    <Select.Option value="sort_order">手工排序</Select.Option>
+                    <Select.Option value="sort_order">推荐排序</Select.Option>
                     <Select.Option value="name">名称 A-Z</Select.Option>
                   </Select>
                 </div>

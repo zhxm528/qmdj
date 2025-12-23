@@ -39,8 +39,8 @@ export default function Products() {
       status: "黄金会员",
       features: ["生辰八字是一套语言，把你的性格节奏与关系模式讲清楚，帮助做出更清醒的选择。", "推演一个人的性格倾向、运势节奏、情感与婚恋互动模式。"],
       banner: "/product/qmdj_product_bazi_banner.webp",
-      comingSoon: true,
-      buttonText: "即将推出",
+      path: "/bazi",
+      buttonText: "进入四柱八字",
     },
     {
       title: "紫微斗数",
@@ -58,12 +58,9 @@ export default function Products() {
       icon: "",
       status: "白银会员",
       banner: "/product/qmdj_product_knowledge_banner.webp",
-      menus: [
-        {
-          title: "名词解释",
-          path: "/products/knowledge_base/terminology",
-        },
-      ],
+      features: ["提供专业术语解释和知识查询，帮助您更好地理解相关概念和内容。", "包含名词解释、术语查询等功能，支持搜索和分类浏览。"],
+      path: "/products/knowledge_base/terminology",
+      buttonText: "进入知识库",
     },
   ];
 
