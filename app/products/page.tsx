@@ -43,16 +43,6 @@ export default function Products() {
       buttonText: "进入四柱八字",
     },
     {
-      title: "紫微斗数",
-      id: "ziwei",
-      icon: "",
-      status: "钻石会员",
-      features: ["它像一张人生与关系的【导航盘】，用结构化语言帮你看清自己、看懂关系、选对节奏。", "以【出生年/月/日/时】起盘，通过星曜落宫与组合，解读人的性格、机会、成长。"],
-      banner: "/product/qmdj_product_ziwei_banner.webp",
-      comingSoon: true,
-      buttonText: "即将推出",
-    },
-    {
       title: "知识库",
       id: "knowledge_base",
       icon: "",
@@ -70,7 +60,7 @@ export default function Products() {
         <div className="max-w-7xl mx-auto">
          
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {panels.map((panel) => (
               <div
                 key={panel.id}

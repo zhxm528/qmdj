@@ -182,7 +182,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaipanRespons
       if (tianShen) parts.push(`天八神：${tianShen}`);
       if (star) parts.push(`九星：${star}`);
       if (door) parts.push(`八门：${door}`);
-      return {
+    return {
         id: palaceNo,
         name: ``, // 宫位名称
         diGan,
@@ -195,8 +195,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaipanRespons
         yiMa,
         jiGong: jiGongInfo,
         content: parts.join(" · ") || "暂无排盘数据",
-      };
-    });
+    };
+  });
 
     return NextResponse.json({
       success: true,
@@ -219,5 +219,5 @@ export async function POST(req: NextRequest): Promise<NextResponse<PaipanRespons
       { success: false, error: error.message || "排盘失败，请重试" },
       { status: 500 }
     );
-  }
+}
 }

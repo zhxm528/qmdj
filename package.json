@@ -12,6 +12,8 @@
     "antd": "^5.28.0",
     "bcryptjs": "^2.4.3",
     "dayjs": "^1.11.19",
+    "echarts": "^6.0.0",
+    "echarts-for-react": "^3.0.5",
     "groq-sdk": "^0.34.0",
     "lunar-javascript": "^1.7.6",
     "next": "^14.2.33",

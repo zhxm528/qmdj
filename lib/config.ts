@@ -14,7 +14,7 @@ export const deepseekConfig = {
 
 // 数据库配置
 export const dbConfig = {
-  host: process.env.DB_HOST || "47.120.18.202",
+  host: process.env.DB_HOST || "155.138.222.180",
   port: parseInt(process.env.DB_PORT || "5432", 10),
   database: process.env.DB_NAME || "qmdj",
   user: process.env.DB_USER || "mz",
@@ -38,7 +38,7 @@ export const mailConfig = {
       pass: "VU2EP65PciTBBWK6",
     },
   },
-  baseUrl: "http://47.120.18.202:3000",
+  baseUrl: "http://155.138.222.180:3000",
 };
 
 // 时区配置

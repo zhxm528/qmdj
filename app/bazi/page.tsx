@@ -3,12 +3,16 @@
 import React, { useState } from "react";
 import { Button, ConfigProvider, Card, Spin, Collapse, Tooltip } from "antd";
 import zhCN from "antd/locale/zh_CN";
+import dynamic from "next/dynamic";
 import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 
 const { Panel } = Collapse;
+
+// 动态导入 ECharts 组件（避免 SSR 问题）
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 // 获取当前日期的格式化字符串 (YYYY-MM-DD)
 function getCurrentDate(): string {
@@ -52,6 +56,19 @@ export default function BaziPage() {
     hour: string;
   } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [hiddenStemsData, setHiddenStemsData] = useState<Record<string, string[]> | null>(null);
+  const [ganMetaData, setGanMetaData] = useState<Record<string, { yin_yang: string; wu_xing: string }> | null>(null);
+  const [ganheData, setGanheData] = useState<{
+    gan_he: Record<string, { with: string; transform: string }>;
+    zhi_liuhe: Record<string, string>;
+    zhi_sanhe: Record<string, string>;
+    zhi_sanhui: Record<string, string>;
+    zhi_chong: Record<string, string>;
+    zhi_xing: { groups: string[][]; zixing: string[] };
+    zhi_hai: Record<string, string>;
+    zhi_po: Record<string, string>;
+    gan_ke: { gan_wuxing: Record<string, string>; wuxing_ke: Record<string, string> };
+  } | null>(null);
 
   const dateParts = date ? date.split("-") : null;
   const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
@@ -85,6 +102,9 @@ export default function BaziPage() {
     try {
       setLoading(true);
       setBaziSteps([]);
+      setHiddenStemsData(null);
+      setGanMetaData(null);
+      setGanheData(null);
 
       // 调用八字排盘 API
       const response = await fetch("/api/bazi", {
@@ -114,6 +134,75 @@ export default function BaziPage() {
         // 从API返回中获取四柱信息
         if (data.fourPillars) {
           setFourPillars(data.fourPillars);
+          
+          // 获取地支藏干信息
+          try {
+            const branches = [
+              data.fourPillars.year.charAt(1),
+              data.fourPillars.month.charAt(1),
+              data.fourPillars.day.charAt(1),
+              data.fourPillars.hour.charAt(1),
+            ];
+            
+            const hiddenStemsResponse = await fetch("/api/bazi/dizhicanggan", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ branches }),
+            });
+            
+            if (hiddenStemsResponse.ok) {
+              const hiddenStemsData = await hiddenStemsResponse.json();
+              if (hiddenStemsData.success && hiddenStemsData.result) {
+                setHiddenStemsData(hiddenStemsData.result);
+              }
+            }
+          } catch (error) {
+            console.warn("获取地支藏干信息失败:", error);
+          }
+          
+          // 获取天干五行阴阳信息
+          try {
+            const gans = [
+              data.fourPillars.year.charAt(0),
+              data.fourPillars.month.charAt(0),
+              data.fourPillars.day.charAt(0),
+              data.fourPillars.hour.charAt(0),
+            ];
+            
+            const ganMetaResponse = await fetch("/api/bazi/wuxingyinyang", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ gans }),
+            });
+            
+            if (ganMetaResponse.ok) {
+              const ganMetaData = await ganMetaResponse.json();
+              if (ganMetaData.success && ganMetaData.result) {
+                setGanMetaData(ganMetaData.result);
+              } else if (ganMetaData.success && ganMetaData.mapping) {
+                // 如果没有result，使用完整的mapping
+                setGanMetaData(ganMetaData.mapping);
+              }
+            }
+          } catch (error) {
+            console.warn("获取天干五行阴阳信息失败:", error);
+          }
+          
+          // 获取天干地支关系规则表
+          try {
+            const ganheResponse = await fetch("/api/bazi/ganhe", {
+              method: "GET",
+            });
+            
+            if (ganheResponse.ok) {
+              const ganheData = await ganheResponse.json();
+              if (ganheData.success && ganheData.data) {
+                setGanheData(ganheData.data);
+              }
+            }
+          } catch (error) {
+            console.warn("获取天干地支关系规则表失败:", error);
+          }
         }
 
         // 保存到数据库（如果用户已登录）
@@ -163,27 +252,18 @@ export default function BaziPage() {
     switch (stepNum) {
       case 1: {
         // 定日主（命主）
-        const { day_master, day_pillar } = result;
-        return `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。这是整个命盘的核心，所有十神、喜忌都围绕日主展开。`;
-      }
-      
-      case 2: {
-        // 补齐基础盘面信息
-        const { five_elements, hidden_stems, ten_gods, relations, optional } = result;
-        let text = "基础盘面信息：\n\n";
+        const { day_master, day_pillar, five_elements } = result;
+        let text = `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。\n\n`;
         
-        // 五行信息
+        // 五行分布
         if (five_elements) {
           text += "【五行分布】\n";
-          text += `年干：${five_elements.stems.year_stem.stem}（${five_elements.stems.year_stem.element}）\n`;
-          text += `月干：${five_elements.stems.month_stem.stem}（${five_elements.stems.month_stem.element}）\n`;
-          text += `日干：${five_elements.stems.day_stem.stem}（${five_elements.stems.day_stem.element}）\n`;
-          text += `时干：${five_elements.stems.hour_stem.stem}（${five_elements.stems.hour_stem.element}）\n`;
-          text += `年支：${five_elements.branches.year_branch.branch}（${five_elements.branches.year_branch.element}）\n`;
-          text += `月支：${five_elements.branches.month_branch.branch}（${five_elements.branches.month_branch.element}）\n`;
-          text += `日支：${five_elements.branches.day_branch.branch}（${five_elements.branches.day_branch.element}）\n`;
-          text += `时支：${five_elements.branches.hour_branch.branch}（${five_elements.branches.hour_branch.element}）\n\n`;
+          text += `年柱：天干 ${five_elements.stems.year_stem.stem}（${five_elements.stems.year_stem.element}），地支 ${five_elements.branches.year_branch.branch}（${five_elements.branches.year_branch.element}）\n`;
+          text += `月柱：天干 ${five_elements.stems.month_stem.stem}（${five_elements.stems.month_stem.element}），地支 ${five_elements.branches.month_branch.branch}（${five_elements.branches.month_branch.element}）\n`;
+          text += `日柱：天干 ${five_elements.stems.day_stem.stem}（${five_elements.stems.day_stem.element}），地支 ${five_elements.branches.day_branch.branch}（${five_elements.branches.day_branch.element}）\n`;
+          text += `时柱：天干 ${five_elements.stems.hour_stem.stem}（${five_elements.stems.hour_stem.element}），地支 ${five_elements.branches.hour_branch.branch}（${five_elements.branches.hour_branch.element}）\n\n`;
           
+          // 五行统计
           if (five_elements.optional_summary) {
             const counts = five_elements.optional_summary.count_by_element;
             text += "【五行统计】\n";
@@ -191,358 +271,192 @@ export default function BaziPage() {
             if (five_elements.optional_summary.notes) {
               text += `备注：${five_elements.optional_summary.notes}\n`;
             }
-            text += "\n";
           }
         }
         
-        // 地支藏干
-        text += "【地支藏干】\n";
-        text += `年支藏干：${hidden_stems.year_branch.join("、") || "无"}\n`;
-        text += `月支藏干：${hidden_stems.month_branch.join("、") || "无"}\n`;
-        text += `日支藏干：${hidden_stems.day_branch.join("、") || "无"}\n`;
-        text += `时支藏干：${hidden_stems.hour_branch.join("、") || "无"}\n\n`;
-        
-        // 十神
-        text += "【十神关系】\n";
-        text += `年干：${ten_gods.year_stem || "无"}\n`;
-        text += `月干：${ten_gods.month_stem || "无"}\n`;
-        text += `时干：${ten_gods.hour_stem || "无"}\n`;
-        text += `年支主气：${ten_gods.branches_main.year_branch || "无"}\n`;
-        text += `月支主气：${ten_gods.branches_main.month_branch || "无"}\n`;
-        text += `日支主气：${ten_gods.branches_main.day_branch || "无"}\n`;
-        text += `时支主气：${ten_gods.branches_main.hour_branch || "无"}\n\n`;
-        
-        // 关系
-        text += "【天干地支关系】\n";
-        if (relations.stem_combos.length > 0) {
-          text += `天干合：${relations.stem_combos.join("、")}\n`;
-        }
-        if (relations.stem_clashes.length > 0) {
-          text += `天干冲：${relations.stem_clashes.join("、")}\n`;
-        }
-        if (relations.branch_combos.length > 0) {
-          text += `地支合：${relations.branch_combos.join("、")}\n`;
-        }
-        if (relations.branch_clashes.length > 0) {
-          text += `地支冲：${relations.branch_clashes.join("、")}\n`;
-        }
-        if (relations.branch_harms.length > 0) {
-          text += `地支害：${relations.branch_harms.join("、")}\n`;
-        }
-        if (relations.branch_punishments.length > 0) {
-          text += `地支刑：${relations.branch_punishments.join("、")}\n`;
-        }
-        if (relations.branch_breaks.length > 0) {
-          text += `地支破：${relations.branch_breaks.join("、")}\n`;
-        }
-        
         return text;
       }
       
-      case 3: {
-        // 抓月令与季节
-        const { month_command } = result;
-        return `月令为${month_command.month_branch}，属于${month_command.season}季，当令之气为${month_command.dominant_qi}。\n\n五行力量排序：${month_command.supporting_elements_rank.join(" > ")}。\n\n月令是判断日主强弱的第一权重，决定了整个命盘的大方向。`;
-      }
-      
-      case 4: {
-        // 判旺衰
-        const { strength_judgement } = result;
-        const { body_state, score_summary, key_reasons } = strength_judgement;
-        let text = `【身态判断】\n${body_state}\n\n`;
-        
-        text += "【得分情况】\n";
-        text += `有利因素：印${score_summary.favorable_to_dm.resource}、比劫${score_summary.favorable_to_dm.peer}、通根${score_summary.favorable_to_dm.rooting}、得令${score_summary.favorable_to_dm.season}\n`;
-        text += `不利因素：食伤${score_summary.unfavorable_to_dm.output}、财${score_summary.unfavorable_to_dm.wealth}、官杀${score_summary.unfavorable_to_dm.power}、其他${score_summary.unfavorable_to_dm.control}\n\n`;
-        
-        text += "【关键原因】\n";
-        key_reasons.forEach((reason: string) => {
-          text += `• ${reason}\n`;
-        });
-        
-        return text;
-      }
-      
-      case 5: {
-        // 寒暖燥湿
-        const { climate_balance } = result;
-        let text = `【气候平衡】\n`;
-        text += `温度：${climate_balance.temperature}\n`;
-        text += `湿度：${climate_balance.humidity}\n`;
-        text += `燥湿：${climate_balance.dry_wet}\n\n`;
-        
-        if (climate_balance.needs.length > 0) {
-          text += "【调候需求】\n";
-          climate_balance.needs.forEach((need: string) => {
-            text += `• ${need}\n`;
-          });
-        }
-        
-        if (climate_balance.notes.length > 0) {
-          text += "\n【备注】\n";
-          climate_balance.notes.forEach((note: string) => {
-            text += `• ${note}\n`;
-          });
-        }
-        
-        return text;
-      }
-      
-      case 6: {
-        // 定格局
-        const { structure } = result;
-        let text = `【格局判断】\n`;
-        text += `主格局：${structure.primary_pattern}\n`;
-        
-        if (structure.secondary_patterns.length > 0) {
-          text += `次格局：${structure.secondary_patterns.join("、")}\n`;
-        }
-        
-        if (structure.formed_combinations.length > 0) {
-          text += `成局：${structure.formed_combinations.join("、")}\n`;
-        }
-        
-        if (structure.breakers.length > 0) {
-          text += `破格因素：${structure.breakers.join("、")}\n`;
-        }
-        
-        text += `格局清纯度：${structure.purity}\n`;
-        
-        if (structure.notes.length > 0) {
-          text += "\n【备注】\n";
-          structure.notes.forEach((note: string) => {
-            text += `• ${note}\n`;
-          });
-        }
-        
-        return text;
-      }
-      
-      case 7: {
-        // 取用神
-        const { useful_gods, element_preference } = result;
-        let text = "【用神喜忌】\n\n";
-        
-        text += `【用神】\n${useful_gods.yong_shen.element}（${useful_gods.yong_shen.ten_god}）\n`;
-        text += `原因：${useful_gods.yong_shen.why}\n\n`;
-        
-        if (useful_gods.xi_shen.length > 0) {
-          text += "【喜神】\n";
-          useful_gods.xi_shen.forEach((xi: any) => {
-            text += `• ${xi.element}（${xi.ten_god}）：${xi.why}\n`;
-          });
-          text += "\n";
-        }
-        
-        if (useful_gods.ji_shen.length > 0) {
-          text += "【忌神】\n";
-          useful_gods.ji_shen.forEach((ji: any) => {
-            text += `• ${ji.element}（${ji.ten_god}）：${ji.why}\n`;
-          });
-          text += "\n";
-        }
-        
-        text += "【五行喜忌】\n";
-        if (element_preference.favorable.length > 0) {
-          text += `喜：${element_preference.favorable.join("、")}\n`;
-        }
-        if (element_preference.unfavorable.length > 0) {
-          text += `忌：${element_preference.unfavorable.join("、")}\n`;
-        }
-        
-        return text;
-      }
-      
-      case 8: {
-        // 验盘
-        const { consistency_check } = result;
-        let text = "【验盘检查】\n\n";
-        text += `主要矛盾：${consistency_check.main_conflict}\n`;
-        text += `解决方案：${consistency_check.medicine}\n\n`;
-        
-        if (consistency_check.risk_points.length > 0) {
-          text += "【风险点】\n";
-          consistency_check.risk_points.forEach((risk: string) => {
-            text += `• ${risk}\n`;
-          });
-          text += "\n";
-        }
-        
-        text += `自洽性：${consistency_check.self_consistency === "consistent" ? "一致" : "需复核"}\n`;
-        
-        if (consistency_check.notes.length > 0) {
-          text += "\n【备注】\n";
-          consistency_check.notes.forEach((note: string) => {
-            text += `• ${note}\n`;
-          });
-        }
-        
-        return text;
-      }
-      
-      case 9: {
-        // 十神专题
-        const { ten_god_profile } = result;
-        let text = "【十神强弱】\n";
-        if (ten_god_profile.strong.length > 0) {
-          text += `强：${ten_god_profile.strong.join("、")}\n`;
-        }
-        if (ten_god_profile.weak.length > 0) {
-          text += `弱：${ten_god_profile.weak.join("、")}\n`;
-        }
-        if (ten_god_profile.balanced.length > 0) {
-          text += `平衡：${ten_god_profile.balanced.join("、")}\n`;
-        }
-        text += "\n";
-        
-        text += "【主题解读】\n";
-        const { themes } = ten_god_profile;
-        if (themes.personality.length > 0) {
-          text += `性格：${themes.personality.join("；")}\n`;
-        }
-        if (themes.career.length > 0) {
-          text += `事业：${themes.career.join("；")}\n`;
-        }
-        if (themes.wealth.length > 0) {
-          text += `财运：${themes.wealth.join("；")}\n`;
-        }
-        if (themes.relationship_family.length > 0) {
-          text += `关系家庭：${themes.relationship_family.join("；")}\n`;
-        }
-        if (themes.health_tendencies.length > 0) {
-          text += `健康倾向：${themes.health_tendencies.join("；")}\n`;
-        }
-        
-        return text;
-      }
-      
-      case 10: {
-        // 排大运
-        const { da_yun } = result;
-        let text = `【大运信息】\n`;
-        text += `起运年龄：${da_yun.start_age || "未计算"}岁\n`;
-        text += `顺逆：${da_yun.direction === "forward" ? "顺行" : "逆行"}\n\n`;
-        
-        text += "【大运周期】\n";
-        da_yun.cycles.forEach((cycle: any) => {
-          text += `\n${cycle.age_range}岁：${cycle.pillar.stem}${cycle.pillar.branch}\n`;
-          text += `五行影响：${cycle.element_effect}\n`;
-          text += `十神影响：${cycle.ten_god_effect}\n`;
-          if (cycle.key_triggers.length > 0) {
-            text += `关键触发：${cycle.key_triggers.join("、")}\n`;
-          }
-          text += `总结：${cycle.summary}\n`;
-        });
-        
-        return text;
-      }
-      
-      case 11: {
-        // 叠流年
-        const { liu_nian } = result;
-        let text = "【流年分析】\n\n";
-        
-        liu_nian.forEach((year: any) => {
-          text += `${year.year}年：${year.pillar.stem}${year.pillar.branch}\n`;
-          
-          if (year.with_natal.clashes.length > 0 || year.with_natal.combos.length > 0) {
-            text += `与原局：`;
-            if (year.with_natal.combos.length > 0) {
-              text += `合${year.with_natal.combos.join("、")}`;
-            }
-            if (year.with_natal.clashes.length > 0) {
-              text += `冲${year.with_natal.clashes.join("、")}`;
-            }
-            text += "\n";
-          }
-          
-          if (year.theme.length > 0) {
-            text += `主题：${year.theme.join("、")}\n`;
-          }
-          if (year.risk.length > 0) {
-            text += `风险：${year.risk.join("、")}\n`;
-          }
-          if (year.notes) {
-            text += `备注：${year.notes}\n`;
-          }
-          text += "\n";
-        });
-        
-        return text;
-      }
-      
-      case 12: {
-        // 流月流日
-        const { enabled, notes } = result;
-        if (enabled) {
-          return `流月/流日分析已启用。\n${notes || ""}`;
-        } else {
-          return `流月/流日分析未启用。\n${notes || "通常用于择时或复盘具体事件节点，不建议一开始就使用最细粒度。"}`;
-        }
-      }
-      
-      case 13: {
-        // 结论与建议
-        const { summary, actionable_advice } = result;
-        let text = "【核心总结】\n";
-        text += `主结构：${summary.core_structure}\n`;
-        text += `主要矛盾：${summary.main_conflict}\n\n`;
-        
-        if (summary.key_levers.length > 0) {
-          text += "关键抓手：\n";
-          summary.key_levers.forEach((lever: string) => {
-            text += `• ${lever}\n`;
-          });
-          text += "\n";
-        }
-        
-        if (summary.timing_strategy.length > 0) {
-          text += "时机策略：\n";
-          summary.timing_strategy.forEach((strategy: string) => {
-            text += `• ${strategy}\n`;
-          });
-          text += "\n";
-        }
-        
-        text += "【行动建议】\n\n";
-        
-        if (actionable_advice.do_more.length > 0) {
-          text += "【宜多做】\n";
-          actionable_advice.do_more.forEach((item: string) => {
-            text += `• ${item}\n`;
-          });
-          text += "\n";
-        }
-        
-        if (actionable_advice.do_less.length > 0) {
-          text += "【宜少做】\n";
-          actionable_advice.do_less.forEach((item: string) => {
-            text += `• ${item}\n`;
-          });
-          text += "\n";
-        }
-        
-        if (actionable_advice.risk_management.length > 0) {
-          text += "【风险管理】\n";
-          actionable_advice.risk_management.forEach((item: string) => {
-            text += `• ${item}\n`;
-          });
-          text += "\n";
-        }
-        
-        if (actionable_advice.resource_allocation.length > 0) {
-          text += "【资源配置】\n";
-          actionable_advice.resource_allocation.forEach((item: string) => {
-            text += `• ${item}\n`;
-          });
-        }
-        
-        return text;
-      }
+      case 2:
+      case 3:
+      case 4:
+      case 5:
+      case 6:
+      case 7:
+      case 8:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+        // 其他步骤暂未实现，显示占位文本
+        return `此步骤的分析结果暂未实现，请稍后查看。\n\n步骤说明：${step.annotations || ""}`;
       
       default:
-        return JSON.stringify(result, null, 2);
+        // 其他步骤暂未实现，显示占位文本
+        return `此步骤的分析结果暂未实现，请稍后查看。\n\n步骤说明：${step.annotations || ""}`;
     }
+  };
+
+  // 生成五行统计雷达图配置
+  const getRadarChartOption = (countByElement: { 木: number; 火: number; 土: number; 金: number; 水: number }) => {
+    const maxValue = Math.max(...Object.values(countByElement), 1); // 至少为1，避免除零
+    const normalizedValues = [
+      countByElement.木 / maxValue * 100,
+      countByElement.火 / maxValue * 100,
+      countByElement.土 / maxValue * 100,
+      countByElement.金 / maxValue * 100,
+      countByElement.水 / maxValue * 100,
+    ];
+
+    // 使用固定顺序的元素数组，确保顺序与 indicator 一致
+    const elements: Array<keyof typeof countByElement> = ["木", "火", "土", "金", "水"];
+    
+    // 创建一个计数器来跟踪 formatter 的调用顺序
+    // 在雷达图中，formatter 会按照 indicator 的顺序被调用
+    let callIndex = 0;
+
+    return {
+      radar: {
+        indicator: [
+          { name: "木", max: 100 },
+          { name: "火", max: 100 },
+          { name: "土", max: 100 },
+          { name: "金", max: 100 },
+          { name: "水", max: 100 },
+        ],
+        center: ["50%", "55%"],
+        radius: "70%",
+        axisName: {
+          color: "#666",
+          fontSize: 14,
+          fontWeight: "bold",
+        },
+        splitArea: {
+          show: true,
+          areaStyle: {
+            color: ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#ddd",
+          },
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#ccc",
+          },
+        },
+      },
+      tooltip: {
+        trigger: "item",
+        formatter: (params: any) => {
+          if (Array.isArray(params)) {
+            return params.map((p: any) => {
+              const index = typeof p.indicatorIndex === "number" ? p.indicatorIndex : -1;
+              if (index >= 0 && index < elements.length) {
+                const elementName = elements[index];
+                const originalValue = countByElement[elementName] || 0;
+                return `${elementName}: ${originalValue}`;
+              }
+              return p.name || "";
+            }).join("<br/>");
+          }
+          const index = typeof params.indicatorIndex === "number" ? params.indicatorIndex : -1;
+          if (index >= 0 && index < elements.length) {
+            const elementName = elements[index];
+            const originalValue = countByElement[elementName] || 0;
+            return `${elementName}: ${originalValue}`;
+          }
+          return params.name || "";
+        },
+      },
+      series: [
+        {
+          name: "五行统计",
+          type: "radar",
+          label: {
+            show: true,
+            position: "top",
+            distance: 8,
+            formatter: (params: any) => {
+              // 在 ECharts 雷达图中，label formatter 的参数：
+              // params.value: 当前数据点的值（归一化后的值，是一个数字）
+              // params.indicatorIndex: 指标索引（雷达图特有，ECharts 5.x 支持，这是最可靠的方法）
+              // params.dataIndex: 数据系列索引（通常是 0）
+              // params.seriesIndex: 系列索引
+              // params.name: 可能包含指标名称或其他信息
+              
+              // 关键问题：当多个元素有相同的值时（如土：3、水：3），值匹配会失败
+              // 解决方案：必须使用 indicatorIndex，它直接对应 indicator 数组的索引
+              
+              let index: number = -1;
+              
+              // 方法1: 优先使用 indicatorIndex（这是最可靠的方法）
+              // 在雷达图中，每个数据点对应一个 indicator，indicatorIndex 应该总是可用的
+              // indicatorIndex 直接对应 radar.indicator 数组的索引，顺序是固定的：[木, 火, 土, 金, 水]
+              if (typeof params.indicatorIndex === "number" && params.indicatorIndex >= 0 && params.indicatorIndex < elements.length) {
+                index = params.indicatorIndex;
+              }
+              // 方法2: 如果 indicatorIndex 不可用，使用调用顺序作为备用
+              // 在雷达图中，formatter 会按照 indicator 的顺序被调用
+              // 注意：这个方法依赖于 ECharts 的调用顺序，可能不够可靠
+              else {
+                // 使用闭包中的计数器来跟踪调用顺序
+                const currentIndex = callIndex % elements.length;
+                callIndex++;
+                index = currentIndex;
+              }
+              
+              // 确保索引有效
+              if (index >= 0 && index < elements.length) {
+                const elementName = elements[index];
+                const originalValue = countByElement[elementName] || 0;
+                return `${elementName}: ${originalValue}`;
+              }
+              
+              // 如果仍然无法确定，返回空字符串（不显示标签）
+              return "";
+            },
+            color: "#333",
+            fontSize: 12,
+            fontWeight: "bold",
+            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            borderColor: "#f59e0b",
+            borderWidth: 1,
+            borderRadius: 4,
+            padding: [4, 6],
+          },
+          labelLine: {
+            show: true,
+            length: 10,
+            length2: 5,
+          },
+          data: [
+            {
+              value: normalizedValues,
+              name: "五行分布",
+              areaStyle: {
+                color: "rgba(245, 158, 11, 0.3)", // amber-500 with opacity
+              },
+              lineStyle: {
+                color: "#f59e0b", // amber-500
+                width: 2,
+              },
+              itemStyle: {
+                color: "#f59e0b", // amber-500
+              },
+            },
+          ],
+          emphasis: {
+            label: {
+              show: true,
+            },
+          },
+        },
+      ],
+    };
   };
 
   // 构建八字JSON数据
@@ -735,6 +649,376 @@ export default function BaziPage() {
                               {naturalText}
                             </div>
                           </div>
+                          {/* 步骤1显示天干五行阴阳表格 */}
+                          {step.step === 1 && fourPillars && ganMetaData && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">天干五行阴阳表</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {[
+                                      { pillar: "年干", gan: fourPillars.year.charAt(0) },
+                                      { pillar: "月干", gan: fourPillars.month.charAt(0) },
+                                      { pillar: "日干", gan: fourPillars.day.charAt(0) },
+                                      { pillar: "时干", gan: fourPillars.hour.charAt(0) },
+                                    ].map(({ pillar, gan }) => {
+                                      const meta = ganMetaData[gan];
+                                      return (
+                                        <tr key={pillar} className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{gan}</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">{meta?.yin_yang || "-"}</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">{meta?.wu_xing || "-"}</td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                          {/* 步骤1显示地支藏干表格 */}
+                          {step.step === 1 && fourPillars && hiddenStemsData && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {[
+                                      { pillar: "年支", branch: fourPillars.year.charAt(1) },
+                                      { pillar: "月支", branch: fourPillars.month.charAt(1) },
+                                      { pillar: "日支", branch: fourPillars.day.charAt(1) },
+                                      { pillar: "时支", branch: fourPillars.hour.charAt(1) },
+                                    ].map(({ pillar, branch }) => {
+                                      const hiddenStems = hiddenStemsData[branch] || [];
+                                      const roleLabels = ["主气", "中气", "余气"];
+                                      return (
+                                        <tr key={pillar} className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
+                                          <td className="border border-gray-300 px-3 py-2">
+                                            {hiddenStems.length > 0 ? (
+                                              <div className="flex flex-wrap gap-2">
+                                                {hiddenStems.map((stem, index) => (
+                                                  <span key={index} className="inline-flex items-center gap-1">
+                                                    <span className="font-medium">{stem}</span>
+                                                    {index < roleLabels.length && (
+                                                      <span className="text-xs text-gray-500">({roleLabels[index]})</span>
+                                                    )}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <span className="text-gray-400">无</span>
+                                            )}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
+                                            {hiddenStems.length > 0
+                                              ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
+                                              : "该地支无藏干"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
+                          {/* 步骤1显示五行统计雷达图 */}
+                          {step.step === 1 && step.result.five_elements?.optional_summary?.count_by_element && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">五行统计雷达图</h4>
+                              <ReactECharts
+                                option={getRadarChartOption(step.result.five_elements.optional_summary.count_by_element)}
+                                style={{ height: "400px", width: "100%" }}
+                                opts={{ renderer: "svg" }}
+                              />
+                            </div>
+                          )}
+                          {/* 步骤1显示天干地支关系规则表 */}
+                          {step.step === 1 && ganheData && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">天干地支关系规则表</h4>
+                              <div className="space-y-6">
+                                {/* 五合（天干五合） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">五合（天干五合）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干1</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干2</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">合化五行</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.gan_he)
+                                          .filter(([gan, _]) => ["甲", "乙", "丙", "丁", "戊"].includes(gan))
+                                          .map(([gan, info]) => (
+                                            <tr key={gan} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{gan}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{info.with}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">{info.transform}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 六合（地支六合） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">六合（地支六合）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_liuhe)
+                                          .filter(([zhi, _]) => ["子", "寅", "卯", "辰", "巳", "午"].includes(zhi))
+                                          .map(([zhi, partner]) => (
+                                            <tr key={zhi} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 三合（地支三合局） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">三合（地支三合局）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三合局</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">合化五行</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_sanhe)
+                                          .filter(([combo, _]) => ["申子辰", "寅午戌", "亥卯未", "巳酉丑"].includes(combo))
+                                          .map(([combo, element]) => (
+                                            <tr key={combo} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{combo}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">{element}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 三会（地支三会局） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">三会（地支三会局）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三会局</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">会化五行</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_sanhui)
+                                          .filter(([combo, _]) => ["亥子丑", "寅卯辰", "巳午未", "申酉戌"].includes(combo))
+                                          .map(([combo, element]) => (
+                                            <tr key={combo} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{combo}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">{element}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 冲（地支六冲） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">冲（地支六冲）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_chong)
+                                          .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "辰", "巳"].includes(zhi))
+                                          .map(([zhi, partner]) => (
+                                            <tr key={zhi} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 刑（地支刑） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">刑（地支刑）</h5>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">三刑组：</div>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm">
+                                          <thead>
+                                            <tr className="bg-gray-50">
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三刑组</th>
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">类型</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {ganheData.zhi_xing.groups.map((group, idx) => (
+                                              <tr key={idx} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{group.join("、")}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {group.length === 3 ? "三刑" : "相刑"}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">自刑：</div>
+                                      <div className="text-sm text-gray-700">{ganheData.zhi_xing.zixing.join("、")}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* 害（地支六害） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">害（地支六害）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_hai)
+                                          .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "申", "酉"].includes(zhi))
+                                          .map(([zhi, partner]) => (
+                                            <tr key={zhi} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 破（地支六破） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">破（地支六破）</h5>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {Object.entries(ganheData.zhi_po)
+                                          .filter(([zhi, _]) => ["子", "卯", "辰", "未", "寅", "巳"].includes(zhi))
+                                          .map(([zhi, partner]) => (
+                                            <tr key={zhi} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
+                                            </tr>
+                                          ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                
+                                {/* 干克（天干相克） */}
+                                <div>
+                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">干克（天干相克）</h5>
+                                  <div className="space-y-3">
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">天干五行映射：</div>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm">
+                                          <thead>
+                                            <tr className="bg-gray-50">
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {Object.entries(ganheData.gan_ke.gan_wuxing).map(([gan, wuxing]) => (
+                                              <tr key={gan} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{gan}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center">{wuxing}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">五行相克规则：</div>
+                                      <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse text-sm">
+                                          <thead>
+                                            <tr className="bg-gray-50">
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">克方</th>
+                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">被克方</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {Object.entries(ganheData.gan_ke.wuxing_ke).map(([ke, beike]) => (
+                                              <tr key={ke} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{ke}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{beike}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                           {userRole === "qmdj" && (
                             <details className="mt-4">
                               <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
@@ -767,5 +1051,6 @@ export default function BaziPage() {
     </ConfigProvider>
   );
 }
+
 
 
