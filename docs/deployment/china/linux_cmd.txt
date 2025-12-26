@@ -4,3 +4,238 @@
 - npm install    //安装最新npm包，可选
 - npm run build    //重新编译项目
 - pm2 restart qmdj --update-env    //用pm2重启项目
+
+
+
+
+## Windows（推荐用 Windows Terminal / PowerShell）
+- ssh root@你的服务器IP
+- ssh root@45.76.154.72   H5=x?HH2Ek{XH2j5
+
+
+
+## 在 Ubuntu 24.04.3 / x86_64 上部署 Next.js 项目
+### 更新系统
+```bash
+- sudo apt update && sudo apt upgrade -y
+```
+
+### 安装 Node.js（推荐 LTS 版本 18 或 20）
+```bash
+# 安装 nvm
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+
+# 让当前 shell 立刻生效
+export NVM_DIR="$HOME/.nvm"
+source "$NVM_DIR/nvm.sh"
+
+# 安装 Node 20（也可以 18）
+nvm install 20
+nvm use 20
+
+# 确认版本
+node -v
+npm -v
+```
+
+### 拉取并安装 Next.js 项目
+```bash
+cd ~
+git clone https://github.com/zhxm528/qmdj.git
+cd qmdj
+```
+
+### 安装依赖
+```bash
+npm install
+npm i baseline-browser-mapping@latest -D
+```
+
+### 配置环境变量
+
+```bash
+nano .env.production
+```
+```bash
+NODE_ENV=production
+DEEPSEEK_API_KEY=sk-4cfb428f4047486a8bab85b796745658",
+DEEPSEEK_BASE_URL=https://api.deepseek.com",
+DB_HOST=155.138.222.180
+DB_PORT=5432
+DB_NAME=qmdj
+DB_USER=mz
+DB_PASSWORD=12qw!@QW
+DB_POOL_MAX=20
+DB_IDLE_TIMEOUT=30000
+DB_CONNECTION_TIMEOUT=2000
+TIMEZONE=Asia/Shanghai
+UTC_OFFSET=8
+```
+
+
+
+### 生产构建
+```bash
+npm run build
+```
+
+### Ubuntu 24.04.3 LTS / x86_64 上，用官方 Docker apt 源安装 Docker Engine + Docker Compose 插件
+- 卸载可能冲突的旧版本（如果之前装过）
+```bash
+sudo apt remove docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc
+```
+- 安装基础依赖
+```bash
+sudo apt update
+sudo apt install -y ca-certificates curl gnupg
+```
+- 添加 Docker 官方 GPG key
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+  | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+```
+- 添加 Docker 官方 apt 软件源
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+  https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo $UBUNTU_CODENAME) stable" \
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+- 安装 Docker Engine + CLI + containerd
+```bash
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin
+```
+```bash
+sudo systemctl status docker
+```
+- 安装 Docker Compose 插件
+```bash
+sudo apt install -y docker-compose-plugin
+```
+```bash
+docker compose version
+```
+
+- 查看 Docker 版本：
+```bash
+docker version
+```
+
+- 查看服务是否开机自启（一般默认启用）：
+```bash
+sudo systemctl enable docker
+```
+
+
+- 拉取官方 PostgreSQL 镜像
+```bash
+docker pull postgres:16
+```
+- 先在宿主机创建数据目录（可选但推荐）：
+```bash
+sudo mkdir -p /opt/postgres-data
+sudo chown -R $USER:$USER /opt/postgres-data
+```
+
+- 运行容器：
+```bash
+docker run -d \
+  --name qmdj \
+  -e POSTGRES_DB=qmdj \
+  -e POSTGRES_USER=mz \
+  -e POSTGRES_PASSWORD=12qw!@QW \
+  -v /opt/postgres-data:/var/lib/postgresql/data \
+  -p 5432:5432 \
+  postgres:16
+```
+
+
+- 检查容器是否正常运行
+```bash
+docker ps
+```
+
+
+- 进入容器内部，用 psql 连接测试
+```bash
+docker exec -it qmdj bash
+psql -U mz -d qmdj
+```
+
+- 新建一个目录
+```bash
+mkdir -p ~/pg-stack
+cd ~/pg-stack
+```
+
+- 新建 docker-compose.yml
+```bash
+nano docker-compose.yml
+```
+
+
+- 内容示例：
+```bash
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: my-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: mydb
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+```
+
+
+保存后（Ctrl+O 回车，Ctrl+X 退出）。
+
+
+
+- 启动服务
+```bash
+docker compose up -d
+```
+- 查看状态：
+```bash
+docker compose ps
+```
+- 停止服务：
+```bash
+docker compose down
+```
+
+
+- 查看日志：
+```bash
+docker logs -f qmdj
+```
+- 重启容器：
+```bash
+docker restart qmdj
+```
+- 停止容器：
+```bash
+docker stop qmdj
+```
+- 删除容器（不会删映射到宿主机的数据目录）：
+```bash
+docker rm qmdj
+```
+
+
+
+
+### pg_dump 生成备份文件 → 传到另一台服务器 → pg_restore 恢复
+```bash
+pg_dump -h 47.120.18.202 -p 5432 -U mz -d qmdj | psql -h 45.76.154.72 -p 5432 -U mz -d qmdj
+```

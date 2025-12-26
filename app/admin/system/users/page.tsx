@@ -61,14 +61,7 @@ export default function UsersManagement() {
   const [isQueryExpanded, setIsQueryExpanded] = useState(true); // 默认展开
 
   // 使用 useMemo 稳定化 queryParams 的引用，避免无限循环
-  const stableQueryParams = useMemo(() => queryParams, [
-    queryParams.name,
-    queryParams.email,
-    queryParams.role,
-    queryParams.status,
-    queryParams.isEmailVerified,
-    queryParams.isPaid,
-  ]);
+  const stableQueryParams = useMemo(() => queryParams, [queryParams]);
 
   // 加载用户列表 - 使用 useCallback 稳定化函数引用
   const loadUsers = useCallback(async (params: QueryParams, page: number, size: number) => {

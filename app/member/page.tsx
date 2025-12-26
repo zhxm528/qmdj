@@ -894,7 +894,7 @@ export default function Member() {
               取消
             </Button>
             <Button
-              type="primary"
+              variant="primary"
               loading={changePasswordLoading}
               onClick={handleChangePassword}
               style={{ backgroundColor: "#1890ff" }}
