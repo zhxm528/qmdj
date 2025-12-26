@@ -142,14 +142,17 @@ sudo chown -R $USER:$USER /opt/postgres-data
 
 - 运行容器：
 ```bash
+docker rm -f qmdj 2>/dev/null
+
 docker run -d \
   --name qmdj \
   -e POSTGRES_DB=qmdj \
   -e POSTGRES_USER=mz \
-  -e POSTGRES_PASSWORD=12qw!@QW \
+  -e POSTGRES_PASSWORD='12qw!@QW' \
   -v /opt/postgres-data:/var/lib/postgresql/data \
   -p 5432:5432 \
   postgres:16
+
 ```
 
 
@@ -165,6 +168,7 @@ docker exec -it qmdj bash
 psql -U mz -d qmdj
 ```
 
+### 用 docker-compose 管理 PostgreSQL
 - 新建一个目录
 ```bash
 mkdir -p ~/pg-stack
@@ -184,12 +188,12 @@ version: '3.9'
 services:
   postgres:
     image: postgres:16
-    container_name: my-postgres
+    container_name: qmdj
     restart: unless-stopped
     environment:
-      POSTGRES_DB: mydb
-      POSTGRES_USER: myuser
-      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: qmdj
+      POSTGRES_USER: mz
+      POSTGRES_PASSWORD: 12qw!@QW
     ports:
       - "5432:5432"
     volumes:
@@ -239,3 +243,117 @@ docker rm qmdj
 ```bash
 pg_dump -h 47.120.18.202 -p 5432 -U mz -d qmdj | psql -h 45.76.154.72 -p 5432 -U mz -d qmdj
 ```
+
+
+
+
+### 使用 PM2 守护进程（让服务挂后台）
+- 安装 PM2
+```bash
+npm install -g pm2
+```
+
+2. 用 PM2 启动 Next.js 在项目根目录：
+```bash
+pm2 start npm --name "next-app" -- run start
+```
+
+- 常用命令：
+pm2 status           # 查看状态
+pm2 logs next-app    # 看日志
+pm2 restart next-app # 重启
+pm2 stop next-app    # 停止
+
+- 设置开机自启
+```bash
+pm2 startup systemd
+# 终端会输出一条命令，照着再执行一次，例如：
+# sudo env PATH=$PATH:/home/youruser/.nvm/versions/node/v20.x/bin pm2 startup systemd -u youruser --hp /home/youruser
+
+pm2 save  
+# 保存当前进程列表
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+用 Nginx 做反向代理（绑定域名 / 使用 80 端口）
+1. 安装 Nginx
+sudo apt install nginx -y
+
+
+确认 Nginx 正常跑着：
+
+systemctl status nginx
+
+2. 配置站点
+
+新建一个配置文件（举例域名为 example.com）：
+
+sudo nano /etc/nginx/sites-available/next-app
+
+
+写入：
+
+server {
+    listen 80;
+    server_name example.com www.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;  # Next.js 的内部端口
+
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+
+        # 可选：真实 IP 透传
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+
+保存退出后，创建软链接启用配置：
+
+sudo ln -s /etc/nginx/sites-available/next-app /etc/nginx/sites-enabled/next-app
+
+# 检查语法
+sudo nginx -t
+
+# 重载 Nginx
+sudo systemctl reload nginx
+
+3. 防火墙放行（如果启用了 ufw）
+sudo ufw allow OpenSSH
+sudo ufw allow 'Nginx Full'
+sudo ufw enable   # 若尚未启用
+
+
+现在访问：
+
+http://example.com
+就会通过 Nginx 转发到 127.0.0.1:3000 的 Next.js 应用。
+
+七、可选：配置 HTTPS（Let’s Encrypt）
+
+如果你有域名，推荐用 Certbot 自动申请证书：
+
+sudo apt install certbot python3-certbot-nginx -y
+sudo certbot --nginx -d example.com -d www.example.com
+
+
+之后访问 https://example.com 即可。
