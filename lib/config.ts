@@ -27,18 +27,18 @@ export const dbConfig = {
 
 // 邮件配置
 export const mailConfig = {
-  from: "yuanlaiyunshi@126.com",
-  fromName: "缘来运势",
+  from: process.env.MAIL_FROM || "yuanlaiyunshi@126.com",
+  fromName: process.env.MAIL_FROM_NAME || "缘来运势",
   smtp: {
-    host: "smtp.126.com",
-    port: parseInt("465", 10),
-    secure: true,
+    host: process.env.MAIL_SMTP_HOST || "smtp.126.com",
+    port: parseInt(process.env.MAIL_SMTP_PORT || "465", 10),
+    secure: process.env.MAIL_SMTP_SECURE === "false" ? false : true,
     auth: {
-      user: "yuanlaiyunshi@126.com",
-      pass: "VU2EP65PciTBBWK6",
+      user: process.env.MAIL_SMTP_USER || "yuanlaiyunshi@126.com",
+      pass: process.env.MAIL_SMTP_PASS || "VU2EP65PciTBBWK6",
     },
   },
-  baseUrl: "http://155.138.222.180:3000",
+  baseUrl: process.env.MAIL_BASE_URL || "http://155.138.222.180:3000",
 };
 
 // 时区配置

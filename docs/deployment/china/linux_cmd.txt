@@ -1,3 +1,4 @@
+
 ## 跟新git并重启服务
 - git pull --ff-only    //从git上拉取最新文件
 - rm -rf .next   //删除历史编译文件，可选
@@ -9,8 +10,8 @@
 
 
 ## Windows（推荐用 Windows Terminal / PowerShell）
-- ssh root@你的服务器IP
-- ssh root@45.76.154.72   H5=x?HH2Ek{XH2j5
+- ssh root@45.76.154.72   
+H5=x?HH2Ek XH2j5
 
 
 
@@ -255,14 +256,14 @@ npm install -g pm2
 
 2. 用 PM2 启动 Next.js 在项目根目录：
 ```bash
-pm2 start npm --name "next-app" -- run start
+pm2 start npm --name "qmdj" -- run start
 ```
 
 - 常用命令：
 pm2 status           # 查看状态
-pm2 logs next-app    # 看日志
-pm2 restart next-app # 重启
-pm2 stop next-app    # 停止
+pm2 logs qmdj    # 看日志
+pm2 restart qmdj # 重启
+pm2 stop qmdj    # 停止
 
 - 设置开机自启
 ```bash
@@ -277,11 +278,36 @@ pm2 save
 
 
 
+## 防火墙放行
+```bash
+sudo ufw status
+sudo ufw allow 3000/tcp
+```
 
 
 
-
-
+## 环境变量
+MAIL_FROM=noreply@cosmodeus.com
+MAIL_FROM_NAME=cosmodeus
+MAIL_SMTP_HOST=arrow.mxrouting.net
+MAIL_SMTP_PORT=arrow.mxrouting.net
+MAIL_SMTP_SECURE=true
+MAIL_SMTP_USER=noreply@cosmodeus.com
+MAIL_SMTP_PASS=suanming
+MAIL_BASE_URL=http://www.cosmodeus.com
+NODE_ENV=production
+DEEPSEEK_API_KEY=sk-4cfb428f4047486a8bab85b796745658",
+DEEPSEEK_BASE_URL=https://api.deepseek.com",
+DB_HOST=155.138.222.180
+DB_PORT=5432
+DB_NAME=qmdj
+DB_USER=mz
+DB_PASSWORD=12qw!@QW
+DB_POOL_MAX=20
+DB_IDLE_TIMEOUT=30000
+DB_CONNECTION_TIMEOUT=2000
+TIMEZONE=Asia/Shanghai
+UTC_OFFSET=8
 
 
 
