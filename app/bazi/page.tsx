@@ -56,6 +56,8 @@ export default function BaziPage() {
     hour: string;
   } | null>(null);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const [hiddenStemsData, setHiddenStemsData] = useState<Record<string, string[]> | null>(null);
   const [ganMetaData, setGanMetaData] = useState<Record<string, { yin_yang: string; wu_xing: string }> | null>(null);
   const [ganheData, setGanheData] = useState<{
@@ -75,21 +77,29 @@ export default function BaziPage() {
   const month = dateParts && dateParts.length === 3 ? dateParts[1] : "";
   const day = dateParts && dateParts.length === 3 ? dateParts[2] : "";
 
-  // 获取用户角色
+  // 获取用户信息和登录状态
   React.useEffect(() => {
-    const fetchUserRole = async () => {
+    const fetchUserInfo = async () => {
       try {
         const response = await fetch("/api/user/me");
         if (response.ok) {
           const userData = await response.json();
           setUserRole(userData.role || null);
+          setUserEmail(userData.email || null);
+          setIsLoggedIn(!!userData.email);
+        } else {
+          setIsLoggedIn(false);
+          setUserEmail(null);
+          setUserRole(null);
         }
       } catch (error) {
-        // 用户未登录或获取失败，不设置角色
+        // 用户未登录或获取失败
+        setIsLoggedIn(false);
+        setUserEmail(null);
         setUserRole(null);
       }
     };
-    fetchUserRole();
+    fetchUserInfo();
   }, []);
 
   // 生成八字排盘
@@ -144,20 +154,49 @@ export default function BaziPage() {
               data.fourPillars.hour.charAt(1),
             ];
             
+            console.log("[前端] 请求地支藏干信息，branches:", branches);
+            
             const hiddenStemsResponse = await fetch("/api/bazi/dizhicanggan", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ branches }),
             });
             
+            console.log("[前端] 地支藏干API响应状态:", hiddenStemsResponse.status, hiddenStemsResponse.ok);
+            
             if (hiddenStemsResponse.ok) {
               const hiddenStemsData = await hiddenStemsResponse.json();
+              console.log("[前端] 地支藏干API返回数据:", JSON.stringify(hiddenStemsData, null, 2));
+              console.log("[前端] hiddenStemsData.success:", hiddenStemsData.success);
+              console.log("[前端] hiddenStemsData.result:", hiddenStemsData.result);
+              console.log("[前端] hiddenStemsData.result是否存在:", !!hiddenStemsData.result);
+              
               if (hiddenStemsData.success && hiddenStemsData.result) {
+                console.log("[前端] 设置hiddenStemsData:", hiddenStemsData.result);
                 setHiddenStemsData(hiddenStemsData.result);
+              } else {
+                console.warn("[前端] 地支藏干数据格式不正确或result为空");
+                if (hiddenStemsData.mapping) {
+                  console.log("[前端] 尝试使用mapping字段:", hiddenStemsData.mapping);
+                  // 如果result不存在但mapping存在，尝试从mapping中提取
+                  const resultFromMapping: Record<string, string[]> = {};
+                  branches.forEach((branch) => {
+                    if (hiddenStemsData.mapping[branch]) {
+                      resultFromMapping[branch] = hiddenStemsData.mapping[branch];
+                    }
+                  });
+                  if (Object.keys(resultFromMapping).length > 0) {
+                    console.log("[前端] 从mapping提取的result:", resultFromMapping);
+                    setHiddenStemsData(resultFromMapping);
+                  }
+                }
               }
+            } else {
+              const errorText = await hiddenStemsResponse.text();
+              console.error("[前端] 地支藏干API响应错误:", hiddenStemsResponse.status, errorText);
             }
           } catch (error) {
-            console.warn("获取地支藏干信息失败:", error);
+            console.error("[前端] 获取地支藏干信息失败:", error);
           }
           
           // 获取天干五行阴阳信息
@@ -252,24 +291,151 @@ export default function BaziPage() {
     switch (stepNum) {
       case 1: {
         // 定日主（命主）
-        const { day_master, day_pillar, five_elements } = result;
-        let text = `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。\n\n`;
+        const { day_master, day_pillar } = result;
+        let text = `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。\n`;
         
-        // 五行分布
-        if (five_elements) {
-          text += "【五行分布】\n";
-          text += `年柱：天干 ${five_elements.stems.year_stem.stem}（${five_elements.stems.year_stem.element}），地支 ${five_elements.branches.year_branch.branch}（${five_elements.branches.year_branch.element}）\n`;
-          text += `月柱：天干 ${five_elements.stems.month_stem.stem}（${five_elements.stems.month_stem.element}），地支 ${five_elements.branches.month_branch.branch}（${five_elements.branches.month_branch.element}）\n`;
-          text += `日柱：天干 ${five_elements.stems.day_stem.stem}（${five_elements.stems.day_stem.element}），地支 ${five_elements.branches.day_branch.branch}（${five_elements.branches.day_branch.element}）\n`;
-          text += `时柱：天干 ${five_elements.stems.hour_stem.stem}（${five_elements.stems.hour_stem.element}），地支 ${five_elements.branches.hour_branch.branch}（${five_elements.branches.hour_branch.element}）\n\n`;
+        return text;
+      }
+      
+      case 2: {
+        // 基础盘面信息
+        let text = "【基础盘面结构总表】\n\n";
+        
+        // 如果有完整的结构表，显示详细信息
+        if (result.structure_table) {
+          const st = result.structure_table;
           
-          // 五行统计
-          if (five_elements.optional_summary) {
-            const counts = five_elements.optional_summary.count_by_element;
-            text += "【五行统计】\n";
-            text += `木：${counts.木}、火：${counts.火}、土：${counts.土}、金：${counts.金}、水：${counts.水}\n`;
-            if (five_elements.optional_summary.notes) {
-              text += `备注：${five_elements.optional_summary.notes}\n`;
+          // 日主信息
+          text += `日主：${st.day_master.stem}（${st.day_master.element}，${st.day_master.yinyang}）\n\n`;
+          
+          // 四柱详细信息
+          text += "【四柱结构】\n";
+          st.pillars.forEach((p: { pillar: "year" | "month" | "day" | "hour"; stem: { char: string; element: string; yinyang: string; tenshen: string }; branch: { char: string; hidden: Array<{ char: string; role: "主气" | "中气" | "余气"; element: string; yinyang: string; tenshen: string; is_root: boolean; reveal_to: string[] }> } }) => {
+            const pillarNames: Record<string, string> = { year: "年柱", month: "月柱", day: "日柱", hour: "时柱" };
+            text += `${pillarNames[p.pillar]}：天干 ${p.stem.char}（${p.stem.element}，${p.stem.yinyang}，${p.stem.tenshen}）\n`;
+            text += `  地支 ${p.branch.char}：\n`;
+            if (p.branch.hidden.length > 0) {
+              p.branch.hidden.forEach((h: { char: string; role: "主气" | "中气" | "余气"; element: string; yinyang: string; tenshen: string; is_root: boolean; reveal_to: string[] }) => {
+                text += `    - ${h.char}（${h.role}，${h.element}，${h.yinyang}，${h.tenshen}）`;
+                if (h.is_root) {
+                  text += ` [通根：${h.role === "主气" ? "本气根" : h.role === "中气" ? "中气根" : "余气根"}]`;
+                }
+                if (h.reveal_to.length > 0) {
+                  text += ` [透到：${h.reveal_to.join("、")}]`;
+                }
+                text += "\n";
+              });
+            } else {
+              text += "    （无藏干）\n";
+            }
+            text += "\n";
+          });
+          
+          // 通根表
+          text += "【通根表】\n";
+          text += `本气根：${st.roots.summary.benqi}个，中气根：${st.roots.summary.zhongqi}个，余气根：${st.roots.summary.yuqi}个\n`;
+          if (st.roots.details.length > 0) {
+            text += "详细：\n";
+            st.roots.details.forEach((r: { location: string; branch: string; hidden: string; strength: "本气根" | "中气根" | "余气根" }) => {
+              const locationNames: Record<string, string> = {
+                year_branch: "年支", month_branch: "月支", day_branch: "日支", hour_branch: "时支"
+              };
+              text += `  - ${locationNames[r.location] || r.location} ${r.branch} 藏干 ${r.hidden}（${r.strength}）\n`;
+            });
+          } else {
+            text += "日主无根\n";
+          }
+          text += "\n";
+          
+          // 透干表
+          text += "【透干表】\n";
+          if (st.reveals.length > 0) {
+            st.reveals.forEach((r: { from_branch: string; hidden: string; to_stems: string[] }) => {
+              const revealNames: Record<string, string> = {
+                year_stem: "年干", month_stem: "月干", hour_stem: "时干"
+              };
+              const toStemsNames = r.to_stems.map((s: string) => revealNames[s] || s).join("、");
+              text += `  - ${r.from_branch} 藏干 ${r.hidden} 透到 ${toStemsNames}\n`;
+            });
+          } else {
+            text += "无透干\n";
+          }
+          text += "\n";
+          
+          // 关系网表
+          text += "【关系网表】\n";
+          
+          // 天干关系
+          if (st.relations.stems.length > 0) {
+            text += "天干关系：\n";
+            st.relations.stems.forEach((rel: { type: "合" | "克" | "生"; a: string; b: string }) => {
+              text += `  - ${rel.type}：${rel.a} ↔ ${rel.b}\n`;
+            });
+          }
+          
+          // 地支关系
+          if (st.relations.branches.length > 0) {
+            text += "地支关系：\n";
+            st.relations.branches.forEach((rel: { type: "冲" | "六合" | "害" | "破" | "刑" | "自刑"; a: string; b?: string }) => {
+              if (rel.b) {
+                text += `  - ${rel.type}：${rel.a} ↔ ${rel.b}\n`;
+              } else {
+                text += `  - ${rel.type}：${rel.a}\n`;
+              }
+            });
+          }
+          
+          // 特殊结构
+          if (st.relations.structures.length > 0) {
+            text += "特殊结构：\n";
+            st.relations.structures.forEach((s: { type: "三合局" | "三会局" | "半合" | "方局" | "会方" | "六合局" | "其他"; members: string[]; element: string; is_complete: boolean }) => {
+              text += `  - ${s.type}（${s.members.join("、")}）→ ${s.element} ${s.is_complete ? "（完整）" : "（不完整）"}\n`;
+            });
+          }
+          
+          if (st.relations.stems.length === 0 && st.relations.branches.length === 0 && st.relations.structures.length === 0) {
+            text += "无特殊关系\n";
+          }
+        } else {
+          // 兼容旧格式
+          text += "【十神表】\n";
+          if (result.ten_gods) {
+            text += `年干：${result.ten_gods.year_stem || "-"}\n`;
+            text += `月干：${result.ten_gods.month_stem || "-"}\n`;
+            text += `日干：日主\n`;
+            text += `时干：${result.ten_gods.hour_stem || "-"}\n\n`;
+          }
+          
+          text += "【地支藏干】\n";
+          if (result.hidden_stems) {
+            text += `年支：${result.hidden_stems.year_branch.join("、") || "无"}\n`;
+            text += `月支：${result.hidden_stems.month_branch.join("、") || "无"}\n`;
+            text += `日支：${result.hidden_stems.day_branch.join("、") || "无"}\n`;
+            text += `时支：${result.hidden_stems.hour_branch.join("、") || "无"}\n\n`;
+          }
+          
+          text += "【关系分析】\n";
+          if (result.relations) {
+            if (result.relations.stem_combos.length > 0) {
+              text += `天干合：${result.relations.stem_combos.join("、")}\n`;
+            }
+            if (result.relations.stem_clashes.length > 0) {
+              text += `天干冲：${result.relations.stem_clashes.join("、")}\n`;
+            }
+            if (result.relations.branch_combos.length > 0) {
+              text += `地支合：${result.relations.branch_combos.join("、")}\n`;
+            }
+            if (result.relations.branch_clashes.length > 0) {
+              text += `地支冲：${result.relations.branch_clashes.join("、")}\n`;
+            }
+            if (result.relations.branch_harms.length > 0) {
+              text += `地支害：${result.relations.branch_harms.join("、")}\n`;
+            }
+            if (result.relations.branch_punishments.length > 0) {
+              text += `地支刑：${result.relations.branch_punishments.join("、")}\n`;
+            }
+            if (result.relations.branch_breaks.length > 0) {
+              text += `地支破：${result.relations.branch_breaks.join("、")}\n`;
             }
           }
         }
@@ -277,8 +443,47 @@ export default function BaziPage() {
         return text;
       }
       
-      case 2:
-      case 3:
+      case 3: {
+        // 月令与季节
+        const { month_command, yueling_strength } = result;
+        let text = "【月令信息】\n";
+        
+        if (month_command) {
+          text += `月支（月令）：${month_command.month_branch}\n`;
+          text += `对应季节：${month_command.season}\n`;
+          text += `当令之气：${month_command.dominant_qi}\n`;
+          if (month_command.supporting_elements_rank && month_command.supporting_elements_rank.length > 0) {
+            text += `五行强弱排序：${month_command.supporting_elements_rank.join(" > ")}\n`;
+          }
+        }
+        
+        text += "\n";
+        
+        // 月令强弱/得令信息
+        if (yueling_strength) {
+          text += "【月令强弱/得令】\n";
+          text += `日主五行：${yueling_strength.day_master_element}\n`;
+          text += `得令状态：${yueling_strength.day_master_state}（强弱值：${yueling_strength.day_master_state_rank}/5）\n`;
+          
+          if (yueling_strength.is_override) {
+            text += `⚠️ 使用了覆盖规则：${yueling_strength.override_note || ""}\n`;
+          }
+          
+          text += "\n";
+          text += "【所有五行旺相休囚死状态】\n";
+          const elements = ["木", "火", "土", "金", "水"];
+          elements.forEach((element) => {
+            const stateInfo = yueling_strength.all_elements_state[element];
+            if (stateInfo) {
+              const isDayMaster = element === yueling_strength.day_master_element;
+              text += `${element}：${stateInfo.state}（${stateInfo.state_rank}/5）${isDayMaster ? " ← 日主" : ""}\n`;
+            }
+          });
+        }
+        
+        return text;
+      }
+      
       case 4:
       case 5:
       case 6:
@@ -572,16 +777,21 @@ export default function BaziPage() {
               </div>
 
               <div className="mt-6 flex justify-center">
-                <Button
-                  type="primary"
-                  size="large"
-                  onClick={handleBaziPaipan}
-                  loading={loading}
-                  disabled={!date || !hour}
-                  className="bg-amber-600 hover:bg-amber-700"
+                <Tooltip
+                  title={!isLoggedIn || !userEmail ? "请先登录才能排盘" : !date || !hour ? "请先选择日期和时辰" : ""}
+                  placement="top"
                 >
-                  生成八字排盘
-                </Button>
+                  <Button
+                    type="primary"
+                    size="large"
+                    onClick={handleBaziPaipan}
+                    loading={loading}
+                    disabled={!isLoggedIn || !userEmail || !date || !hour}
+                    className="bg-amber-600 hover:bg-amber-700"
+                  >
+                    生成八字排盘
+                  </Button>
+                </Tooltip>
               </div>
             </div>
 
@@ -613,32 +823,23 @@ export default function BaziPage() {
                   </div>
                 )}
                 <Collapse defaultActiveKey={["1"]} accordion>
-                  {baziSteps.map((step) => {
+                  {[...baziSteps].sort((a, b) => {
+                    // step 1 始终第一
+                    if (a.step === 1) return -1;
+                    if (b.step === 1) return 1;
+                    // step 3 在 step 2 之前
+                    if (a.step === 3 && b.step === 2) return -1;
+                    if (a.step === 2 && b.step === 3) return 1;
+                    // 其他按原顺序
+                    return a.step - b.step;
+                  }).map((step) => {
                     const naturalText = formatStepResult(step);
                     return (
                       <Panel
                         header={
-                          <div className="flex items-center justify-between">
-                            <span>
-                              <span className="font-semibold">{step.step}：</span>
-                              {step.name}
-                            </span>
-                            <Tooltip
-                              title={
-                                <div className="text-xs">
-                                  <div>90%~100%：几乎不依赖主观判断</div>
-                                  <div>60%~80%：规则较稳定，但仍可能受口径影响</div>
-                                  <div>30%~50%：强依赖流派与综合判断</div>
-                                  <div>0%~20%：信息不足或明显不确定</div>
-                                </div>
-                              }
-                              placement="left"
-                            >
-                              <span className="text-sm text-gray-500 cursor-help hover:text-gray-700">
-                                置信度: {(step.confidence * 100).toFixed(0)}%
-                              </span>
-                            </Tooltip>
-                          </div>
+                          <span className="font-semibold">
+                            {step.name}
+                          </span>
                         }
                         key={step.step}
                       >
@@ -649,6 +850,41 @@ export default function BaziPage() {
                               {naturalText}
                             </div>
                           </div>
+                          {/* 步骤1显示五行分布表格 */}
+                          {step.step === 1 && step.result.five_elements && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">五行分布</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干五行</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支五行</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {[
+                                      { pillar: "年柱", stem: step.result.five_elements.stems.year_stem, branch: step.result.five_elements.branches.year_branch },
+                                      { pillar: "月柱", stem: step.result.five_elements.stems.month_stem, branch: step.result.five_elements.branches.month_branch },
+                                      { pillar: "日柱", stem: step.result.five_elements.stems.day_stem, branch: step.result.five_elements.branches.day_branch },
+                                      { pillar: "时柱", stem: step.result.five_elements.stems.hour_stem, branch: step.result.five_elements.branches.hour_branch },
+                                    ].map(({ pillar, stem, branch }) => (
+                                      <tr key={pillar} className="hover:bg-gray-50">
+                                        <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{stem.stem}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-center">{stem.element || "-"}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch.branch}</td>
+                                        <td className="border border-gray-300 px-3 py-2 text-center">{branch.element || "-"}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          )}
                           {/* 步骤1显示天干五行阴阳表格 */}
                           {step.step === 1 && fourPillars && ganMetaData && (
                             <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
@@ -744,7 +980,15 @@ export default function BaziPage() {
                           {/* 步骤1显示五行统计雷达图 */}
                           {step.step === 1 && step.result.five_elements?.optional_summary?.count_by_element && (
                             <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">五行统计雷达图</h4>
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-sm font-semibold text-gray-700">五行统计雷达图</h4>
+                                <div className="text-sm text-gray-600">
+                                  {(() => {
+                                    const counts = step.result.five_elements.optional_summary.count_by_element;
+                                    return `木：${counts.木}、火：${counts.火}、土：${counts.土}、金：${counts.金}、水：${counts.水}`;
+                                  })()}
+                                </div>
+                              </div>
                               <ReactECharts
                                 option={getRadarChartOption(step.result.five_elements.optional_summary.count_by_element)}
                                 style={{ height: "400px", width: "100%" }}
@@ -752,8 +996,8 @@ export default function BaziPage() {
                               />
                             </div>
                           )}
-                          {/* 步骤1显示天干地支关系规则表 */}
-                          {step.step === 1 && ganheData && (
+                          {/* 步骤2显示天干地支关系规则表 */}
+                          {step.step === 2 && ganheData && (
                             <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
                               <h4 className="text-sm font-semibold text-gray-700 mb-3">天干地支关系规则表</h4>
                               <div className="space-y-6">

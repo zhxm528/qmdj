@@ -2,7 +2,80 @@
  * 步骤2：补齐基础盘面信息
  * 列出：十神（相对日主）、地支藏干、十二长生（可选）、纳音（多数情况下可选）。
  * 把天干地支的合、冲、刑、害、破以及干合、干克关系标出来。
+ * 
+ * 输出完整的"盘面结构总表"，包括：
+ * - 十神表（以日干为基准）
+ * - 藏干表（地支拆解，包含五行、阴阳、十神、主气/中气/余气）
+ * - 通根表（日主是否有根、根的位置和强度）
+ * - 透干表（藏干是否透出）
+ * - 关系网表（合冲刑害破 + 干合干克，包括三合局、三会局等）
  */
+
+// 完整的盘面结构总表（新格式）
+export interface BaziStructureTable {
+  day_master: {
+    stem: string;
+    element: string;
+    yinyang: string;
+  };
+  pillars: Array<{
+    pillar: "year" | "month" | "day" | "hour";
+    stem: {
+      char: string;
+      element: string;
+      yinyang: string;
+      tenshen: string;
+    };
+    branch: {
+      char: string;
+      hidden: Array<{
+        char: string;
+        role: "主气" | "中气" | "余气";
+        element: string;
+        yinyang: string;
+        tenshen: string;
+        is_root: boolean;
+        reveal_to: string[];
+      }>;
+    };
+  }>;
+  roots: {
+    summary: {
+      benqi: number;
+      zhongqi: number;
+      yuqi: number;
+    };
+    details: Array<{
+      location: string;
+      branch: string;
+      hidden: string;
+      strength: "本气根" | "中气根" | "余气根";
+    }>;
+  };
+  reveals: Array<{
+    from_branch: string;
+    hidden: string;
+    to_stems: string[];
+  }>;
+  relations: {
+    stems: Array<{
+      type: "合" | "克" | "生";
+      a: string;
+      b: string;
+    }>;
+    branches: Array<{
+      type: "冲" | "六合" | "害" | "破" | "刑" | "自刑";
+      a: string;
+      b?: string;
+    }>;
+    structures: Array<{
+      type: "三合局" | "三会局" | "半合" | "方局" | "会方" | "六合局" | "其他";
+      members: string[];
+      element: string;
+      is_complete: boolean;
+    }>;
+  };
+}
 
 export interface Step2Result {
   five_elements: {
@@ -53,6 +126,8 @@ export interface Step2Result {
     twelve_growth: Record<string, string>;
     na_yin: Record<string, string>;
   };
+  // 新增：完整的盘面结构总表
+  structure_table?: BaziStructureTable;
 }
 
 // 天干五行表
@@ -61,13 +136,19 @@ const GAN_TO_ELEMENT: Record<string, string> = {
   己: "土", 庚: "金", 辛: "金", 壬: "水", 癸: "水",
 };
 
+// 天干阴阳表
+const GAN_TO_YINYANG: Record<string, string> = {
+  甲: "阳", 乙: "阴", 丙: "阳", 丁: "阴", 戊: "阳",
+  己: "阴", 庚: "阳", 辛: "阴", 壬: "阳", 癸: "阴",
+};
+
 // 地支五行表
 const BRANCH_TO_ELEMENT: Record<string, string> = {
   寅: "木", 卯: "木", 巳: "火", 午: "火", 辰: "土", 戌: "土", 丑: "土", 未: "土",
   申: "金", 酉: "金", 子: "水", 亥: "水",
 };
 
-// 地支藏干表
+// 地支藏干表（按主气→中气→余气顺序）
 const BRANCH_HIDDEN_STEMS: Record<string, string[]> = {
   子: ["癸"],
   丑: ["己", "癸", "辛"],
@@ -81,6 +162,22 @@ const BRANCH_HIDDEN_STEMS: Record<string, string[]> = {
   酉: ["辛"],
   戌: ["戊", "辛", "丁"],
   亥: ["壬", "甲"],
+};
+
+// 藏干角色映射（主气、中气、余气）
+const HIDDEN_ROLES: Record<string, Array<"主气" | "中气" | "余气">> = {
+  子: ["主气"],
+  丑: ["主气", "中气", "余气"],
+  寅: ["主气", "中气", "余气"],
+  卯: ["主气"],
+  辰: ["主气", "中气", "余气"],
+  巳: ["主气", "中气", "余气"],
+  午: ["主气", "中气"],
+  未: ["主气", "中气", "余气"],
+  申: ["主气", "中气", "余气"],
+  酉: ["主气"],
+  戌: ["主气", "中气", "余气"],
+  亥: ["主气", "中气"],
 };
 
 // 十神表（以日干为基准）
@@ -134,6 +231,31 @@ const BRANCH_PUNISHMENTS: string[][] = [
 const BRANCH_BREAKS: string[][] = [
   ["子", "酉"], ["寅", "亥"], ["卯", "午"], ["辰", "丑"], ["巳", "申"], ["未", "戌"],
 ];
+
+// 三合局
+const SANHE_JU: Array<{ members: string[]; element: string }> = [
+  { members: ["申", "子", "辰"], element: "水" },
+  { members: ["寅", "午", "戌"], element: "火" },
+  { members: ["亥", "卯", "未"], element: "木" },
+  { members: ["巳", "酉", "丑"], element: "金" },
+];
+
+// 三会局
+const SANHUI_JU: Array<{ members: string[]; element: string }> = [
+  { members: ["亥", "子", "丑"], element: "水" },
+  { members: ["寅", "卯", "辰"], element: "木" },
+  { members: ["巳", "午", "未"], element: "火" },
+  { members: ["申", "酉", "戌"], element: "金" },
+];
+
+// 天干相生关系
+const STEM_SHENG: Record<string, string[]> = {
+  木: ["火"],
+  火: ["土"],
+  土: ["金"],
+  金: ["水"],
+  水: ["木"],
+};
 
 export function step2(
   fourPillars: {
@@ -258,6 +380,291 @@ export function step2(
     }
   }
 
+  // ========== 构建完整的盘面结构总表 ==========
+  const dayMasterElement = GAN_TO_ELEMENT[dayMaster] || "";
+  const dayMasterYinYang = GAN_TO_YINYANG[dayMaster] || "";
+  // tenGodsMap 已在上面定义，直接复用
+
+  // 构建四柱详细信息
+  const pillarsData = [
+    { pillar: "year" as const, stem: yearStem, branch: yearBranch },
+    { pillar: "month" as const, stem: monthStem, branch: monthBranch },
+    { pillar: "day" as const, stem: dayStem, branch: dayBranch },
+    { pillar: "hour" as const, stem: hourStem, branch: hourBranch },
+  ];
+
+  const pillars = pillarsData.map((p) => {
+    const hiddenStemsList = BRANCH_HIDDEN_STEMS[p.branch] || [];
+    const roles = HIDDEN_ROLES[p.branch] || [];
+    
+    const hidden = hiddenStemsList.map((hiddenStem, idx) => {
+      const hiddenElement = GAN_TO_ELEMENT[hiddenStem] || "";
+      const hiddenYinYang = GAN_TO_YINYANG[hiddenStem] || "";
+      const hiddenTenshen = tenGodsMap[hiddenStem] || "";
+      const role = roles[idx] || "主气";
+      
+      // 判断是否为日主的根（同五行）
+      const isRoot = hiddenElement === dayMasterElement;
+      
+      // 判断根强度
+      let rootStrength: "本气根" | "中气根" | "余气根" | null = null;
+      if (isRoot) {
+        if (role === "主气") rootStrength = "本气根";
+        else if (role === "中气") rootStrength = "中气根";
+        else if (role === "余气") rootStrength = "余气根";
+      }
+      
+      // 判断透干（藏干是否在天干中出现）
+      const revealTo: string[] = [];
+      pillarsData.forEach((pillarData) => {
+        if (pillarData.stem === hiddenStem && pillarData.pillar !== "day") {
+          revealTo.push(`${pillarData.pillar}_stem`);
+        }
+      });
+      
+      return {
+        char: hiddenStem,
+        role: role as "主气" | "中气" | "余气",
+        element: hiddenElement,
+        yinyang: hiddenYinYang,
+        tenshen: hiddenTenshen,
+        is_root: isRoot,
+        reveal_to: revealTo,
+      };
+    });
+
+    return {
+      pillar: p.pillar,
+      stem: {
+        char: p.stem,
+        element: GAN_TO_ELEMENT[p.stem] || "",
+        yinyang: GAN_TO_YINYANG[p.stem] || "",
+        tenshen: p.pillar === "day" ? "日主" : (tenGodsMap[p.stem] || ""),
+      },
+      branch: {
+        char: p.branch,
+        hidden,
+      },
+    };
+  });
+
+  // 构建通根表
+  const rootsDetails: Array<{
+    location: string;
+    branch: string;
+    hidden: string;
+    strength: "本气根" | "中气根" | "余气根";
+  }> = [];
+  
+  let benqiCount = 0;
+  let zhongqiCount = 0;
+  let yuqiCount = 0;
+
+  pillars.forEach((p) => {
+    p.branch.hidden.forEach((h) => {
+      if (h.is_root && h.reveal_to.length >= 0) {
+        const strength = h.role === "主气" ? "本气根" : h.role === "中气" ? "中气根" : "余气根";
+        rootsDetails.push({
+          location: `${p.pillar}_branch`,
+          branch: p.branch.char,
+          hidden: h.char,
+          strength,
+        });
+        
+        if (strength === "本气根") benqiCount++;
+        else if (strength === "中气根") zhongqiCount++;
+        else if (strength === "余气根") yuqiCount++;
+      }
+    });
+  });
+
+  // 构建透干表
+  const reveals: Array<{
+    from_branch: string;
+    hidden: string;
+    to_stems: string[];
+  }> = [];
+
+  pillars.forEach((p) => {
+    p.branch.hidden.forEach((h) => {
+      if (h.reveal_to.length > 0) {
+        reveals.push({
+          from_branch: p.branch.char,
+          hidden: h.char,
+          to_stems: h.reveal_to,
+        });
+      }
+    });
+  });
+
+  // 构建关系网表
+  const stemRelations: Array<{ type: "合" | "克" | "生"; a: string; b: string }> = [];
+  const branchRelations: Array<{ type: "冲" | "六合" | "害" | "破" | "刑" | "自刑"; a: string; b?: string }> = [];
+  const structures: Array<{ type: "三合局" | "三会局" | "半合" | "方局" | "会方" | "六合局" | "其他"; members: string[]; element: string; is_complete: boolean }> = [];
+
+  // 天干关系
+  for (let i = 0; i < stems.length; i++) {
+    for (let j = i + 1; j < stems.length; j++) {
+      const stemA = stems[i];
+      const stemB = stems[j];
+      const pillarA = pillarsData[i];
+      const pillarB = pillarsData[j];
+      
+      // 天干五合
+      if (STEM_COMBOS.some(c => (c[0] === stemA && c[1] === stemB) || (c[0] === stemB && c[1] === stemA))) {
+        stemRelations.push({
+          type: "合",
+          a: `${stemA}(${pillarA.pillar})`,
+          b: `${stemB}(${pillarB.pillar})`,
+        });
+      }
+      
+      // 天干相克
+      const elementA = GAN_TO_ELEMENT[stemA];
+      const elementB = GAN_TO_ELEMENT[stemB];
+      if (STEM_CLASHES.some(c => (c[0] === stemA && c[1] === stemB) || (c[0] === stemB && c[1] === stemA))) {
+        stemRelations.push({
+          type: "克",
+          a: `${stemA}(${pillarA.pillar})`,
+          b: `${stemB}(${pillarB.pillar})`,
+        });
+      }
+      
+      // 天干相生
+      if (STEM_SHENG[elementA]?.includes(elementB)) {
+        stemRelations.push({
+          type: "生",
+          a: `${stemA}(${pillarA.pillar})`,
+          b: `${stemB}(${pillarB.pillar})`,
+        });
+      } else if (STEM_SHENG[elementB]?.includes(elementA)) {
+        stemRelations.push({
+          type: "生",
+          a: `${stemB}(${pillarB.pillar})`,
+          b: `${stemA}(${pillarA.pillar})`,
+        });
+      }
+    }
+  }
+
+  // 地支关系
+  for (let i = 0; i < branches.length; i++) {
+    for (let j = i + 1; j < branches.length; j++) {
+      const branchA = branches[i];
+      const branchB = branches[j];
+      const pillarA = pillarsData[i];
+      const pillarB = pillarsData[j];
+      
+      // 六合
+      if (BRANCH_COMBOS.some(c => (c[0] === branchA && c[1] === branchB) || (c[0] === branchB && c[1] === branchA))) {
+        branchRelations.push({
+          type: "六合",
+          a: `${branchA}(${pillarA.pillar})`,
+          b: `${branchB}(${pillarB.pillar})`,
+        });
+      }
+      
+      // 六冲
+      if (BRANCH_CLASHES.some(c => (c[0] === branchA && c[1] === branchB) || (c[0] === branchB && c[1] === branchA))) {
+        branchRelations.push({
+          type: "冲",
+          a: `${branchA}(${pillarA.pillar})`,
+          b: `${branchB}(${pillarB.pillar})`,
+        });
+      }
+      
+      // 六害
+      if (BRANCH_HARMS.some(c => (c[0] === branchA && c[1] === branchB) || (c[0] === branchB && c[1] === branchA))) {
+        branchRelations.push({
+          type: "害",
+          a: `${branchA}(${pillarA.pillar})`,
+          b: `${branchB}(${pillarB.pillar})`,
+        });
+      }
+      
+      // 相破
+      if (BRANCH_BREAKS.some(c => (c[0] === branchA && c[1] === branchB) || (c[0] === branchB && c[1] === branchA))) {
+        branchRelations.push({
+          type: "破",
+          a: `${branchA}(${pillarA.pillar})`,
+          b: `${branchB}(${pillarB.pillar})`,
+        });
+      }
+    }
+  }
+
+  // 三刑
+  for (const punishment of BRANCH_PUNISHMENTS) {
+    const found = punishment.filter(p => branches.includes(p));
+    if (found.length >= 2) {
+      const foundPillars = found.map(b => pillarsData[branches.indexOf(b)]);
+      branchRelations.push({
+        type: found.length === 3 ? "刑" : "刑",
+        a: found.map((b, idx) => `${b}(${foundPillars[idx].pillar})`).join("、"),
+      });
+    }
+  }
+
+  // 自刑
+  const zixingBranches = ["辰", "午", "酉", "亥"];
+  branches.forEach((b, idx) => {
+    if (zixingBranches.includes(b)) {
+      branchRelations.push({
+        type: "自刑",
+        a: `${b}(${pillarsData[idx].pillar})`,
+      });
+    }
+  });
+
+  // 三合局
+  SANHE_JU.forEach((ju) => {
+    const found = ju.members.filter(m => branches.includes(m));
+    if (found.length >= 2) {
+      structures.push({
+        type: found.length === 3 ? "三合局" : "半合",
+        members: found,
+        element: ju.element,
+        is_complete: found.length === 3,
+      });
+    }
+  });
+
+  // 三会局
+  SANHUI_JU.forEach((ju) => {
+    const found = ju.members.filter(m => branches.includes(m));
+    if (found.length >= 2) {
+      structures.push({
+        type: found.length === 3 ? "三会局" : "会方",
+        members: found,
+        element: ju.element,
+        is_complete: found.length === 3,
+      });
+    }
+  });
+
+  const structureTable: BaziStructureTable = {
+    day_master: {
+      stem: dayMaster,
+      element: dayMasterElement,
+      yinyang: dayMasterYinYang,
+    },
+    pillars,
+    roots: {
+      summary: {
+        benqi: benqiCount,
+        zhongqi: zhongqiCount,
+        yuqi: yuqiCount,
+      },
+      details: rootsDetails,
+    },
+    reveals,
+    relations: {
+      stems: stemRelations,
+      branches: branchRelations,
+      structures,
+    },
+  };
+
   return {
     five_elements: fiveElements,
     hidden_stems: hiddenStems,
@@ -275,6 +682,7 @@ export function step2(
       twelve_growth: {}, // TODO: 实现十二长生
       na_yin: {}, // TODO: 实现纳音
     },
+    structure_table: structureTable,
   };
 }
 

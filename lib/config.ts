@@ -14,7 +14,7 @@ export const deepseekConfig = {
 
 // 数据库配置
 export const dbConfig = {
-  host: process.env.DB_HOST || "155.138.222.180",
+  host: process.env.DB_HOST || "45.76.154.72",
   port: parseInt(process.env.DB_PORT || "5432", 10),
   database: process.env.DB_NAME || "qmdj",
   user: process.env.DB_USER || "mz",
@@ -27,18 +27,18 @@ export const dbConfig = {
 
 // 邮件配置
 export const mailConfig = {
-  from: process.env.MAIL_FROM || "yuanlaiyunshi@126.com",
+  from: process.env.MAIL_FROM || "noreply@cosmodeus.com",
   fromName: process.env.MAIL_FROM_NAME || "缘来运势",
   smtp: {
-    host: process.env.MAIL_SMTP_HOST || "smtp.126.com",
+    host: process.env.MAIL_SMTP_HOST || "rrow.mxrouting.net",
     port: parseInt(process.env.MAIL_SMTP_PORT || "465", 10),
     secure: process.env.MAIL_SMTP_SECURE === "false" ? false : true,
     auth: {
-      user: process.env.MAIL_SMTP_USER || "yuanlaiyunshi@126.com",
-      pass: process.env.MAIL_SMTP_PASS || "VU2EP65PciTBBWK6",
+      user: process.env.MAIL_SMTP_USER || "noreply@cosmodeus.com",
+      pass: process.env.MAIL_SMTP_PASS || "suanming",
     },
   },
-  baseUrl: process.env.MAIL_BASE_URL || "http://155.138.222.180:3000",
+  baseUrl: process.env.MAIL_BASE_URL || "http://www.cosmodeus.com",
 };
 
 // 时区配置

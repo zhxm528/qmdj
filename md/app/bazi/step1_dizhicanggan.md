@@ -67,3 +67,4 @@
 - 后台程序： /app/api/bazi/dizhicanggan/route.ts  (如果不存在则创建)
 - 前台程序： /app/bazi/pages.ts
 - 后台程序生成“地支藏干表”的json格式字符串返给前端，前端用自然语言的表格形式展现在第1步中
+
