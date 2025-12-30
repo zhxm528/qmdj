@@ -503,6 +503,149 @@ export default function BaziPage() {
     }
   };
 
+  // 生成五行旺相休囚死状态雷达图配置
+  const getYuelingRadarChartOption = (
+    allElementsState: Record<string, { state: string; state_rank: number }>,
+    dayMasterElement: string
+  ) => {
+    const elements = ["木", "火", "土", "金", "水"];
+    const values = elements.map((element) => {
+      const stateInfo = allElementsState[element];
+      return stateInfo ? stateInfo.state_rank : 0;
+    });
+    
+    // 创建一个计数器来跟踪 formatter 的调用顺序（作为备用方案）
+    let callIndex = 0;
+
+    return {
+      radar: {
+        indicator: elements.map((element) => ({
+          name: element,
+          max: 5,
+        })),
+        center: ["50%", "55%"],
+        radius: "70%",
+        axisName: {
+          color: "#666",
+          fontSize: 14,
+          fontWeight: "bold",
+        },
+        splitArea: {
+          show: true,
+          areaStyle: {
+            color: ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
+          },
+        },
+        splitLine: {
+          lineStyle: {
+            color: "#ddd",
+          },
+        },
+        axisLine: {
+          lineStyle: {
+            color: "#ccc",
+          },
+        },
+      },
+      tooltip: {
+        trigger: "item",
+        formatter: (params: any) => {
+          // ECharts 雷达图的 tooltip formatter
+          // 直接显示所有五行的状态信息，确保 tooltip 始终有内容显示
+          const tooltipLines = elements.map((elementName) => {
+            const stateInfo = allElementsState[elementName];
+            if (stateInfo) {
+              const isDayMaster = elementName === dayMasterElement;
+              return `${elementName}：${stateInfo.state}（${stateInfo.state_rank}/5）${isDayMaster ? " ← 日主" : ""}`;
+            }
+            return `${elementName}：无数据`;
+          });
+          
+          return tooltipLines.join("<br/>");
+        },
+      },
+      series: [
+        {
+          name: "旺相休囚死状态",
+          type: "radar",
+          label: {
+            show: true,
+            position: "top",
+            distance: 8,
+            formatter: (params: any) => {
+              let index: number = -1;
+              
+              // 方法1: 优先使用 indicatorIndex（这是最可靠的方法）
+              // 在雷达图中，每个数据点对应一个 indicator，indicatorIndex 应该总是可用的
+              // indicatorIndex 直接对应 radar.indicator 数组的索引，顺序是固定的：[木, 火, 土, 金, 水]
+              if (typeof params.indicatorIndex === "number" && params.indicatorIndex >= 0 && params.indicatorIndex < elements.length) {
+                index = params.indicatorIndex;
+              }
+              // 方法2: 如果 indicatorIndex 不可用，使用调用顺序作为备用
+              // 在雷达图中，formatter 会按照 indicator 的顺序被调用
+              // 注意：这个方法依赖于 ECharts 的调用顺序，可能不够可靠
+              else {
+                // 使用闭包中的计数器来跟踪调用顺序
+                const currentIndex = callIndex % elements.length;
+                callIndex++;
+                index = currentIndex;
+              }
+              
+              // 确保索引有效
+              if (index >= 0 && index < elements.length) {
+                const elementName = elements[index];
+                const stateInfo = allElementsState[elementName];
+                if (stateInfo) {
+                  // 显示格式：元素名：状态值（例如："木：5" 或 "木：旺（5）"）
+                  // 为了简洁，只显示元素名和数值
+                  return `${elementName}：${stateInfo.state_rank}`;
+                }
+                return `${elementName}：0`;
+              }
+              
+              // 如果仍然无法确定，返回空字符串（不显示标签）
+              return "";
+            },
+            color: "#333",
+            fontSize: 12,
+            fontWeight: "bold",
+            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            borderColor: "#8b5cf6",
+            borderWidth: 1,
+            borderRadius: 4,
+            padding: [4, 6],
+          },
+          labelLine: {
+            show: true,
+            length: 10,
+            length2: 5,
+          },
+          data: [
+            {
+              value: values,
+              name: "旺相休囚死",
+              areaStyle: {
+                color: "rgba(139, 92, 246, 0.3)", // purple-500 with opacity
+              },
+              lineStyle: {
+                color: "#8b5cf6", // purple-500
+                width: 2,
+              },
+              itemStyle: {
+                color: "#8b5cf6", // purple-500
+              },
+            },
+          ],
+          emphasis: {
+            label: {
+              show: true,
+            },
+          },
+        },
+      ],
+    };
+  };
+
   // 生成五行统计雷达图配置
   const getRadarChartOption = (countByElement: { 木: number; 火: number; 土: number; 金: number; 水: number }) => {
     const maxValue = Math.max(...Object.values(countByElement), 1); // 至少为1，避免除零
@@ -856,150 +999,156 @@ export default function BaziPage() {
                               {naturalText}
                             </div>
                           </div>
-                          {/* 步骤1显示五行分布表格 */}
-                          {step.step === 1 && step.result.five_elements && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">五行分布</h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
-                                  <thead>
-                                    <tr className="bg-gray-50">
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干五行</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支五行</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {[
-                                      { pillar: "年柱", stem: step.result.five_elements.stems.year_stem, branch: step.result.five_elements.branches.year_branch },
-                                      { pillar: "月柱", stem: step.result.five_elements.stems.month_stem, branch: step.result.five_elements.branches.month_branch },
-                                      { pillar: "日柱", stem: step.result.five_elements.stems.day_stem, branch: step.result.five_elements.branches.day_branch },
-                                      { pillar: "时柱", stem: step.result.five_elements.stems.hour_stem, branch: step.result.five_elements.branches.hour_branch },
-                                    ].map(({ pillar, stem, branch }) => (
-                                      <tr key={pillar} className="hover:bg-gray-50">
-                                        <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                        <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{stem.stem}</td>
-                                        <td className="border border-gray-300 px-3 py-2 text-center">{stem.element || "-"}</td>
-                                        <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch.branch}</td>
-                                        <td className="border border-gray-300 px-3 py-2 text-center">{branch.element || "-"}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                          {/* 步骤1显示天干五行阴阳表格 */}
-                          {step.step === 1 && fourPillars && ganMetaData && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">天干五行阴阳表</h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
-                                  <thead>
-                                    <tr className="bg-gray-50">
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {[
-                                      { pillar: "年干", gan: fourPillars.year.charAt(0) },
-                                      { pillar: "月干", gan: fourPillars.month.charAt(0) },
-                                      { pillar: "日干", gan: fourPillars.day.charAt(0) },
-                                      { pillar: "时干", gan: fourPillars.hour.charAt(0) },
-                                    ].map(({ pillar, gan }) => {
-                                      const meta = ganMetaData[gan];
-                                      return (
-                                        <tr key={pillar} className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{gan}</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">{meta?.yin_yang || "-"}</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">{meta?.wu_xing || "-"}</td>
+                          {/* 步骤1显示五行分布、天干五行阴阳表和五行统计雷达图（左侧两个表格垂直堆叠，右侧雷达图） */}
+                          {step.step === 1 && step.result.five_elements && fourPillars && ganMetaData && step.result.five_elements?.optional_summary?.count_by_element && (
+                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                              {/* 左侧：五行分布和天干五行阴阳表（垂直堆叠） */}
+                              <div className="flex flex-col gap-4">
+                                {/* 五行分布表格 */}
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">五行分布</h4>
+                                  <div className="overflow-x-auto flex-1">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干五行</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支五行</th>
                                         </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                          {/* 步骤1显示地支藏干表格 */}
-                          {step.step === 1 && fourPillars && hiddenStemsData && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full border-collapse text-sm">
-                                  <thead>
-                                    <tr className="bg-gray-50">
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {[
-                                      { pillar: "年支", branch: fourPillars.year.charAt(1) },
-                                      { pillar: "月支", branch: fourPillars.month.charAt(1) },
-                                      { pillar: "日支", branch: fourPillars.day.charAt(1) },
-                                      { pillar: "时支", branch: fourPillars.hour.charAt(1) },
-                                    ].map(({ pillar, branch }) => {
-                                      const hiddenStems = hiddenStemsData[branch] || [];
-                                      const roleLabels = ["主气", "中气", "余气"];
-                                      return (
-                                        <tr key={pillar} className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
-                                          <td className="border border-gray-300 px-3 py-2">
-                                            {hiddenStems.length > 0 ? (
-                                              <div className="flex flex-wrap gap-2">
-                                                {hiddenStems.map((stem, index) => (
-                                                  <span key={index} className="inline-flex items-center gap-1">
-                                                    <span className="font-medium">{stem}</span>
-                                                    {index < roleLabels.length && (
-                                                      <span className="text-xs text-gray-500">({roleLabels[index]})</span>
-                                                    )}
-                                                  </span>
-                                                ))}
-                                              </div>
-                                            ) : (
-                                              <span className="text-gray-400">无</span>
-                                            )}
-                                          </td>
-                                          <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
-                                            {hiddenStems.length > 0
-                                              ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
-                                              : "该地支无藏干"}
-                                          </td>
+                                      </thead>
+                                      <tbody>
+                                        {[
+                                          { pillar: "年柱", stem: step.result.five_elements.stems.year_stem, branch: step.result.five_elements.branches.year_branch },
+                                          { pillar: "月柱", stem: step.result.five_elements.stems.month_stem, branch: step.result.five_elements.branches.month_branch },
+                                          { pillar: "日柱", stem: step.result.five_elements.stems.day_stem, branch: step.result.five_elements.branches.day_branch },
+                                          { pillar: "时柱", stem: step.result.five_elements.stems.hour_stem, branch: step.result.five_elements.branches.hour_branch },
+                                        ].map(({ pillar, stem, branch }) => (
+                                          <tr key={pillar} className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{stem.stem}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">{stem.element || "-"}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch.branch}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">{branch.element || "-"}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                {/* 天干五行阴阳表格 */}
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">天干五行阴阳表</h4>
+                                  <div className="overflow-x-auto flex-1">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
                                         </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          )}
-                          {/* 步骤1显示五行统计雷达图 */}
-                          {step.step === 1 && step.result.five_elements?.optional_summary?.count_by_element && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <div className="flex items-center justify-between mb-3">
-                                <h4 className="text-sm font-semibold text-gray-700">五行统计雷达图</h4>
-                                <div className="text-sm text-gray-600">
-                                  {(() => {
-                                    const counts = step.result.five_elements.optional_summary.count_by_element;
-                                    return `木：${counts.木}、火：${counts.火}、土：${counts.土}、金：${counts.金}、水：${counts.水}`;
-                                  })()}
+                                      </thead>
+                                      <tbody>
+                                        {[
+                                          { pillar: "年干", gan: fourPillars.year.charAt(0) },
+                                          { pillar: "月干", gan: fourPillars.month.charAt(0) },
+                                          { pillar: "日干", gan: fourPillars.day.charAt(0) },
+                                          { pillar: "时干", gan: fourPillars.hour.charAt(0) },
+                                        ].map(({ pillar, gan }) => {
+                                          const meta = ganMetaData[gan];
+                                          return (
+                                            <tr key={pillar} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{gan}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">{meta?.yin_yang || "-"}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">{meta?.wu_xing || "-"}</td>
+                                            </tr>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  </div>
                                 </div>
                               </div>
-                              <ReactECharts
-                                option={getRadarChartOption(step.result.five_elements.optional_summary.count_by_element)}
-                                style={{ height: "400px", width: "100%" }}
-                                opts={{ renderer: "svg" }}
-                              />
+                              {/* 右侧：五行统计雷达图 */}
+                              <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                <div className="flex flex-col mb-3">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">五行统计雷达图</h4>
+                                  <div className="text-xs text-gray-600">
+                                    {(() => {
+                                      const counts = step.result.five_elements.optional_summary.count_by_element;
+                                      return `木：${counts.木}、火：${counts.火}、土：${counts.土}、金：${counts.金}、水：${counts.水}`;
+                                    })()}
+                                  </div>
+                                </div>
+                                <div className="flex-1 flex items-center justify-center">
+                                  <ReactECharts
+                                    option={getRadarChartOption(step.result.five_elements.optional_summary.count_by_element)}
+                                    style={{ height: "100%", width: "100%", minHeight: "400px" }}
+                                    opts={{ renderer: "svg" }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {/* 步骤1显示地支藏干表格（单独一行） */}
+                          {step.step === 1 && fourPillars && hiddenStemsData && (
+                            <div className="mt-4">
+                              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
+                                <div className="overflow-x-auto">
+                                  <table className="w-full border-collapse text-sm">
+                                    <thead>
+                                      <tr className="bg-gray-50">
+                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                        <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
+                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {[
+                                        { pillar: "年支", branch: fourPillars.year.charAt(1) },
+                                        { pillar: "月支", branch: fourPillars.month.charAt(1) },
+                                        { pillar: "日支", branch: fourPillars.day.charAt(1) },
+                                        { pillar: "时支", branch: fourPillars.hour.charAt(1) },
+                                      ].map(({ pillar, branch }) => {
+                                        const hiddenStems = hiddenStemsData[branch] || [];
+                                        const roleLabels = ["主气", "中气", "余气"];
+                                        return (
+                                          <tr key={pillar} className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
+                                            <td className="border border-gray-300 px-3 py-2">
+                                              {hiddenStems.length > 0 ? (
+                                                <div className="flex flex-wrap gap-2">
+                                                  {hiddenStems.map((stem, index) => (
+                                                    <span key={index} className="inline-flex items-center gap-1">
+                                                      <span className="font-medium">{stem}</span>
+                                                      {index < roleLabels.length && (
+                                                        <span className="text-xs text-gray-500">({roleLabels[index]})</span>
+                                                      )}
+                                                    </span>
+                                                  ))}
+                                                </div>
+                                              ) : (
+                                                <span className="text-gray-400">无</span>
+                                              )}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
+                                              {hiddenStems.length > 0
+                                                ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
+                                                : "该地支无藏干"}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
                             </div>
                           )}
                           {/* 步骤2显示天干地支关系规则表 */}
@@ -1267,6 +1416,20 @@ export default function BaziPage() {
                                   </div>
                                 </div>
                               </div>
+                            </div>
+                          )}
+                          {/* 步骤3显示旺相休囚死状态雷达图 */}
+                          {step.step === 3 && step.result.yueling_strength?.all_elements_state && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">所有五行旺相休囚死状态</h4>
+                              <ReactECharts
+                                option={getYuelingRadarChartOption(
+                                  step.result.yueling_strength.all_elements_state,
+                                  step.result.yueling_strength.day_master_element
+                                )}
+                                style={{ height: "400px", width: "100%" }}
+                                opts={{ renderer: "svg" }}
+                              />
                             </div>
                           )}
                           {userRole === "qmdj" && (
