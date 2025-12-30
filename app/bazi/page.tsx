@@ -837,14 +837,20 @@ export default function BaziPage() {
                     return (
                       <Panel
                         header={
-                          <span className="font-semibold">
-                            {step.name}
-                          </span>
+                          <div className="flex justify-between items-center w-full">
+                            <span className="font-semibold">
+                              {step.name}
+                            </span>
+                            {step.annotations && (
+                              <span className="text-sm text-gray-500 font-normal italic ml-4">
+                                {step.annotations}
+                              </span>
+                            )}
+                          </div>
                         }
                         key={step.step}
                       >
                         <div className="space-y-4">
-                          <p className="text-sm text-gray-600 italic">{step.annotations}</p>
                           <div className="bg-gray-50 rounded-lg p-4">
                             <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
                               {naturalText}

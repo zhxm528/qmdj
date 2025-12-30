@@ -21,13 +21,26 @@ export default function PricingCard({ plan }: PricingCardProps) {
   const router = useRouter();
   const isFree = plan.price === "0元";
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (isFree) {
       // 免费版：引导注册
       router.push("/register");
     } else if (plan.cta === "立即开通") {
-      // 立即开通：跳转到充值页面
-      router.push("/deposit");
+      // 立即开通：先检查登录状态
+      try {
+        const response = await fetch("/api/user/me");
+        if (!response.ok) {
+          // 未登录，跳转到注册页面
+          router.push("/register");
+          return;
+        }
+        // 已登录，跳转到充值页面
+        router.push("/deposit");
+      } catch (error) {
+        console.error("Check login status error:", error);
+        // 出错时也跳转到注册页面
+        router.push("/register");
+      }
     } else {
       // 付费版：发起订阅
       handleSubscribe();
