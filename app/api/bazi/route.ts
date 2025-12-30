@@ -123,7 +123,38 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     const dayMasterElement = step1Result.day_master.element;
 
     const step2Result = step2(fourPillars, dayMaster);
-    const step3Result = await step3(fourPillars, dayMasterElement);
+    
+    // 先保存 chart 获取 chart_id（用于 step3 中调用 shishen API）
+    let chartId: string | null = null;
+    try {
+      const userEmail = await getCurrentUserEmail();
+      if (userEmail) {
+        // 临时构建 baziData 用于保存（后续会重新构建完整数据）
+        const tempBaziData = {
+          meta: {
+            spec_version: "bazi_reading_flow_v1",
+            created_at_local: new Date().toISOString().replace("Z", ""),
+            timezone: "Asia/Shanghai",
+          },
+          input: {
+            four_pillars: {
+              year: { stem: fourPillars.year.charAt(0), branch: fourPillars.year.charAt(1) },
+              month: { stem: fourPillars.month.charAt(0), branch: fourPillars.month.charAt(1) },
+              day: { stem: fourPillars.day.charAt(0), branch: fourPillars.day.charAt(1) },
+              hour: { stem: fourPillars.hour.charAt(0), branch: fourPillars.hour.charAt(1) },
+            },
+          },
+          steps: [],
+        };
+        chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, tempBaziData);
+        console.log("[bazi] 提前保存 chart 获取 chart_id:", chartId);
+      }
+    } catch (saveError: any) {
+      console.error("[bazi] 提前保存 chart 失败:", saveError);
+      // 继续执行，chartId 为 null
+    }
+    
+    const step3Result = await step3(fourPillars, dayMasterElement, chartId);
     const step4Result = step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result);
     const step5Result = step5(fourPillars, step3Result);
     const step6Result = step6(fourPillars, dayMaster, step2Result, step4Result);
@@ -286,12 +317,24 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       })),
     };
 
-    // 保存/更新排盘结果到数据库
-    try {
-      await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, baziData);
-    } catch (saveError: any) {
-      console.error("[bazi] 保存排盘结果失败:", saveError);
-      // 保存失败不影响返回结果，只记录错误
+    // 如果之前没有保存 chart（chartId 为 null），现在保存
+    if (!chartId) {
+      try {
+        chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, baziData);
+        console.log("[bazi] 保存排盘结果，chart_id:", chartId);
+      } catch (saveError: any) {
+        console.error("[bazi] 保存排盘结果失败:", saveError);
+        // 保存失败不影响返回结果，只记录错误
+      }
+    } else {
+      // 如果之前已保存，更新完整数据
+      try {
+        await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, baziData);
+        console.log("[bazi] 更新排盘结果，chart_id:", chartId);
+      } catch (saveError: any) {
+        console.error("[bazi] 更新排盘结果失败:", saveError);
+        // 更新失败不影响返回结果，只记录错误
+      }
     }
 
     // 构建完整的返回数据，包含四柱信息
@@ -318,7 +361,7 @@ async function saveBaziChartToDB(
   step1Result: Step1Result,
   step2Result: Step2Result,
   baziData: any
-) {
+): Promise<string> {
   return await transaction(async (client) => {
     // 构建四柱唯一标识（存储在meta中用于快速查询）
     const fourPillarsKey = `${fourPillars.year}-${fourPillars.month}-${fourPillars.day}-${fourPillars.hour}`;
@@ -471,6 +514,8 @@ async function saveBaziChartToDB(
     }
 
     console.log("[bazi] 排盘结果已保存/更新:", chartId);
+    
+    return chartId;
   });
 }
 

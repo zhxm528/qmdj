@@ -26,7 +26,7 @@ DROP TABLE IF EXISTS public.bazi_special_structure_member_tbl CASCADE;
 DROP TABLE IF EXISTS public.bazi_special_structure_tbl CASCADE;
 DROP TABLE IF EXISTS public.bazi_stem_relation_tbl CASCADE;
 DROP TABLE IF EXISTS public.bazi_branch_relation_tbl CASCADE;
-DROP TABLE IF EXISTS public.bazi_tenshen_summary_tbl CASCADE;
+
 DROP TABLE IF EXISTS public.bazi_reveal_tbl CASCADE;
 DROP TABLE IF EXISTS public.bazi_hidden_stem_tbl CASCADE;
 DROP TABLE IF EXISTS public.bazi_pillar_tbl CASCADE;
@@ -327,25 +327,8 @@ CREATE INDEX IF NOT EXISTS idx_bazi_reveal_tbl_to
   ON public.bazi_reveal_tbl(to_pillar_id);
 
 -- 7) 表B：十神汇总（缓存表，可不用；视图会实时算）
-CREATE TABLE IF NOT EXISTS public.bazi_tenshen_summary_tbl (
-  summary_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  chart_id            UUID NOT NULL REFERENCES public.bazi_chart_tbl(chart_id) ON DELETE CASCADE,
+-- 17_shishen.sql
 
-  source              TEXT NOT NULL,                    -- stem/hidden
-  tenshen             public.bazi_tenshen_enum NOT NULL,
-  cnt                 INTEGER NOT NULL,
-
-  is_visible          BOOLEAN NOT NULL DEFAULT FALSE,
-  visible_pillar_cnt  INTEGER NOT NULL DEFAULT 0,
-
-  CONSTRAINT ck_bazi_tenshen_source CHECK (source IN ('stem','hidden')),
-  CONSTRAINT ck_bazi_tenshen_cnt CHECK (cnt >= 0),
-  CONSTRAINT ck_bazi_visible_pillar_cnt CHECK (visible_pillar_cnt >= 0),
-  CONSTRAINT uq_bazi_tenshen_summary UNIQUE (chart_id, source, tenshen)
-);
-
-CREATE INDEX IF NOT EXISTS idx_bazi_tenshen_summary_tbl_chart
-  ON public.bazi_tenshen_summary_tbl(chart_id);
 
 -- 8) 网D：地支两两关系
 CREATE TABLE IF NOT EXISTS public.bazi_branch_relation_tbl (

@@ -48,10 +48,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/qimen" className="text-gray-700 hover:text-amber-600">
-              问事
+              问问
+              </Link>
+              <Link href="/bazi" className="text-gray-700 hover:text-amber-600">
+              看看
               </Link>
               <Link href="/products" className="text-gray-700 hover:text-amber-600">
-              运势
+              更多
               </Link>
               {!loading && user && user.role === 'qmdj' && (
                 <>

@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { Button, ConfigProvider, Card, Spin, Collapse, Tooltip } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
@@ -445,43 +446,8 @@ export default function BaziPage() {
       
       case 3: {
         // 月令与季节
-        const { month_command, yueling_strength } = result;
-        let text = "【月令信息】\n";
-        
-        if (month_command) {
-          text += `月支（月令）：${month_command.month_branch}\n`;
-          text += `对应季节：${month_command.season}\n`;
-          text += `当令之气：${month_command.dominant_qi}\n`;
-          if (month_command.supporting_elements_rank && month_command.supporting_elements_rank.length > 0) {
-            text += `五行强弱排序：${month_command.supporting_elements_rank.join(" > ")}\n`;
-          }
-        }
-        
-        text += "\n";
-        
-        // 月令强弱/得令信息
-        if (yueling_strength) {
-          text += "【月令强弱/得令】\n";
-          text += `日主五行：${yueling_strength.day_master_element}\n`;
-          text += `得令状态：${yueling_strength.day_master_state}（强弱值：${yueling_strength.day_master_state_rank}/5）\n`;
-          
-          if (yueling_strength.is_override) {
-            text += `⚠️ 使用了覆盖规则：${yueling_strength.override_note || ""}\n`;
-          }
-          
-          text += "\n";
-          text += "【所有五行旺相休囚死状态】\n";
-          const elements = ["木", "火", "土", "金", "水"];
-          elements.forEach((element) => {
-            const stateInfo = yueling_strength.all_elements_state[element];
-            if (stateInfo) {
-              const isDayMaster = element === yueling_strength.day_master_element;
-              text += `${element}：${stateInfo.state}（${stateInfo.state_rank}/5）${isDayMaster ? " ← 日主" : ""}\n`;
-            }
-          });
-        }
-        
-        return text;
+        // 月令信息、月令强弱/得令、所有五行旺相休囚死状态已通过表格和雷达图展示，不再显示重复的文字描述
+        return "月令与季节分析结果已通过下方表格和图表展示。";
       }
       
       case 4:
@@ -921,7 +887,21 @@ export default function BaziPage() {
 
               <div className="mt-6 flex justify-center">
                 <Tooltip
-                  title={!isLoggedIn || !userEmail ? "请先登录才能排盘" : !date || !hour ? "请先选择日期和时辰" : ""}
+                  title={
+                    !isLoggedIn || !userEmail ? (
+                      <span>
+                        请先
+                        <Link href="/login" className="text-blue-500 hover:text-blue-600 underline ml-1 mr-1">
+                          登录
+                        </Link>
+                        才能排盘
+                      </span>
+                    ) : !date || !hour ? (
+                      "请先选择日期和时辰"
+                    ) : (
+                      ""
+                    )
+                  }
                   placement="top"
                 >
                   <Button
@@ -1093,299 +1073,451 @@ export default function BaziPage() {
                               </div>
                             </div>
                           )}
-                          {/* 步骤1显示地支藏干表格（单独一行） */}
-                          {step.step === 1 && fourPillars && hiddenStemsData && (
-                            <div className="mt-4">
-                              <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
-                                <div className="overflow-x-auto">
-                                  <table className="w-full border-collapse text-sm">
-                                    <thead>
-                                      <tr className="bg-gray-50">
-                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                        <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
-                                        <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {[
-                                        { pillar: "年支", branch: fourPillars.year.charAt(1) },
-                                        { pillar: "月支", branch: fourPillars.month.charAt(1) },
-                                        { pillar: "日支", branch: fourPillars.day.charAt(1) },
-                                        { pillar: "时支", branch: fourPillars.hour.charAt(1) },
-                                      ].map(({ pillar, branch }) => {
-                                        const hiddenStems = hiddenStemsData[branch] || [];
-                                        const roleLabels = ["主气", "中气", "余气"];
-                                        return (
-                                          <tr key={pillar} className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
-                                            <td className="border border-gray-300 px-3 py-2">
-                                              {hiddenStems.length > 0 ? (
-                                                <div className="flex flex-wrap gap-2">
-                                                  {hiddenStems.map((stem, index) => (
-                                                    <span key={index} className="inline-flex items-center gap-1">
-                                                      <span className="font-medium">{stem}</span>
-                                                      {index < roleLabels.length && (
-                                                        <span className="text-xs text-gray-500">({roleLabels[index]})</span>
-                                                      )}
-                                                    </span>
-                                                  ))}
-                                                </div>
-                                              ) : (
-                                                <span className="text-gray-400">无</span>
-                                              )}
-                                            </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
-                                              {hiddenStems.length > 0
-                                                ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
-                                                : "该地支无藏干"}
-                                            </td>
+                          {/* 步骤2显示原始十神表格 */}
+                          {step.step === 2 && (() => {
+                            // 从步骤3的结果中获取十神数据
+                            const step3Result = baziSteps.find(s => s.step === 3);
+                            const shishenData = step3Result?.result?.shishen;
+                            return shishenData ? (
+                              <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                                <h4 className="text-sm font-semibold text-gray-700 mb-3">原始十神</h4>
+                                <div className="space-y-4">
+                                  {/* 天干十神表格 */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">天干十神</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">柱位</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">十神</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">关系</th>
                                           </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
+                                        </thead>
+                                        <tbody>
+                                          {shishenData.details
+                                            .filter((d: any) => d.item_type === "stem")
+                                            .sort((a: any, b: any) => {
+                                              const order: Record<string, number> = { year: 0, month: 1, day: 2, hour: 3 };
+                                              return order[a.pillar] - order[b.pillar];
+                                            })
+                                            .map((detail: any) => {
+                                              const pillarNames: Record<string, string> = {
+                                                year: "年干",
+                                                month: "月干",
+                                                day: "日干",
+                                                hour: "时干",
+                                              };
+                                              const relNames: Record<string, string> = {
+                                                same: "同我",
+                                                dm_sheng_x: "我生",
+                                                dm_ke_x: "我克",
+                                                x_sheng_dm: "生我",
+                                                x_ke_dm: "克我",
+                                              };
+                                              return (
+                                                <tr key={`${detail.pillar}-${detail.target_stem}`} className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                    {pillarNames[detail.pillar] || detail.pillar}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">
+                                                    {detail.target_stem}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_element}</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_yinyang}</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-blue-600">
+                                                    {detail.tenshen}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-500">
+                                                    {relNames[detail.rel_to_dm] || detail.rel_to_dm}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  {/* 地支藏干十神表格 */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">地支藏干十神</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">柱位</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">藏干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">角色</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">十神</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">关系</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {shishenData.details
+                                            .filter((d: any) => d.item_type === "hidden_stem")
+                                            .sort((a: any, b: any) => {
+                                              const order: Record<string, number> = { year: 0, month: 1, day: 2, hour: 3 };
+                                              const roleOrder: Record<string, number> = { main: 0, middle: 1, residual: 2 };
+                                              if (order[a.pillar] !== order[b.pillar]) {
+                                                return order[a.pillar] - order[b.pillar];
+                                              }
+                                              return (roleOrder[a.hidden_role] || 0) - (roleOrder[b.hidden_role] || 0);
+                                            })
+                                            .map((detail: any) => {
+                                              const pillarNames: Record<string, string> = {
+                                                year: "年支",
+                                                month: "月支",
+                                                day: "日支",
+                                                hour: "时支",
+                                              };
+                                              const roleNames: Record<string, string> = {
+                                                main: "主气",
+                                                middle: "中气",
+                                                residual: "余气",
+                                              };
+                                              const relNames: Record<string, string> = {
+                                                same: "同我",
+                                                dm_sheng_x: "我生",
+                                                dm_ke_x: "我克",
+                                                x_sheng_dm: "生我",
+                                                x_ke_dm: "克我",
+                                              };
+                                              return (
+                                                <tr key={`${detail.pillar}-${detail.source_branch}-${detail.target_stem}-${detail.hidden_role}`} className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                    {pillarNames[detail.pillar] || detail.pillar}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">
+                                                    {detail.source_branch}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                    {detail.target_stem}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                    {roleNames[detail.hidden_role] || detail.hidden_role}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_element}</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_yinyang}</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-blue-600">
+                                                    {detail.tenshen}
+                                                  </td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-500">
+                                                    {relNames[detail.rel_to_dm] || detail.rel_to_dm}
+                                                  </td>
+                                                </tr>
+                                              );
+                                            })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
                                 </div>
+                              </div>
+                            ) : null;
+                          })()}
+                          {/* 步骤2显示地支藏干表 */}
+                          {step.step === 2 && fourPillars && hiddenStemsData && (
+                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
+                              <div className="overflow-x-auto">
+                                <table className="w-full border-collapse text-sm">
+                                  <thead>
+                                    <tr className="bg-gray-50">
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
+                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {[
+                                      { pillar: "年支", branch: fourPillars.year.charAt(1) },
+                                      { pillar: "月支", branch: fourPillars.month.charAt(1) },
+                                      { pillar: "日支", branch: fourPillars.day.charAt(1) },
+                                      { pillar: "时支", branch: fourPillars.hour.charAt(1) },
+                                    ].map(({ pillar, branch }) => {
+                                      const hiddenStems = hiddenStemsData[branch] || [];
+                                      const roleLabels = ["主气", "中气", "余气"];
+                                      return (
+                                        <tr key={pillar} className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
+                                          <td className="border border-gray-300 px-3 py-2">
+                                            {hiddenStems.length > 0 ? (
+                                              <div className="flex flex-wrap gap-2">
+                                                {hiddenStems.map((stem, index) => (
+                                                  <span key={index} className="inline-flex items-center gap-1">
+                                                    <span className="font-medium">{stem}</span>
+                                                    {index < roleLabels.length && (
+                                                      <span className="text-xs text-gray-500">({roleLabels[index]})</span>
+                                                    )}
+                                                  </span>
+                                                ))}
+                                              </div>
+                                            ) : (
+                                              <span className="text-gray-400">无</span>
+                                            )}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
+                                            {hiddenStems.length > 0
+                                              ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
+                                              : "该地支无藏干"}
+                                          </td>
+                                        </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           )}
                           {/* 步骤2显示天干地支关系规则表 */}
                           {step.step === 2 && ganheData && (
                             <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">天干地支关系规则表</h4>
+                              <h4 className="text-sm font-semibold text-gray-700 mb-3">合冲刑害破 + 干合干克</h4>
                               <div className="space-y-6">
-                                {/* 五合（天干五合） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">五合（天干五合）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干1</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干2</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">合化五行</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.gan_he)
-                                          .filter(([gan, _]) => ["甲", "乙", "丙", "丁", "戊"].includes(gan))
-                                          .map(([gan, info]) => (
-                                            <tr key={gan} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{gan}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{info.with}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">{info.transform}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 六合（地支六合） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">六合（地支六合）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_liuhe)
-                                          .filter(([zhi, _]) => ["子", "寅", "卯", "辰", "巳", "午"].includes(zhi))
-                                          .map(([zhi, partner]) => (
-                                            <tr key={zhi} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 三合（地支三合局） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">三合（地支三合局）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三合局</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">合化五行</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_sanhe)
-                                          .filter(([combo, _]) => ["申子辰", "寅午戌", "亥卯未", "巳酉丑"].includes(combo))
-                                          .map(([combo, element]) => (
-                                            <tr key={combo} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{combo}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">{element}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 三会（地支三会局） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">三会（地支三会局）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三会局</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">会化五行</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_sanhui)
-                                          .filter(([combo, _]) => ["亥子丑", "寅卯辰", "巳午未", "申酉戌"].includes(combo))
-                                          .map(([combo, element]) => (
-                                            <tr key={combo} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{combo}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">{element}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 冲（地支六冲） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">冲（地支六冲）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_chong)
-                                          .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "辰", "巳"].includes(zhi))
-                                          .map(([zhi, partner]) => (
-                                            <tr key={zhi} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 刑（地支刑） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">刑（地支刑）</h5>
-                                  <div className="space-y-3">
-                                    <div>
-                                      <div className="text-xs text-gray-500 mb-1">三刑组：</div>
-                                      <div className="overflow-x-auto">
-                                        <table className="w-full border-collapse text-sm">
-                                          <thead>
-                                            <tr className="bg-gray-50">
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">三刑组</th>
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">类型</th>
-                                            </tr>
-                                          </thead>
-                                          <tbody>
-                                            {ganheData.zhi_xing.groups.map((group, idx) => (
-                                              <tr key={idx} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{group.join("、")}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
-                                                  {group.length === 3 ? "三刑" : "相刑"}
-                                                </td>
+                                {/* 四个表格一行显示：五合、六合、三合、三会 */}
+                                <div className="grid grid-cols-4 gap-4">
+                                  {/* 五合（天干五合） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">五合（天干五合）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干1</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干2</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">合化五行</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.gan_he)
+                                            .filter(([gan, _]) => ["甲", "乙", "丙", "丁", "戊"].includes(gan))
+                                            .map(([gan, info]) => (
+                                              <tr key={gan} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{gan}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{info.with}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{info.transform}</td>
                                               </tr>
                                             ))}
-                                          </tbody>
-                                        </table>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 六合（地支六合） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">六合（地支六合）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_liuhe)
+                                            .filter(([zhi, _]) => ["子", "寅", "卯", "辰", "巳", "午"].includes(zhi))
+                                            .map(([zhi, partner]) => (
+                                              <tr key={zhi} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 三合（地支三合局） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">三合（地支三合局）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三合局</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">合化五行</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_sanhe)
+                                            .filter(([combo, _]) => ["申子辰", "寅午戌", "亥卯未", "巳酉丑"].includes(combo))
+                                            .map(([combo, element]) => (
+                                              <tr key={combo} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{combo}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{element}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 三会（地支三会局） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">三会（地支三会局）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三会局</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">会化五行</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_sanhui)
+                                            .filter(([combo, _]) => ["亥子丑", "寅卯辰", "巳午未", "申酉戌"].includes(combo))
+                                            .map(([combo, element]) => (
+                                              <tr key={combo} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{combo}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{element}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* 四个表格一行显示：冲、刑、害、破 */}
+                                <div className="grid grid-cols-4 gap-4">
+                                  {/* 冲（地支六冲） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">冲（地支六冲）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_chong)
+                                            .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "辰", "巳"].includes(zhi))
+                                            .map(([zhi, partner]) => (
+                                              <tr key={zhi} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  
+                                  {/* 刑（地支刑） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">刑（地支刑）</h5>
+                                    <div className="space-y-2">
+                                      <div>
+                                        <div className="text-xs text-gray-500 mb-1">三刑组：</div>
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full border-collapse text-sm">
+                                            <thead>
+                                              <tr className="bg-gray-50">
+                                                <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三刑组</th>
+                                                <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">类型</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {ganheData.zhi_xing.groups.map((group, idx) => (
+                                                <tr key={idx} className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{group.join("、")}</td>
+                                                  <td className="border border-gray-300 px-2 py-1 text-center text-xs">
+                                                    {group.length === 3 ? "三刑" : "相刑"}
+                                                  </td>
+                                                </tr>
+                                              ))}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div className="text-xs text-gray-500 mb-1">自刑：</div>
+                                        <div className="text-xs text-gray-700">{ganheData.zhi_xing.zixing.join("、")}</div>
                                       </div>
                                     </div>
-                                    <div>
-                                      <div className="text-xs text-gray-500 mb-1">自刑：</div>
-                                      <div className="text-sm text-gray-700">{ganheData.zhi_xing.zixing.join("、")}</div>
+                                  </div>
+                                  
+                                  {/* 害（地支六害） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">害（地支六害）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_hai)
+                                            .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "申", "酉"].includes(zhi))
+                                            .map(([zhi, partner]) => (
+                                              <tr key={zhi} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
                                     </div>
                                   </div>
-                                </div>
-                                
-                                {/* 害（地支六害） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">害（地支六害）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_hai)
-                                          .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "申", "酉"].includes(zhi))
-                                          .map(([zhi, partner]) => (
-                                            <tr key={zhi} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                                
-                                {/* 破（地支六破） */}
-                                <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">破（地支六破）</h5>
-                                  <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse text-sm">
-                                      <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支1</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支2</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {Object.entries(ganheData.zhi_po)
-                                          .filter(([zhi, _]) => ["子", "卯", "辰", "未", "寅", "巳"].includes(zhi))
-                                          .map(([zhi, partner]) => (
-                                            <tr key={zhi} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{zhi}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium">{partner}</td>
-                                            </tr>
-                                          ))}
-                                      </tbody>
-                                    </table>
+                                  
+                                  {/* 破（地支六破） */}
+                                  <div>
+                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">破（地支六破）</h5>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {Object.entries(ganheData.zhi_po)
+                                            .filter(([zhi, _]) => ["子", "卯", "辰", "未", "寅", "巳"].includes(zhi))
+                                            .map(([zhi, partner]) => (
+                                              <tr key={zhi} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              </tr>
+                                            ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
                                   </div>
                                 </div>
                                 
                                 {/* 干克（天干相克） */}
                                 <div>
                                   <h5 className="text-xs font-semibold text-gray-600 mb-2">干克（天干相克）</h5>
-                                  <div className="space-y-3">
+                                  <div className="grid grid-cols-2 gap-4">
                                     <div>
                                       <div className="text-xs text-gray-500 mb-1">天干五行映射：</div>
                                       <div className="overflow-x-auto">
                                         <table className="w-full border-collapse text-sm">
                                           <thead>
                                             <tr className="bg-gray-50">
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干</th>
+                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">五行</th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {Object.entries(ganheData.gan_ke.gan_wuxing).map(([gan, wuxing]) => (
                                               <tr key={gan} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{gan}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center">{wuxing}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{gan}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{wuxing}</td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -1398,15 +1530,15 @@ export default function BaziPage() {
                                         <table className="w-full border-collapse text-sm">
                                           <thead>
                                             <tr className="bg-gray-50">
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">克方</th>
-                                              <th className="border border-gray-300 px-3 py-2 text-center font-semibold">被克方</th>
+                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">克方</th>
+                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">被克方</th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {Object.entries(ganheData.gan_ke.wuxing_ke).map(([ke, beike]) => (
                                               <tr key={ke} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{ke}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium">{beike}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{ke}</td>
+                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{beike}</td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -1418,18 +1550,94 @@ export default function BaziPage() {
                               </div>
                             </div>
                           )}
-                          {/* 步骤3显示旺相休囚死状态雷达图 */}
-                          {step.step === 3 && step.result.yueling_strength?.all_elements_state && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">所有五行旺相休囚死状态</h4>
-                              <ReactECharts
-                                option={getYuelingRadarChartOption(
-                                  step.result.yueling_strength.all_elements_state,
-                                  step.result.yueling_strength.day_master_element
+                          {/* 步骤3显示月令信息、月令强弱/得令表格和雷达图（左右两列布局） */}
+                          {step.step === 3 && (step.result.month_command || step.result.yueling_strength) && (
+                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
+                              {/* 左列：月令信息表格和月令强弱/得令表格（垂直堆叠） */}
+                              <div className="flex flex-col gap-4">
+                                {/* 月令信息表格 */}
+                                {step.result.month_command && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">月令信息</h4>
+                                    <div className="overflow-x-auto flex-1">
+                                      <table className="w-full border-collapse text-sm">
+                                        <tbody>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
+                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.month_branch || "-"}</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">对应季节</td>
+                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.season || "-"}</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">当令之气</td>
+                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.dominant_qi || "-"}</td>
+                                          </tr>
+                                          {step.result.month_command.supporting_elements_rank && step.result.month_command.supporting_elements_rank.length > 0 && (
+                                            <tr className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">五行强弱</td>
+                                              <td className="border border-gray-300 px-3 py-2">{step.result.month_command.supporting_elements_rank.join(" > ")}</td>
+                                            </tr>
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
                                 )}
-                                style={{ height: "400px", width: "100%" }}
-                                opts={{ renderer: "svg" }}
-                              />
+                                {/* 月令强弱/得令表格 */}
+                                {step.result.yueling_strength && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">月令强弱/得令</h4>
+                                    <div className="overflow-x-auto flex-1">
+                                      <table className="w-full border-collapse text-sm">
+                                        <tbody>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">日主五行</td>
+                                            <td className="border border-gray-300 px-3 py-2">{step.result.yueling_strength.day_master_element || "-"}</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">得令状态</td>
+                                            <td className="border border-gray-300 px-3 py-2">
+                                              {step.result.yueling_strength.day_master_state || "-"}
+                                              {step.result.yueling_strength.day_master_state_rank !== undefined && (
+                                                <span className="text-gray-500 ml-2">（强弱值：{step.result.yueling_strength.day_master_state_rank}/5）</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                          {step.result.yueling_strength.is_override && (
+                                            <tr className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">覆盖规则</td>
+                                              <td className="border border-gray-300 px-3 py-2">
+                                                <span className="text-amber-600">⚠️ 使用了覆盖规则</span>
+                                                {step.result.yueling_strength.override_note && (
+                                                  <span className="ml-2">{step.result.yueling_strength.override_note}</span>
+                                                )}
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {/* 右列：所有五行旺相休囚死状态雷达图 */}
+                              {step.result.yueling_strength?.all_elements_state && (
+                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">所有五行旺相休囚死状态</h4>
+                                  <div className="flex-1 flex items-center justify-center">
+                                    <ReactECharts
+                                      option={getYuelingRadarChartOption(
+                                        step.result.yueling_strength.all_elements_state,
+                                        step.result.yueling_strength.day_master_element
+                                      )}
+                                      style={{ height: "100%", width: "100%", minHeight: "400px" }}
+                                      opts={{ renderer: "svg" }}
+                                    />
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                           {userRole === "qmdj" && (
