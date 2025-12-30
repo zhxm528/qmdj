@@ -1,21 +1,23 @@
 
 ## 跟新git并重启服务
-- cd qmdj
-- git pull --ff-only    //从git上拉取最新文件
-- npm run build    //重新编译项目
-- pm2 restart qmdj --update-env    //用pm2重启项目
+```bash
+cd qmdj
+git pull --ff-only    //从git上拉取最新文件
+npm run build    //重新编译项目
+pm2 restart qmdj --update-env    //用pm2重启项目
 
 
-- rm -rf .next   //删除历史编译文件，可选
-- npm install    //安装最新npm包，可选
-
+rm -rf .next   //删除历史编译文件，可选
+npm install    //安装最新npm包，可选
+```
 
 
 
 ## Windows（推荐用 Windows Terminal / PowerShell）
-- ssh root@45.76.154.72   
-H5=x?HH2Ek XH2j5
-
+```bash
+ssh root@45.76.154.72   
+{H5=x?HH2Ek{XH2j5}
+```
 
 
 ## 在 Ubuntu 24.04.3 / x86_64 上部署 Next.js 项目

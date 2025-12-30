@@ -1155,7 +1155,7 @@ export default function HomePage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-white text-center px-6 py-4 bg-black bg-opacity-10 rounded-lg backdrop-blur-sm">
                       <h3 className="text-2xl md:text-3xl font-bold mb-2">缘启天机 来定乾坤</h3>
-                      <p className="text-sm md:text-base">紫微定方向 . 奇门定当下 . 八字定轨道</p>
+                      <p className="text-sm md:text-base">奇门问事定当下 . 四柱八字定运势</p>
                     </div>
                   </div>
                 </div>
@@ -1173,7 +1173,7 @@ export default function HomePage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-white text-center px-6 py-4 bg-black bg-opacity-30 rounded-lg backdrop-blur-sm">
                       <h3 className="text-2xl md:text-3xl font-bold mb-2">专业服务 精准解答</h3>
-                      <p className="text-sm md:text-base">看清感情走向与人生节奏，抓住关键时机，温柔却坚定地把未来握在自己手里。</p>
+                      <p className="text-sm md:text-base">看清感情走向、掌控人生节奏、抓住关键时机，温柔却坚定地把未来握在自己手里。</p>
                     </div>
                   </div>
                 </div>
