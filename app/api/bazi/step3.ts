@@ -293,13 +293,21 @@ export async function step3(
       });
       shishenData = shishenResult;
       console.log("[step3] shishen 计算成功，summary_id:", shishenData.summary_id);
+      console.log("[step3] 原始十神完整数据:", JSON.stringify(shishenData, null, 2));
+      console.log("[step3] 原始十神 details 数量:", shishenData.details?.length || 0);
+      if (shishenData.details && shishenData.details.length > 0) {
+        console.log("[step3] 原始十神 details 前3条:", JSON.stringify(shishenData.details.slice(0, 3), null, 2));
+      }
     } catch (shishenError: any) {
       console.error("[step3] 调用 shishen 计算函数时出错:", shishenError);
+      console.error("[step3] shishen 错误堆栈:", shishenError.stack);
       // 不抛出错误，继续执行
     }
   } else {
     console.log("[step3] chart_id 为空，跳过 shishen 计算");
   }
+
+  console.log("[step3] 返回结果中的 shishen 数据:", shishenData ? JSON.stringify(shishenData, null, 2) : "undefined");
 
   return {
     month_command: {

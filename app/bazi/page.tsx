@@ -843,12 +843,7 @@ export default function BaziPage() {
       <Layout>
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">生辰八字</h1>
-              <p className="text-gray-600 text-sm">
-                请选择你的出生日期与时间，我们将根据生辰八字进行排盘与分析。
-              </p>
-            </div>
+            
 
             {/* 日期与时辰选择 */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
@@ -912,7 +907,7 @@ export default function BaziPage() {
                     disabled={!isLoggedIn || !userEmail || !date || !hour}
                     className="bg-amber-600 hover:bg-amber-700"
                   >
-                    生成八字排盘
+                    八字排盘
                   </Button>
                 </Tooltip>
               </div>
@@ -974,11 +969,13 @@ export default function BaziPage() {
                         key={step.step}
                       >
                         <div className="space-y-4">
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
-                              {naturalText}
+                          {step.step !== 2 && (
+                            <div className="bg-gray-50 rounded-lg p-4">
+                              <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
+                                {naturalText}
+                              </div>
                             </div>
-                          </div>
+                          )}
                           {/* 步骤1显示五行分布、天干五行阴阳表和五行统计雷达图（左侧两个表格垂直堆叠，右侧雷达图） */}
                           {step.step === 1 && step.result.five_elements && fourPillars && ganMetaData && step.result.five_elements?.optional_summary?.count_by_element && (
                             <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
@@ -1077,7 +1074,11 @@ export default function BaziPage() {
                           {step.step === 2 && (() => {
                             // 从步骤3的结果中获取十神数据
                             const step3Result = baziSteps.find(s => s.step === 3);
+                            console.log("[前端] 步骤2 - 查找步骤3结果:", step3Result ? `找到步骤3，step=${step3Result.step}` : "未找到步骤3");
+                            console.log("[前端] 步骤2 - step3Result?.result:", step3Result?.result ? "存在" : "不存在");
+                            console.log("[前端] 步骤2 - step3Result?.result?.shishen:", step3Result?.result?.shishen ? JSON.stringify(step3Result.result.shishen, null, 2) : "不存在");
                             const shishenData = step3Result?.result?.shishen;
+                            console.log("[前端] 步骤2 - shishenData:", shishenData ? `存在，details数量=${shishenData.details?.length || 0}` : "不存在");
                             return shishenData ? (
                               <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
                                 <h4 className="text-sm font-semibold text-gray-700 mb-3">原始十神</h4>

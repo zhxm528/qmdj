@@ -12,9 +12,10 @@ CREATE TABLE public.bazi_tenshen_summary_tbl (
   chart_id        TEXT NOT NULL,  -- 改为TEXT以兼容UUID格式的chart_id
 
   -- 日主信息（冗余保存，便于审计/查询）
-  day_master_stem TEXT NOT NULL,     -- 日柱天干：甲乙丙丁...
-  dm_element      TEXT NOT NULL,     -- 木火土金水
-  dm_yinyang      TEXT NOT NULL,     -- 阴/阳
+  day_master_stem TEXT NOT NULL DEFAULT '',     -- 日柱天干：甲乙丙丁...
+  dm_element      TEXT NOT NULL DEFAULT '',     -- 木火土金水
+  dm_yinyang      TEXT NOT NULL DEFAULT '',     -- 阴/阳
+  day_master_stem TEXT NOT NULL DEFAULT '';
 
   calc_version    TEXT NOT NULL DEFAULT 'v1',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),

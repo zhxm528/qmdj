@@ -155,6 +155,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     }
     
     const step3Result = await step3(fourPillars, dayMasterElement, chartId);
+    console.log("[bazi] step3Result 中的 shishen 数据:", step3Result.shishen ? JSON.stringify(step3Result.shishen, null, 2) : "undefined");
+    console.log("[bazi] step3Result 完整内容:", JSON.stringify(step3Result, null, 2));
     const step4Result = step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result);
     const step5Result = step5(fourPillars, step3Result);
     const step6Result = step6(fourPillars, dayMaster, step2Result, step4Result);
@@ -337,6 +339,15 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       }
     }
 
+    // 在返回前检查 step 3 中的 shishen 数据
+    const step3InSteps = steps.find(s => s.step === 3);
+    console.log("[bazi] 返回前检查 - step 3 是否存在:", step3InSteps ? "是" : "否");
+    if (step3InSteps) {
+      const step3Result = step3InSteps.result as Step3Result;
+      console.log("[bazi] 返回前检查 - step 3 result 中的 shishen:", step3Result?.shishen ? JSON.stringify(step3Result.shishen, null, 2) : "undefined");
+      console.log("[bazi] 返回前检查 - step 3 result 完整内容:", JSON.stringify(step3Result, null, 2));
+    }
+
     // 构建完整的返回数据，包含四柱信息
     return NextResponse.json({
       success: true,
@@ -430,6 +441,13 @@ async function saveBaziChartToDB(
           chartId,
         ]
       );
+      
+      // 删除旧的 pillar 数据，然后重新插入
+      console.log("[bazi] 删除旧的 pillar 数据");
+      await client.query(
+        `DELETE FROM public.bazi_pillar_tbl WHERE chart_id = $1`,
+        [chartId]
+      );
     } else {
       // 不存在，创建新的
       console.log("[bazi] 创建新的排盘结果");
@@ -449,68 +467,129 @@ async function saveBaziChartToDB(
       );
       
       chartId = newChart.rows[0].chart_id;
-      
-      // 保存四柱信息
-      const pillars = [
-        { pillar: "year", sort_order: 1, stem: fourPillars.year.charAt(0), branch: fourPillars.year.charAt(1) },
-        { pillar: "month", sort_order: 2, stem: fourPillars.month.charAt(0), branch: fourPillars.month.charAt(1) },
-        { pillar: "day", sort_order: 3, stem: fourPillars.day.charAt(0), branch: fourPillars.day.charAt(1) },
-        { pillar: "hour", sort_order: 4, stem: fourPillars.hour.charAt(0), branch: fourPillars.hour.charAt(1) },
-      ];
+    }
+    
+    // 保存四柱信息（无论是更新还是创建，都需要插入 pillar）
+    const pillars = [
+      { pillar: "year", sort_order: 1, stem: fourPillars.year.charAt(0), branch: fourPillars.year.charAt(1) },
+      { pillar: "month", sort_order: 2, stem: fourPillars.month.charAt(0), branch: fourPillars.month.charAt(1) },
+      { pillar: "day", sort_order: 3, stem: fourPillars.day.charAt(0), branch: fourPillars.day.charAt(1) },
+      { pillar: "hour", sort_order: 4, stem: fourPillars.hour.charAt(0), branch: fourPillars.hour.charAt(1) },
+    ];
 
-      // 从step2Result获取十神信息
-      const structureTable = step2Result.structure_table;
-      
-      // 获取地支五行映射
-      const BRANCH_TO_ELEMENT: Record<string, string> = {
-        寅: "木", 卯: "木", 巳: "火", 午: "火", 辰: "土", 戌: "土", 丑: "土", 未: "土",
-        申: "金", 酉: "金", 子: "水", 亥: "水",
-      };
-      
-      for (const p of pillars) {
-        // 从structure_table获取十神信息（如果存在）
-        let stemTenshen = "日主";
-        if (structureTable?.pillars) {
-          const pillarInfo = structureTable.pillars.find((pl) => pl.pillar === p.pillar);
-          if (pillarInfo?.stem?.tenshen) {
-            stemTenshen = pillarInfo.stem.tenshen;
-          }
+    // 从step2Result获取十神信息
+    const structureTable = step2Result.structure_table;
+    
+    // 获取地支五行映射
+    const BRANCH_TO_ELEMENT: Record<string, string> = {
+      寅: "木", 卯: "木", 巳: "火", 午: "火", 辰: "土", 戌: "土", 丑: "土", 未: "土",
+      申: "金", 酉: "金", 子: "水", 亥: "水",
+    };
+    
+    // 准备所有 pillar 的数据
+    const pillarData: Array<{
+      pillar: string;
+      sort_order: number;
+      stem: string;
+      stemElement: string;
+      stemYinyang: string;
+      stemTenshen: string;
+      branch: string;
+      branchElement: string;
+    }> = [];
+    
+    for (const p of pillars) {
+      // 从structure_table获取十神信息（如果存在）
+      let stemTenshen = "日主";
+      if (structureTable?.pillars) {
+        const pillarInfo = structureTable.pillars.find((pl) => pl.pillar === p.pillar);
+        if (pillarInfo?.stem?.tenshen) {
+          stemTenshen = pillarInfo.stem.tenshen;
         }
-        
-        // 如果structure_table不存在，使用ten_gods
-        if (!structureTable && step2Result.ten_gods) {
-          if (p.pillar === "year") {
-            stemTenshen = step2Result.ten_gods.year_stem || "日主";
-          } else if (p.pillar === "month") {
-            stemTenshen = step2Result.ten_gods.month_stem || "日主";
-          } else if (p.pillar === "day") {
-            stemTenshen = "日主";
-          } else if (p.pillar === "hour") {
-            stemTenshen = step2Result.ten_gods.hour_stem || "日主";
-          }
-        }
-        
-        const stemElement = GAN_TO_ELEMENT[p.stem] || "";
-        const stemYinyang = GAN_TO_YINYANG[p.stem] || "";
-        const branchElement = BRANCH_TO_ELEMENT[p.branch] || "";
-        
-        await client.query(
-          `INSERT INTO public.bazi_pillar_tbl 
-           (chart_id, pillar, sort_order, stem, stem_element, stem_yinyang, stem_tenshen, branch, branch_element)
-           VALUES ($1, $2::public.bazi_pillar_enum, $3, $4, $5::public.bazi_element_enum, $6::public.bazi_yinyang_enum, $7::public.bazi_tenshen_enum, $8, $9::public.bazi_element_enum)`,
-          [
-            chartId,
-            p.pillar,
-            p.sort_order,
-            p.stem,
-            stemElement,
-            stemYinyang,
-            stemTenshen,
-            p.branch,
-            branchElement,
-          ]
-        );
       }
+      
+      // 如果structure_table不存在，使用ten_gods
+      if (!structureTable && step2Result.ten_gods) {
+        if (p.pillar === "year") {
+          stemTenshen = step2Result.ten_gods.year_stem || "日主";
+        } else if (p.pillar === "month") {
+          stemTenshen = step2Result.ten_gods.month_stem || "日主";
+        } else if (p.pillar === "day") {
+          stemTenshen = "日主";
+        } else if (p.pillar === "hour") {
+          stemTenshen = step2Result.ten_gods.hour_stem || "日主";
+        }
+      }
+      
+      const stemElement = GAN_TO_ELEMENT[p.stem] || "";
+      const stemYinyang = GAN_TO_YINYANG[p.stem] || "";
+      const branchElement = BRANCH_TO_ELEMENT[p.branch] || "";
+      
+      // 验证所有必需字段都有值
+      if (!stemElement || !stemYinyang || !branchElement) {
+        console.error(`[bazi] pillar ${p.pillar} 数据验证失败:`, {
+          pillar: p.pillar,
+          stem: p.stem,
+          branch: p.branch,
+          stemElement,
+          stemYinyang,
+          branchElement,
+          stemTenshen,
+        });
+        throw new Error(`pillar ${p.pillar} 必需字段为空: stem=${p.stem}, branch=${p.branch}`);
+      }
+      
+      pillarData.push({
+        pillar: p.pillar,
+        sort_order: p.sort_order,
+        stem: p.stem,
+        stemElement,
+        stemYinyang,
+        stemTenshen,
+        branch: p.branch,
+        branchElement,
+      });
+    }
+    
+    // 批量插入所有4个 pillar（使用单个 INSERT 语句，避免触发器在中间状态检查）
+    console.log(`[bazi] 准备批量插入 ${pillarData.length} 个 pillar`);
+    
+    try {
+      // 构建批量插入的 VALUES 子句
+      const values = pillarData.map((p, index) => {
+        const baseIndex = index * 9;
+        return `($${baseIndex + 1}, $${baseIndex + 2}::public.bazi_pillar_enum, $${baseIndex + 3}, $${baseIndex + 4}, $${baseIndex + 5}::public.bazi_element_enum, $${baseIndex + 6}::public.bazi_yinyang_enum, $${baseIndex + 7}::public.bazi_tenshen_enum, $${baseIndex + 8}, $${baseIndex + 9}::public.bazi_element_enum)`;
+      }).join(', ');
+      
+      // 构建参数数组
+      const params: any[] = [];
+      pillarData.forEach((p) => {
+        params.push(
+          chartId,
+          p.pillar,
+          p.sort_order,
+          p.stem,
+          p.stemElement,
+          p.stemYinyang,
+          p.stemTenshen,
+          p.branch,
+          p.branchElement
+        );
+      });
+      
+      const insertSql = `
+        INSERT INTO public.bazi_pillar_tbl 
+        (chart_id, pillar, sort_order, stem, stem_element, stem_yinyang, stem_tenshen, branch, branch_element)
+        VALUES ${values}
+      `;
+      
+      console.log(`[bazi] 执行批量插入 SQL，参数数量: ${params.length}`);
+      await client.query(insertSql, params);
+      console.log(`[bazi] 所有 ${pillarData.length} 个 pillar 批量插入成功`);
+    } catch (insertError: any) {
+      console.error(`[bazi] 批量插入 pillar 失败:`, insertError);
+      console.error(`[bazi] pillar 数据:`, JSON.stringify(pillarData, null, 2));
+      throw insertError;
     }
 
     console.log("[bazi] 排盘结果已保存/更新:", chartId);

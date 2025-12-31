@@ -22,7 +22,7 @@ export const dbConfig = {
   // 连接池配置
   max: parseInt(process.env.DB_POOL_MAX || "20", 10), // 最大连接数
   idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || "30000", 10), // 空闲连接超时时间（毫秒）
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || "2000", 10), // 连接超时时间（毫秒）
+  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || "10000", 10), // 连接超时时间（毫秒）
 };
 
 // 邮件配置
