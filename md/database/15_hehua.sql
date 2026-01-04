@@ -1,3 +1,6 @@
+-- 若存在则先删除表
+DROP TABLE IF EXISTS public.chart_hehua_result CASCADE;
+
 -- 排盘计算结果：合、合化、以及证据明细
 CREATE TABLE IF NOT EXISTS public.chart_hehua_result (
   id                  BIGSERIAL PRIMARY KEY,

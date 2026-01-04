@@ -3,6 +3,11 @@
 -- schema: public
 -- =========================================
 
+-- 若存在则先删除（先删明细，再删主表）
+DROP TABLE IF EXISTS public.bazi_branch_hidden_stem_dict CASCADE;
+DROP TABLE IF EXISTS public.bazi_earthly_branch_dim CASCADE;
+DROP TABLE IF EXISTS public.bazi_heavenly_stem_dim CASCADE;
+
 BEGIN;
 
 -- 1) 地支维表（12支）

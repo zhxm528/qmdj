@@ -390,13 +390,11 @@ export default function Member() {
         <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">会员信息</h1>
-
             <div className="space-y-6">
               {/* 基本信息 */}
               <div className="border-b pb-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold">基本信息</h2>
+                  <h2 className="text-xl font-bold">账户详情</h2>
                   {!isEditing && (
                     <div className="flex gap-2">
                       <Button onClick={handleEdit}>编辑</Button>
@@ -532,7 +530,7 @@ export default function Member() {
               {/* 会员等级 */}
               {level && (
                 <div className="border-b pb-6">
-                  <h2 className="text-xl font-bold mb-4">会员等级</h2>
+                  
                   <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600 mb-1">等级名称</p>
@@ -558,9 +556,56 @@ export default function Member() {
                 </div>
               )}
 
+              {/* 会员卡信息 */}
+              {cards && cards.length > 0 && (
+                <div className="border-b pb-6">
+                  <div className="space-y-4">
+                    {cards.map((card) => (
+                      <div
+                        key={card.cardId}
+                        className="bg-amber-50 p-4 rounded-lg border border-amber-200"
+                      >
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">卡号</p>
+                            <p className="font-medium text-gray-900">{card.cardNo}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">状态</p>
+                            <p className="font-medium text-gray-900">
+                              {card.status === 1 ? "使用中" : "挂失/注销"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-gray-600 mb-1">发卡时间</p>
+                            <p className="font-medium text-gray-900">
+                              {formatDateTime(card.issuedAt)}
+                            </p>
+                          </div>
+                          {card.expiredAt && (
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">过期时间</p>
+                              <p className="font-medium text-gray-900">
+                                {formatDateTime(card.expiredAt)}
+                              </p>
+                            </div>
+                          )}
+                          {card.remark && (
+                            <div>
+                              <p className="text-sm text-gray-600 mb-1">备注</p>
+                              <p className="font-medium text-gray-900">{card.remark}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* 积分信息 */}
               <div className="border-b pb-6">
-                <h2 className="text-xl font-bold mb-4">积分信息</h2>
+                
                 <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 mb-1">历史累计积分</p>
@@ -600,6 +645,14 @@ export default function Member() {
                         {formatDateTime(account.updatedAt)}
                       </p>
                     </div>
+                    {cardExpiredAt && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">会员卡有效期</p>
+                        <p className="font-medium text-gray-900">
+                          {formatDate(cardExpiredAt)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                   <div className="mt-4">
                     {!showRechargeForm ? (
@@ -647,54 +700,6 @@ export default function Member() {
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-              )}
-
-              {/* 会员卡信息 */}
-              {cards && cards.length > 0 && (
-                <div className="border-b pb-6">
-                  <h2 className="text-xl font-bold mb-4">会员卡</h2>
-                  <div className="space-y-4">
-                    {cards.map((card) => (
-                      <div
-                        key={card.cardId}
-                        className="bg-amber-50 p-4 rounded-lg border border-amber-200"
-                      >
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-sm text-gray-600 mb-1">卡号</p>
-                            <p className="font-medium text-gray-900">{card.cardNo}</p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 mb-1">状态</p>
-                            <p className="font-medium text-gray-900">
-                              {card.status === 1 ? "使用中" : "挂失/注销"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-sm text-gray-600 mb-1">发卡时间</p>
-                            <p className="font-medium text-gray-900">
-                              {formatDateTime(card.issuedAt)}
-                            </p>
-                          </div>
-                          {card.expiredAt && (
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">过期时间</p>
-                              <p className="font-medium text-gray-900">
-                                {formatDateTime(card.expiredAt)}
-                              </p>
-                            </div>
-                          )}
-                          {card.remark && (
-                            <div>
-                              <p className="text-sm text-gray-600 mb-1">备注</p>
-                              <p className="font-medium text-gray-900">{card.remark}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               )}

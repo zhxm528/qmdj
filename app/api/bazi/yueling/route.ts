@@ -35,7 +35,7 @@ interface YuelingResponse {
  * @param ruleSet 规则集，默认 'default'
  * @returns 月令强弱信息
  */
-async function getYuelingStrengthFromDB(
+export async function getYuelingStrengthFromDB(
   monthBranch: string,
   dayMasterElement: string,
   ruleSet: string = "default"

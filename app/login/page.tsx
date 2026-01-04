@@ -78,17 +78,6 @@ export default function Login() {
               />
             </div>
 
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
-                记住我
-              </label>
-            </div>
-
             <Button type="submit" className="w-full" loading={loading}>
               登录
             </Button>

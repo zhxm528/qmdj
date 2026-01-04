@@ -4,6 +4,9 @@
 -- Table : public.dict_heavenly_stem
 -- =========================================================
 
+-- 若存在则先删除表
+DROP TABLE IF EXISTS public.dict_heavenly_stem CASCADE;
+
 -- 1) 枚举类型（避免脏值）
 DO $$
 BEGIN

@@ -3,6 +3,9 @@
  * 以日干为核心，先明确"我是谁"（后面所有十神、喜忌都围绕它展开）。
  */
 
+import { extractPillars } from "./fourpillars/route";
+import { GAN_TO_ELEMENT, GAN_TO_YINYANG, getDayMasterInfo } from "./rizhuwuxing/route";
+
 export interface Step1Result {
   day_master: {
     stem: string;
@@ -33,11 +36,6 @@ export interface Step1Result {
   };
 }
 
-// 天干五行表
-const GAN_TO_ELEMENT: Record<string, string> = {
-  甲: "木", 乙: "木", 丙: "火", 丁: "火", 戊: "土",
-  己: "土", 庚: "金", 辛: "金", 壬: "水", 癸: "水",
-};
 
 // 地支五行表
 const BRANCH_TO_ELEMENT: Record<string, string> = {
@@ -52,23 +50,17 @@ export function step1(fourPillars: {
   day: string;
   hour: string;
 }): Step1Result {
-  const dayPillar = fourPillars.day;
-  const dayStem = dayPillar.charAt(0);
-  const dayBranch = dayPillar.charAt(1);
-
-  // 天干五行和阴阳
-  const ganToYinYang: Record<string, string> = {
-    甲: "阳", 乙: "阴", 丙: "阳", 丁: "阴", 戊: "阳",
-    己: "阴", 庚: "阳", 辛: "阴", 壬: "阳", 癸: "阴",
-  };
-
   // 提取四柱的天干地支
-  const yearStem = fourPillars.year.charAt(0);
-  const yearBranch = fourPillars.year.charAt(1);
-  const monthStem = fourPillars.month.charAt(0);
-  const monthBranch = fourPillars.month.charAt(1);
-  const hourStem = fourPillars.hour.charAt(0);
-  const hourBranch = fourPillars.hour.charAt(1);
+  const pillars = extractPillars(fourPillars);
+  const yearStem = pillars.year.stem;
+  const yearBranch = pillars.year.branch;
+  const monthStem = pillars.month.stem;
+  const monthBranch = pillars.month.branch;
+  const dayStem = pillars.day.stem;
+  const dayBranch = pillars.day.branch;
+  const hourStem = pillars.hour.stem;
+  const hourBranch = pillars.hour.branch;
+
 
   // 五行信息
   const fiveElements = {
@@ -103,11 +95,14 @@ export function step1(fourPillars: {
     }
   });
 
+  // 获取日主信息
+  const dayMasterInfo = getDayMasterInfo(dayStem);
+
   return {
     day_master: {
-      stem: dayStem,
-      element: GAN_TO_ELEMENT[dayStem] || "",
-      yin_yang: ganToYinYang[dayStem] || "",
+      stem: dayMasterInfo.stem,
+      element: dayMasterInfo.element,
+      yin_yang: dayMasterInfo.yin_yang,
     },
     day_pillar: {
       stem: dayStem,

@@ -72,6 +72,10 @@ export default function BaziPage() {
     zhi_po: Record<string, string>;
     gan_ke: { gan_wuxing: Record<string, string>; wuxing_ke: Record<string, string> };
   } | null>(null);
+  const [chartId, setChartId] = useState<string | null>(null);
+  const [tonggenData, setTonggenData] = useState<any[] | null>(null);
+  const [touganData, setTouganData] = useState<any[] | null>(null);
+  const [delingData, setDelingData] = useState<any | null>(null);
 
   const dateParts = date ? date.split("-") : null;
   const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
@@ -141,6 +145,11 @@ export default function BaziPage() {
 
       if (data.steps && data.steps.length > 0) {
         setBaziSteps(data.steps);
+        
+        // 从API返回中获取chart_id
+        if (data.chart_id) {
+          setChartId(data.chart_id);
+        }
         
         // 从API返回中获取四柱信息
         if (data.fourPillars) {
@@ -242,6 +251,31 @@ export default function BaziPage() {
             }
           } catch (error) {
             console.warn("获取天干地支关系规则表失败:", error);
+          }
+          
+          // 从 step4 结果中获取通根表、透干表和得令数据
+          // step4 会在后台自动调用 tonggen、tougan、deling API
+          const step4Data = data.steps?.find((s: any) => s.step === 4);
+          if (step4Data && step4Data.result) {
+            // 获取通根表数据
+            if (step4Data.result.tonggen && Array.isArray(step4Data.result.tonggen)) {
+              setTonggenData(step4Data.result.tonggen);
+              console.log("[前端] 从 step4 获取通根表数据，数量:", step4Data.result.tonggen.length);
+            }
+            
+            // 获取透干表数据
+            if (step4Data.result.tougan && Array.isArray(step4Data.result.tougan)) {
+              setTouganData(step4Data.result.tougan);
+              console.log("[前端] 从 step4 获取透干表数据，数量:", step4Data.result.tougan.length);
+            }
+            
+            // 得令数据
+            if (step4Data.result.deling) {
+              setDelingData(step4Data.result.deling);
+              console.log("[前端] 从 step4 获取得令数据:", JSON.stringify(step4Data.result.deling, null, 2));
+            }
+          } else {
+            console.warn("[前端] step4 数据不存在或格式不正确");
           }
         }
 
@@ -451,6 +485,8 @@ export default function BaziPage() {
       }
       
       case 4:
+        // 旺衰：日主强弱与身态 - 已有通根表和透干表展示，不显示占位文字
+        return "";
       case 5:
       case 6:
       case 7:
@@ -1072,12 +1108,8 @@ export default function BaziPage() {
                           )}
                           {/* 步骤2显示原始十神表格 */}
                           {step.step === 2 && (() => {
-                            // 从步骤3的结果中获取十神数据
-                            const step3Result = baziSteps.find(s => s.step === 3);
-                            console.log("[前端] 步骤2 - 查找步骤3结果:", step3Result ? `找到步骤3，step=${step3Result.step}` : "未找到步骤3");
-                            console.log("[前端] 步骤2 - step3Result?.result:", step3Result?.result ? "存在" : "不存在");
-                            console.log("[前端] 步骤2 - step3Result?.result?.shishen:", step3Result?.result?.shishen ? JSON.stringify(step3Result.result.shishen, null, 2) : "不存在");
-                            const shishenData = step3Result?.result?.shishen;
+                            // 从步骤2的结果中获取十神数据
+                            const shishenData = step.result?.shishen;
                             console.log("[前端] 步骤2 - shishenData:", shishenData ? `存在，details数量=${shishenData.details?.length || 0}` : "不存在");
                             return shishenData ? (
                               <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
@@ -1636,6 +1668,147 @@ export default function BaziPage() {
                                       style={{ height: "100%", width: "100%", minHeight: "400px" }}
                                       opts={{ renderer: "svg" }}
                                     />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* 步骤4显示通根表、透干表和得令数据 */}
+                          {step.step === 4 && (
+                            <div className="mt-4 space-y-4">
+                              {/* 第一行：通根表和透干表 */}
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                {/* 通根表 */}
+                                {tonggenData && tonggenData.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">通根表</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">天干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">地支</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">根层级</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">权重</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {tonggenData.map((item, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.stem_code}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.root_role || "-"}</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                {item.weight != null ? (typeof item.weight === 'number' ? item.weight.toFixed(2) : parseFloat(String(item.weight)).toFixed(2)) : "-"}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* 透干表 */}
+                                {touganData && touganData.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">透干表</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">柱位</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">地支</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">藏干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">层级</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">是否透干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">透出位置</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {touganData.map((item, idx) => {
+                                            const pillarNames: Record<string, string> = {
+                                              year: "年",
+                                              month: "月",
+                                              day: "日",
+                                              hour: "时",
+                                            };
+                                            return (
+                                              <tr key={idx} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{pillarNames[item.pillar] || item.pillar}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.hidden_stem}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.hidden_role}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {item.is_tougan ? (
+                                                    <span className="text-green-600 font-semibold">是</span>
+                                                  ) : (
+                                                    <span className="text-gray-400">否</span>
+                                                  )}
+                                                </td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {item.tougan_pillars && Array.isArray(item.tougan_pillars) && item.tougan_pillars.length > 0
+                                                    ? item.tougan_pillars.map((p: string) => pillarNames[p] || p).join("、")
+                                                    : "-"}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {/* 第二行：得令数据 */}
+                              {delingData && (
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">得令判定</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
+                                          <td className="border border-gray-300 px-3 py-2">{delingData.month_branch || "-"}</td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">季节</td>
+                                          <td className="border border-gray-300 px-3 py-2">{delingData.season_code || "-"}</td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主</td>
+                                          <td className="border border-gray-300 px-3 py-2">{delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）</td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主状态</td>
+                                          <td className="border border-gray-300 px-3 py-2">
+                                            {delingData.day_master_state || "-"}
+                                            {delingData.day_master_score !== undefined && (
+                                              <span className="text-gray-500 ml-2">（得分：{typeof delingData.day_master_score === 'number' ? delingData.day_master_score.toFixed(2) : parseFloat(String(delingData.day_master_score)).toFixed(2)}）</span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">是否得令</td>
+                                          <td className="border border-gray-300 px-3 py-2">
+                                            {delingData.is_deling ? (
+                                              <span className="text-green-600 font-semibold">是</span>
+                                            ) : (
+                                              <span className="text-red-600 font-semibold">否</span>
+                                            )}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">判定规则</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.rule_text || "-"}</td>
+                                        </tr>
+                                        {delingData.ruleset_id && (
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则集</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.ruleset_id}</td>
+                                          </tr>
+                                        )}
+                                      </tbody>
+                                    </table>
                                   </div>
                                 </div>
                               )}

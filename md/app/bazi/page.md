@@ -6,6 +6,9 @@
 - 步骤1程序：`/app/api/bazi/step1.ts`
 - 步骤2程序：`/app/api/bazi/step2.ts`
 - 步骤3程序：`/app/api/bazi/step3.ts`
+- 后台程序：`/app/api/bazi/tonggen/route.ts`
+- 后台程序：`/app/api/bazi/tougan/route.ts`
+- 后台程序：`/app/api/bazi/deling/route.ts`
 - 步骤4程序：`/app/api/bazi/step4.ts`
 - 步骤5程序：`/app/api/bazi/step5.ts`
 - 步骤6程序：`/app/api/bazi/step6.ts`
@@ -16,9 +19,21 @@
 - 步骤11程序：`/app/api/bazi/step11.ts`
 - 步骤12程序：`/app/api/bazi/step12.ts`
 - 步骤13程序：`/app/api/bazi/step13.ts`
-- 数据库：`/md/database/2_qimen_pan.sql`
+- 数据库：`/md/database/11_bazi.sql`
+- 数据库 藏干表：`/md/database/12_cangganbiao.sql`
+- 数据库 天干五行表：`/md/database/13_yinyangwuxing.sql`
+- 数据库 干合表：`/md/database/14_ganhe.sql`
+- 数据库 合化表：`/md/database/15_hehua.sql`
+- 数据库 月令表：`/md/database/16_yueling.sql`
+- 数据库 十神表：`/md/database/17_shishen.sql`
+- 数据库 通根表：`/md/database/18_tonggen.sql`
+- 数据库 透干表：`/md/database/19_tougan.sql`
+- 数据库 透干表：`/md/database/20_deling.sql`
 - 配置文件： `/lib/config.ts`
 ## 需要执行的操作
+- `/app/api/bazi/deling/route.ts`
+- 在步骤3程序：`/app/api/bazi/step3.ts` 中调用 `/app/api/bazi/tonggen/route.ts`  获取 通根表结果，调用 `/app/api/bazi/tougan/route.ts` 获取 透干表结果
+旺衰：日主强弱与身态
 
 ## 已执行完毕、忽略以下不执行的操作
 
@@ -60,4 +75,11 @@ max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8
 
 - 点击“生成八字排盘”，需要先判断用户是否登录，如果用户未登录，或者用户的email为空，则“生成八字排盘”置灰不可点击，且鼠标悬停，提示需要先登录才能排盘
 - 每次点击“生成八字排盘”，排盘结果应该属于当前用户，需要和当前用户的user_email绑定，此外，每个用户的每个四柱的排盘结果是唯一的，先要通过用户、四柱查询排盘结果，如果是第一次盘排，则创建新的数据存入数据库，如果已经存在盘排结果，则修改即可
+
+- ~~在步骤3程序：`/app/api/bazi/step3.ts` 中调用 `/app/api/bazi/tonggen/route.ts`  获取 通根表结果，调用 `/app/api/bazi/tougan/route.ts` 获取 透干表结果~~ ✅ 已完成
+- ~~把 `/app/api/bazi/tonggen/route.ts` 的通根表结果 打印在日志中~~ ✅ 已完成
+- ~~把 `/app/api/bazi/tougan/route.ts` 的透干表结果 打印在日志中~~ ✅ 已完成
+- ~~前端页面 `/app/bazi/page.tsx` 中，"旺衰：日主强弱与身态"板块中，用表格形式展现"通根表"和"透干表"~~ ✅ 已完成
+- ~~页面中删除这段文字："此步骤的分析结果暂未实现，请稍后查看。步骤说明：得令/通根/得助/生克泄耗综合"~~ ✅ 已完成
+
 ```

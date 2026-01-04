@@ -122,9 +122,10 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     const dayMaster = step1Result.day_master.stem;
     const dayMasterElement = step1Result.day_master.element;
 
-    const step2Result = step2(fourPillars, dayMaster);
+    // 先调用 step2 获取基础数据（不包含十神，因为需要 chartId）
+    const step2ResultWithoutShishen = await step2(fourPillars, dayMaster, null);
     
-    // 先保存 chart 获取 chart_id（用于 step3 中调用 shishen API）
+    // 先保存 chart 获取 chart_id（用于 step2 中调用 shishen API）
     let chartId: string | null = null;
     try {
       const userEmail = await getCurrentUserEmail();
@@ -146,18 +147,39 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
           },
           steps: [],
         };
-        chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, tempBaziData);
+        chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2ResultWithoutShishen, tempBaziData);
         console.log("[bazi] 提前保存 chart 获取 chart_id:", chartId);
       }
     } catch (saveError: any) {
       console.error("[bazi] 提前保存 chart 失败:", saveError);
       // 继续执行，chartId 为 null
     }
+
+    // 如果 chartId 存在，调用十神计算并添加到 step2Result
+    let step2Result = step2ResultWithoutShishen;
+    if (chartId) {
+      try {
+        console.log("[bazi] 调用 shishen 计算函数，chart_id:", chartId);
+        const { calculateAndSaveShishen } = await import("./shishen/route");
+        const shishenResult = await calculateAndSaveShishen(chartId, {
+          year: fourPillars.year,
+          month: fourPillars.month,
+          day: fourPillars.day,
+          hour: fourPillars.hour,
+        });
+        step2Result.shishen = shishenResult;
+        console.log("[bazi] shishen 计算成功，summary_id:", shishenResult.summary_id);
+      } catch (shishenError: any) {
+        console.error("[bazi] 调用 shishen 计算函数时出错:", shishenError);
+        console.error("[bazi] shishen 错误堆栈:", shishenError.stack);
+        // 不抛出错误，继续执行
+      }
+    }
     
     const step3Result = await step3(fourPillars, dayMasterElement, chartId);
-    console.log("[bazi] step3Result 中的 shishen 数据:", step3Result.shishen ? JSON.stringify(step3Result.shishen, null, 2) : "undefined");
     console.log("[bazi] step3Result 完整内容:", JSON.stringify(step3Result, null, 2));
-    const step4Result = step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result);
+    const ruleSet = "default"; // 得令计算规则集ID
+    const step4Result = await step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result, chartId, ruleSet);
     const step5Result = step5(fourPillars, step3Result);
     const step6Result = step6(fourPillars, dayMaster, step2Result, step4Result);
     const step7Result = step7(step4Result, step5Result, step6Result);
@@ -179,8 +201,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       },
       {
         step: 2,
-        name: "基础盘面信息",
-        annotations: "十神、藏干、合冲刑害等",
+        name: "基础盘面",
+        annotations: "十神、藏干、合冲刑害破、干合干克",
         result: step2Result,
         confidence: 0.6,
       },
@@ -339,12 +361,11 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       }
     }
 
-    // 在返回前检查 step 3 中的 shishen 数据
+    // 在返回前检查 step 3 数据
     const step3InSteps = steps.find(s => s.step === 3);
     console.log("[bazi] 返回前检查 - step 3 是否存在:", step3InSteps ? "是" : "否");
     if (step3InSteps) {
       const step3Result = step3InSteps.result as Step3Result;
-      console.log("[bazi] 返回前检查 - step 3 result 中的 shishen:", step3Result?.shishen ? JSON.stringify(step3Result.shishen, null, 2) : "undefined");
       console.log("[bazi] 返回前检查 - step 3 result 完整内容:", JSON.stringify(step3Result, null, 2));
     }
 
@@ -353,6 +374,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       success: true,
       fourPillars,
       steps,
+      chart_id: chartId || null,
     });
   } catch (error: any) {
     console.error("八字排盘失败:", error);

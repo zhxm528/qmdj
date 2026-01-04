@@ -1,6 +1,10 @@
+-- 若存在则先删除（先删明细，再删主表）
+DROP TABLE IF EXISTS public.bazi_relation_entry CASCADE;
+DROP TABLE IF EXISTS public.bazi_relation_rule CASCADE;
+
 BEGIN;
 
--- 1) 规则“定义表”：描述这类关系是什么
+-- 1) 规则"定义表"：描述这类关系是什么
 CREATE TABLE IF NOT EXISTS public.bazi_relation_rule (
   rule_id        bigserial PRIMARY KEY,
   rule_code      text NOT NULL UNIQUE,              -- 机器可用：GAN_WUHE / ZHI_LIUHE / ZHI_SANHE ...

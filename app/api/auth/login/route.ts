@@ -7,7 +7,7 @@ const bcrypt = require("bcryptjs");
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, rememberMe } = await request.json();
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -53,25 +53,13 @@ export async function POST(request: NextRequest) {
 
     // 生成 session（此处简单使用邮箱；与 /api/user/me 中的解析一致）
     const cookieStore = await cookies();
-    // 记住我：持久化更久；未选中：会话级（不设置 maxAge，即浏览器会话结束失效）
-    const baseCookie = {
+    // 会话级cookie：不设置 maxAge/expires，浏览器会话结束失效
+    cookieStore.set("session", user.email, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax" as "lax",
       path: "/",
-    };
-    if (rememberMe) {
-      cookieStore.set("session", user.email, {
-        ...baseCookie,
-        // 记住我：30天
-        maxAge: 60 * 60 * 24 * 30,
-      });
-    } else {
-      // 会话cookie：不设置 maxAge/expires
-      cookieStore.set("session", user.email, {
-        ...baseCookie,
-      });
-    }
+    });
 
     // 日志
     console.log("[auth/login] 用户登录成功:", {
@@ -89,7 +77,6 @@ export async function POST(request: NextRequest) {
         name: user.name,
         isEmailVerified: user.is_email_verified,
       },
-      rememberMe: !!rememberMe,
     });
   } catch (error) {
     console.error("Login error:", error);

@@ -65,11 +65,9 @@ export default function Account() {
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-lg shadow-md p-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-8">账户信息</h1>
-
-            <div className="space-y-6">
+              <div className="space-y-6">
               <div className="border-b pb-6">
-                <h2 className="text-xl font-bold mb-4">个人信息</h2>
+                <h2 className="text-xl font-bold mb-4">账户信息</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -104,12 +102,22 @@ export default function Account() {
                       </p>
                     </div>
                   )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      账户状态
+                    </label>
+                    <p className="inline-block px-4 py-2 bg-amber-50 text-amber-900 font-semibold rounded-lg border border-amber-200">
+                      {user?.status === "active" ? "使用中" : user?.status || "-"}
+                    </p>
+                  </div>
                   {user?.cardExpiredAt && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        会员卡有效期
+                        会员有效期
                       </label>
-                      <p className="text-gray-900">{formatDate(user.cardExpiredAt)}</p>
+                      <p className="inline-block px-4 py-2 bg-amber-50 text-amber-900 font-semibold rounded-lg border border-amber-200">
+                        {formatDate(user.cardExpiredAt)}
+                      </p>
                     </div>
                   )}
                   {user?.memberLevel && (
@@ -122,14 +130,6 @@ export default function Account() {
                       </p>
                     </div>
                   )}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      账户状态
-                    </label>
-                    <p className="text-gray-900">
-                      {user?.status === "active" ? "使用中" : user?.status || "-"}
-                    </p>
-                  </div>
                 </div>
               </div>
 

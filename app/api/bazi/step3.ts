@@ -22,22 +22,6 @@ export interface Step3Result {
     is_override: boolean; // 是否使用了覆盖规则
     override_note?: string; // 覆盖规则说明
   };
-  // 新增：原始十神信息
-  shishen?: {
-    summary_id: number;
-    details: Array<{
-      pillar: string;
-      item_type: "stem" | "hidden_stem";
-      target_stem: string;
-      target_element: string;
-      target_yinyang: string;
-      tenshen: string;
-      rel_to_dm: string;
-      same_yinyang: boolean;
-      source_branch?: string;
-      hidden_role?: string;
-    }>;
-  };
 }
 
 /**
@@ -278,37 +262,6 @@ export async function step3(
   // 获取月令强弱信息
   const yuelingStrength = await getYuelingStrengthFromDB(monthBranch, dayMasterElement, ruleSet);
 
-  // 调用 shishen 计算函数获取原始十神
-  let shishenData: Step3Result["shishen"] | undefined = undefined;
-  if (chartId) {
-    try {
-      console.log("[step3] 调用 shishen 计算函数，chart_id:", chartId);
-      // 直接导入并调用函数，而不是通过 HTTP
-      const { calculateAndSaveShishen } = await import("./shishen/route");
-      const shishenResult = await calculateAndSaveShishen(chartId, {
-        year: fourPillars.year,
-        month: fourPillars.month,
-        day: fourPillars.day,
-        hour: fourPillars.hour,
-      });
-      shishenData = shishenResult;
-      console.log("[step3] shishen 计算成功，summary_id:", shishenData.summary_id);
-      console.log("[step3] 原始十神完整数据:", JSON.stringify(shishenData, null, 2));
-      console.log("[step3] 原始十神 details 数量:", shishenData.details?.length || 0);
-      if (shishenData.details && shishenData.details.length > 0) {
-        console.log("[step3] 原始十神 details 前3条:", JSON.stringify(shishenData.details.slice(0, 3), null, 2));
-      }
-    } catch (shishenError: any) {
-      console.error("[step3] 调用 shishen 计算函数时出错:", shishenError);
-      console.error("[step3] shishen 错误堆栈:", shishenError.stack);
-      // 不抛出错误，继续执行
-    }
-  } else {
-    console.log("[step3] chart_id 为空，跳过 shishen 计算");
-  }
-
-  console.log("[step3] 返回结果中的 shishen 数据:", shishenData ? JSON.stringify(shishenData, null, 2) : "undefined");
-
   return {
     month_command: {
       month_branch: monthBranch,
@@ -317,7 +270,6 @@ export async function step3(
       supporting_elements_rank: elementsRank,
     },
     yueling_strength: yuelingStrength,
-    shishen: shishenData,
   };
 }
 

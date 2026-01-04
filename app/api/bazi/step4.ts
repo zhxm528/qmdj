@@ -2,7 +2,16 @@
  * 步骤4：判旺衰：日主强弱与身态
  * 看日主是否得令、得地（通根）、得助（比劫印）、得生（印）、被克泄耗（官杀财食伤）如何。
  * 得出结论：身强 / 身弱 / 从强 / 从弱 / 假从 / 平衡（是否"从"要很谨慎）。
+ * 
+ * 本步骤会调用以下后台程序：
+ * - /api/bazi/tonggen: 获取通根表数据
+ * - /api/bazi/tougan: 计算并获取透干表数据
+ * - /api/bazi/deling: 计算并获取得令结果
  */
+
+import { getTonggenFromDB, TonggenResult } from "./tonggen/route";
+import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/route";
+import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/route";
 
 export interface Step4Result {
   strength_judgement: {
@@ -23,9 +32,15 @@ export interface Step4Result {
     };
     key_reasons: string[];
   };
+  // 新增：通根表数据
+  tonggen?: TonggenResult[];
+  // 新增：透干表数据
+  tougan?: TouganResult[];
+  // 新增：得令结果
+  deling?: DelingResult | null;
 }
 
-export function step4(
+export async function step4(
   fourPillars: {
     year: string;
     month: string;
@@ -35,8 +50,10 @@ export function step4(
   dayMaster: string,
   dayMasterElement: string,
   step2Result: any,
-  step3Result: any
-): Step4Result {
+  step3Result: any,
+  chartId: string | null = null,
+  ruleSet: string = "default"
+): Promise<Step4Result> {
   const yearStem = fourPillars.year.charAt(0);
   const yearBranch = fourPillars.year.charAt(1);
   const monthStem = fourPillars.month.charAt(0);
@@ -152,6 +169,60 @@ export function step4(
     reasons.push(`盘中官财食伤${output + wealth + power}个，消耗/制约日主`);
   }
 
+  // 调用通根表 API
+  let tonggenData: TonggenResult[] | undefined = undefined;
+  try {
+    console.log("[step4] 调用 tonggen API 获取通根表");
+    tonggenData = await getTonggenFromDB();
+    console.log("[step4] 通根表结果数量:", tonggenData?.length || 0);
+  } catch (tonggenError: any) {
+    console.error("[step4] 调用 tonggen API 时出错:", tonggenError);
+    console.error("[step4] tonggen 错误堆栈:", tonggenError.stack);
+    // 不抛出错误，继续执行
+  }
+
+  // 调用透干表 API（需要 chartId）
+  let touganData: TouganResult[] | undefined = undefined;
+  if (chartId) {
+    try {
+      console.log("[step4] 调用 tougan API，chart_id:", chartId);
+      // 先计算并保存透干表
+      await calculateAndSaveTougan(chartId);
+      // 然后获取透干表结果
+      touganData = await getTouganFromDB(chartId);
+      console.log("[step4] 透干表结果数量:", touganData?.length || 0);
+    } catch (touganError: any) {
+      console.error("[step4] 调用 tougan API 时出错:", touganError);
+      console.error("[step4] tougan 错误堆栈:", touganError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step4] chart_id 为空，跳过 tougan 计算");
+  }
+
+  // 调用得令计算 API（需要 chartId）
+  let delingData: DelingResult | null = null;
+  if (chartId) {
+    try {
+      console.log("[step4] 调用 deling API，chart_id:", chartId);
+      // 先计算并保存得令结果
+      await calculateAndSaveDeling(chartId, ruleSet);
+      // 然后获取得令结果
+      delingData = await getDelingFromDB(chartId, ruleSet);
+      console.log("[step4] 得令计算结果:", delingData ? JSON.stringify(delingData, null, 2) : "null");
+      if (delingData) {
+        console.log("[step4] 是否得令:", delingData.is_deling);
+        console.log("[step4] 判定规则:", delingData.rule_text);
+      }
+    } catch (delingError: any) {
+      console.error("[step4] 调用 deling API 时出错:", delingError);
+      console.error("[step4] deling 错误堆栈:", delingError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step4] chart_id 为空，跳过 deling 计算");
+  }
+
   return {
     strength_judgement: {
       body_state: bodyState,
@@ -171,6 +242,8 @@ export function step4(
       },
       key_reasons: reasons,
     },
+    tonggen: tonggenData,
+    tougan: touganData,
+    deling: delingData,
   };
 }
-

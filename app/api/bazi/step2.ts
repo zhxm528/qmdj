@@ -128,6 +128,22 @@ export interface Step2Result {
   };
   // 新增：完整的盘面结构总表
   structure_table?: BaziStructureTable;
+  // 新增：原始十神信息
+  shishen?: {
+    summary_id: number;
+    details: Array<{
+      pillar: string;
+      item_type: "stem" | "hidden_stem";
+      target_stem: string;
+      target_element: string;
+      target_yinyang: string;
+      tenshen: string;
+      rel_to_dm: string;
+      same_yinyang: boolean;
+      source_branch?: string;
+      hidden_role?: string;
+    }>;
+  };
 }
 
 // 天干五行表
@@ -257,15 +273,16 @@ const STEM_SHENG: Record<string, string[]> = {
   水: ["木"],
 };
 
-export function step2(
+export async function step2(
   fourPillars: {
     year: string;
     month: string;
     day: string;
     hour: string;
   },
-  dayMaster: string
-): Step2Result {
+  dayMaster: string,
+  chartId: string | null = null
+): Promise<Step2Result> {
   const yearStem = fourPillars.year.charAt(0);
   const yearBranch = fourPillars.year.charAt(1);
   const monthStem = fourPillars.month.charAt(0);
@@ -665,6 +682,30 @@ export function step2(
     },
   };
 
+  // 调用 shishen API 获取十神信息
+  let shishenData: Step2Result["shishen"] | undefined = undefined;
+  if (chartId) {
+    try {
+      console.log("[step2] 调用 shishen 计算函数，chart_id:", chartId);
+      const { calculateAndSaveShishen } = await import("./shishen/route");
+      const shishenResult = await calculateAndSaveShishen(chartId, {
+        year: fourPillars.year,
+        month: fourPillars.month,
+        day: fourPillars.day,
+        hour: fourPillars.hour,
+      });
+      shishenData = shishenResult;
+      console.log("[step2] shishen 计算成功，summary_id:", shishenData.summary_id);
+      console.log("[step2] 原始十神 details 数量:", shishenData.details?.length || 0);
+    } catch (shishenError: any) {
+      console.error("[step2] 调用 shishen 计算函数时出错:", shishenError);
+      console.error("[step2] shishen 错误堆栈:", shishenError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step2] chart_id 为空，跳过 shishen 计算");
+  }
+
   return {
     five_elements: fiveElements,
     hidden_stems: hiddenStems,
@@ -683,6 +724,7 @@ export function step2(
       na_yin: {}, // TODO: 实现纳音
     },
     structure_table: structureTable,
+    shishen: shishenData,
   };
 }
 

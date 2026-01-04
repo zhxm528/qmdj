@@ -35,7 +35,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
           return;
         }
         // 已登录，跳转到充值页面
-        router.push("/deposit");
+      router.push("/deposit");
       } catch (error) {
         console.error("Check login status error:", error);
         // 出错时也跳转到注册页面
