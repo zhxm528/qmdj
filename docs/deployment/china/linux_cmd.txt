@@ -19,6 +19,26 @@ rm -rf .next   //删除历史编译文件，可选
 npm install    //安装最新npm包，可选
 ```
 
+## 数据库操作
+```bash
+docker ps
+docker exec -it qmdj psql -U mz -d postgres -c "\l"
+docker exec -it qmdj psql -U mz -d postgres  //链接到数据库
+
+
+DROP DATABASE crs;  //删除数据库
+
+//创建数据库
+CREATE DATABASE crs
+  OWNER mz
+  ENCODING 'UTF8'
+  TEMPLATE template0
+  LC_COLLATE 'en_US.utf8'
+  LC_CTYPE   'en_US.utf8'
+  CONNECTION LIMIT -1;
+//切到新数据库
+\c crs
+```
 
 
 ## Windows（推荐用 Windows Terminal / PowerShell）
