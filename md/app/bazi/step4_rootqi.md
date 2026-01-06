@@ -3,8 +3,7 @@
 - `/app/api/bazi/rootqi/route.ts` 获得得地（根气）计算的基础数据
 - 日志打印得地（根气）结果
 - 得地（根气）结果保存到数据库
-- **在 step4 中调用 rootqi 计算**，用于判断日主强弱
-- **只计算同干根（SAME_STEM）**：
+
 
 
 ## 数据库结构
@@ -27,55 +26,85 @@
 
 ## 计算逻辑
 
-### 步骤1：遍历每个天干
-对年干、月干、日干、时干分别计算根气。
+### 输入信息：
+- 从数据库 `/md/database/11_bazi.sql` 的 `bazi_pillar_tbl` 表中获取四柱盘面。
+- 从数据库 `/md/database/12_cangganbiao.sql` 的 `bazi_branch_hidden_stem_dict` 表中获取地支藏干字典。
+- 从数据库 `/md/database/13_yinyangwuxing.sql` 的 `dict_heavenly_stem` 表中获取天干五行/阴阳字典
+- 从数据库 `/md/database/20_deling.sql` 的 `bazi_deling_result_tbl` 表中获取得令结果
+- 从数据库 `/md/database/14_ganhe.sql` 的 `bazi_relation_entry` 表中获取冲合刑害破字典
 
-### 步骤2：检查四个地支的藏干
-对每个地支，检查其藏干中是否包含目标天干（**只计算同干根，不计算同五行根**）。
-- 如果包含，记录为一条根气明细
-- 记录藏干层级（主气/中气/余气）
+### 通用计算逻辑（可落库）
+#### Step 1：找“根”（有无）
 
-### 步骤3：计算每条根气的综合分数
+对每个 目标天干 S（如日主、月干、年干、时干）：
 
-根气分数 = `w_hidden_rank` × `w_pillar_pos` × `w_season_element` × 其他修正因子
+遍历四个地支（年支/月支/日支/时支）
 
-**权重说明**：
+查询该地支的藏干列表
 
-1. **`w_hidden_rank`（藏干层级权重）**：
-   - 主气：1.0
-   - 中气：0.6
-   - 余气：0.3
+如果藏干里出现：
 
-2. **`w_pillar_pos`（支位权重）**：
-   - 月支：1.3（权重最大）
-   - 日支：1.2
-   - 时支：1.0
-   - 年支：0.8
+同一“天干”（最硬的根，例如 甲见亥藏甲）
 
-3. **`w_season_element`（月令/季节修正权重）**：
-   - 根据得令表，如果该五行在当月旺相，则权重提升（例如：×1.2）
-   - 如果休囚死，则权重降低（例如：×0.8）
-   - 具体修正系数可根据实际需求调整
+或者（更常用）同五行的藏干（同气根，例如 甲见寅藏甲、卯主气乙也算木根）
+则记为：is_root = true，并记录来自哪个支、对应藏干是主/中/余气。
 
+实务里通常按“同五行”算通根；若要更严格，可同时输出“同干根/同气根”两套字段。
 
-### 步骤4：汇总每个天干的根气
-- 将四支的根气分数加总得到 `total_root_score`
-- 根据 `bazi_root_qi_level_threshold_dict` 表的分级阈值，确定 `root_level`（NONE/WEAK/MEDIUM/STRONG）
-- 找出最佳根（`root_score` 最大的那条明细），记录到 `best_root_pillar` 和 `best_root_branch`
+#### Step 2：给“根气强弱”打分（建议可配置）
 
-## 实现细节
+根气强弱通常由三类乘起来：
 
-### 函数签名
-```typescript
-calculateAndSaveRootqi(chartId: string, ruleSet?: string)
-getRootqiFromDB(chartId: string, targetPillar?: string, targetStem?: string)
-```
-- `chartId`: 排盘ID（UUID格式，从 `bazi_chart_tbl` 获取）
-- `ruleSet`: 规则集ID（可选，默认 'DEFAULT'，用于选择分级阈值）
+藏干层级权重（主/中/余）
 
-### 输入数据获取
-- 从 `chart_id` 查询 `bazi_pillar_tbl` 获取四柱盘面数据库表： `/md/database/11_bazi.sql` 
-- 从四柱中提取：年干、月干、日干、时干，以及年支、月支、日支、时支
-- 从藏干表获取每个地支的藏干信息：藏干表： `/md/database/12_cangganbiao.sql`
-- 从得令表获取日主在月令的旺衰状态（用于季节修正）：得令表： `/md/database/20_deling.sql`、月令表： `/md/database/16_yueling.sql`
-- 从关系网表获取冲合刑害破关系（用于判断根是否被冲破）：冲合刑害破表： `/md/database/14_ganhe.sql`
+主气：1.0
+
+中气：0.6
+
+余气：0.3
+（示例，可配）
+
+支位权重（年/月/日/时）
+
+月支：1.0
+
+日支：0.8
+
+时支：0.6
+
+年支：0.4
+（示例，可配）
+
+得令修正（季节对该五行的旺相休囚）
+
+旺：1.2
+
+相：1.0
+
+休：0.7
+
+囚：0.5
+
+死：0.3
+（示例，可配）
+
+最终：
+root_score = hidden_rank_w * pillar_pos_w * season_element_w
+再把同一目标天干在四支的 root_score 加总：
+total_root_score，并可映射成“无根/弱根/有根/强根”。
+
+#### Step 3：输出证据（非常建议）
+
+每条根记录带上：
+
+来自哪个支（年/月/日/时）
+
+地支藏干命中的是哪个干、主/中/余气
+
+当月令季节下该五行状态（旺相休囚死）
+
+参与的权重和最终分数
+这样后面你做“旺衰、用神、合化成败”才能解释得清楚、也便于调参。
+
+### 落库设计：把“根气计算结果”存入 
+
