@@ -180,7 +180,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     console.log("[bazi] step3Result 完整内容:", JSON.stringify(step3Result, null, 2));
     const ruleSet = "default"; // 得令计算规则集ID
     const step4Result = await step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result, chartId, ruleSet);
-    const step5Result = step5(fourPillars, step3Result);
+    const step5Result = await step5(fourPillars, step3Result, chartId, ruleSet);
     const step6Result = step6(fourPillars, dayMaster, step2Result, step4Result);
     const step7Result = step7(step4Result, step5Result, step6Result);
     const step8Result = step8(step4Result, step6Result, step7Result, step2Result);

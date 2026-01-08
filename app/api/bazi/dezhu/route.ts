@@ -161,26 +161,28 @@ async function getHeavenlyStemElementMap(
 }
 
 async function getRulesetFromDB(rulesetId: string) {
-  const rows = await query<{
-    ruleset_id: string;
-    base_score_same_class: number;
-    base_score_shengfu: number;
-    stem_position_weights: any;
-    hidden_position_weights: any;
-    hidden_rank_weights: any;
-    include_day_stem: boolean;
-  }>(
-    `SELECT ruleset_id, base_score_same_class, base_score_shengfu,
-            stem_position_weights, hidden_position_weights,
-            hidden_rank_weights, include_day_stem
-     FROM public.dict_support_ruleset
-     WHERE ruleset_id = $1`,
-    [rulesetId]
-  );
+  try {
+    const rows = await query<{
+      ruleset_id: string;
+      base_score_same_class: number;
+      base_score_shengfu: number;
+      stem_position_weights: any;
+      hidden_position_weights: any;
+      hidden_rank_weights: any;
+      include_day_stem: boolean;
+    }>(
+      `SELECT ruleset_id, base_score_same_class, base_score_shengfu,
+              stem_position_weights, hidden_position_weights,
+              hidden_rank_weights, include_day_stem
+       FROM public.dict_support_ruleset
+       WHERE ruleset_id = $1`,
+      [rulesetId]
+    );
 
-  if (rows.length === 0) {
-    return DEFAULT_RULESET;
-  }
+    if (rows.length === 0) {
+      console.log(`[dezhu] 规则集 ${rulesetId} 不存在，使用默认规则集`);
+      return DEFAULT_RULESET;
+    }
 
   const row = rows[0];
   return {
@@ -202,6 +204,11 @@ async function getRulesetFromDB(rulesetId: string) {
         ? row.include_day_stem
         : DEFAULT_RULESET.include_day_stem,
   };
+  } catch (error: any) {
+    // 如果表不存在或其他数据库错误，使用默认规则集
+    console.warn(`[dezhu] 查询规则集失败（表可能不存在），使用默认规则集:`, error.message);
+    return DEFAULT_RULESET;
+  }
 }
 
 function normalizeHiddenRank(role: string | null): string | null {
@@ -493,66 +500,79 @@ export async function calculateAndSaveDezhu(
       },
     };
 
-    await client.query(`DELETE FROM public.bazi_support_detail_tbl WHERE chart_id = $1`, [
-      chartId,
-    ]);
-    await client.query(`DELETE FROM public.bazi_support_summary_tbl WHERE chart_id = $1`, [
-      chartId,
-    ]);
+    // 尝试保存到数据库，如果表不存在则跳过保存
+    try {
+      await client.query(`DELETE FROM public.bazi_support_detail_tbl WHERE chart_id = $1`, [
+        chartId,
+      ]);
+      await client.query(`DELETE FROM public.bazi_support_summary_tbl WHERE chart_id = $1`, [
+        chartId,
+      ]);
 
-    if (details.length > 0) {
-      const placeholders: string[] = [];
-      const values: any[] = [];
-      let paramIndex = 1;
+      if (details.length > 0) {
+        const placeholders: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
 
-      for (const detail of details) {
-        placeholders.push(
-          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`
+        for (const detail of details) {
+          placeholders.push(
+            `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`
+          );
+          values.push(
+            detail.chart_id,
+            detail.pillar,
+            detail.source_type,
+            detail.stem,
+            detail.element,
+            detail.ten_god,
+            detail.support_type,
+            detail.hidden_rank,
+            detail.base_score,
+            detail.position_weight,
+            detail.hidden_weight,
+            detail.final_score,
+            JSON.stringify(detail.evidence_json),
+            new Date()
+          );
+          paramIndex += 14;
+        }
+
+        await client.query(
+          `INSERT INTO public.bazi_support_detail_tbl(
+            chart_id, pillar, source_type, stem, element, ten_god,
+            support_type, hidden_rank, base_score, position_weight,
+            hidden_weight, final_score, evidence_json, created_at
+          ) VALUES ${placeholders.join(",")}`,
+          values
         );
-        values.push(
-          detail.chart_id,
-          detail.pillar,
-          detail.source_type,
-          detail.stem,
-          detail.element,
-          detail.ten_god,
-          detail.support_type,
-          detail.hidden_rank,
-          detail.base_score,
-          detail.position_weight,
-          detail.hidden_weight,
-          detail.final_score,
-          JSON.stringify(detail.evidence_json),
-          new Date()
-        );
-        paramIndex += 14;
       }
 
       await client.query(
-        `INSERT INTO public.bazi_support_detail_tbl(
-          chart_id, pillar, source_type, stem, element, ten_god,
-          support_type, hidden_rank, base_score, position_weight,
-          hidden_weight, final_score, evidence_json, created_at
-        ) VALUES ${placeholders.join(",")}`,
-        values
+        `INSERT INTO public.bazi_support_summary_tbl(
+          chart_id, same_class_score, shengfu_score, total_support_score,
+          ruleset_id, evidence_json, created_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          summary.chart_id,
+          summary.same_class_score,
+          summary.shengfu_score,
+          summary.total_support_score,
+          summary.ruleset_id,
+          JSON.stringify(summary.evidence_json),
+          new Date(),
+        ]
       );
-    }
 
-    await client.query(
-      `INSERT INTO public.bazi_support_summary_tbl(
-        chart_id, same_class_score, shengfu_score, total_support_score,
-        ruleset_id, evidence_json, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [
-        summary.chart_id,
-        summary.same_class_score,
-        summary.shengfu_score,
-        summary.total_support_score,
-        summary.ruleset_id,
-        JSON.stringify(summary.evidence_json),
-        new Date(),
-      ]
-    );
+      console.log(`[dezhu] 成功保存 ${details.length} 条明细和 1 条汇总记录到数据库`);
+    } catch (dbError: any) {
+      // 如果表不存在，只记录警告，不抛出错误
+      if (dbError.code === '42P01') {
+        console.warn(`[dezhu] 数据库表不存在，跳过保存（表需要从 md/database/22_dezhu.sql 创建）:`, dbError.message);
+      } else {
+        // 其他数据库错误也记录但不中断流程
+        console.warn(`[dezhu] 保存到数据库失败，但计算结果仍然返回:`, dbError.message);
+      }
+    }
 
     console.log(
       `[dezhu] 得助计算完成 same_class=${sameClassScore.toFixed(
@@ -569,47 +589,48 @@ export async function calculateAndSaveDezhu(
 }
 
 export async function getDezhuFromDB(chartId: string): Promise<DezhuResult | null> {
-  const detailRows = await query<{
-    chart_id: string;
-    pillar: "year" | "month" | "day" | "hour";
-    source_type: "stem" | "hidden_stem";
-    stem: string;
-    element: string;
-    ten_god: string | null;
-    support_type: "same_class" | "shengfu";
-    hidden_rank: string | null;
-    base_score: number;
-    position_weight: number;
-    hidden_weight: number;
-    final_score: number;
-    evidence_json: any;
-  }>(
-    `SELECT chart_id, pillar, source_type, stem, element, ten_god, support_type,
-            hidden_rank, base_score, position_weight, hidden_weight, final_score, evidence_json
-     FROM public.bazi_support_detail_tbl
-     WHERE chart_id = $1
-     ORDER BY pillar, source_type`,
-    [chartId]
-  );
+  try {
+    const detailRows = await query<{
+      chart_id: string;
+      pillar: "year" | "month" | "day" | "hour";
+      source_type: "stem" | "hidden_stem";
+      stem: string;
+      element: string;
+      ten_god: string | null;
+      support_type: "same_class" | "shengfu";
+      hidden_rank: string | null;
+      base_score: number;
+      position_weight: number;
+      hidden_weight: number;
+      final_score: number;
+      evidence_json: any;
+    }>(
+      `SELECT chart_id, pillar, source_type, stem, element, ten_god, support_type,
+              hidden_rank, base_score, position_weight, hidden_weight, final_score, evidence_json
+       FROM public.bazi_support_detail_tbl
+       WHERE chart_id = $1
+       ORDER BY pillar, source_type`,
+      [chartId]
+    );
 
-  const summaryRows = await query<{
-    chart_id: string;
-    same_class_score: number;
-    shengfu_score: number;
-    total_support_score: number;
-    ruleset_id: string;
-    evidence_json: any;
-  }>(
-    `SELECT chart_id, same_class_score, shengfu_score, total_support_score,
-            ruleset_id, evidence_json
-     FROM public.bazi_support_summary_tbl
-     WHERE chart_id = $1`,
-    [chartId]
-  );
+    const summaryRows = await query<{
+      chart_id: string;
+      same_class_score: number;
+      shengfu_score: number;
+      total_support_score: number;
+      ruleset_id: string;
+      evidence_json: any;
+    }>(
+      `SELECT chart_id, same_class_score, shengfu_score, total_support_score,
+              ruleset_id, evidence_json
+       FROM public.bazi_support_summary_tbl
+       WHERE chart_id = $1`,
+      [chartId]
+    );
 
-  if (detailRows.length === 0 && summaryRows.length === 0) {
-    return null;
-  }
+    if (detailRows.length === 0 && summaryRows.length === 0) {
+      return null;
+    }
 
   const details: DezhuDetail[] = detailRows.map((row) => ({
     chart_id: row.chart_id,
@@ -667,11 +688,21 @@ export async function getDezhuFromDB(chartId: string): Promise<DezhuResult | nul
         evidence_json: null,
       };
 
-  return {
-    chart_id: chartId,
-    details,
-    summary,
-  };
+    return {
+      chart_id: chartId,
+      details,
+      summary,
+    };
+  } catch (error: any) {
+    // 如果表不存在，返回 null
+    if (error.code === '42P01') {
+      console.warn(`[dezhu] 数据库表不存在，无法获取数据:`, error.message);
+      return null;
+    }
+    // 其他错误也返回 null
+    console.warn(`[dezhu] 从数据库获取数据失败:`, error.message);
+    return null;
+  }
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {

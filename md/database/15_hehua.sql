@@ -6,7 +6,7 @@ CREATE TABLE IF NOT EXISTS public.chart_hehua_result (
   id                  BIGSERIAL PRIMARY KEY,
 
   -- 你的排盘主表ID（如 public.chart.id）
-  chart_id             BIGINT NOT NULL,
+  chart_id             UUID NOT NULL,
 
   -- 关系类型：干合 / 六合 / 三合 / 三会 / 冲 / 刑 / 害 / 破 / 克 / 其他
   -- 建议用固定字典的 code，例如：GAN_HE, ZHI_LIUHE, ZHI_SANHE, ZHI_SANHUI, CHONG, XING, HAI, PO, KE, OTHER

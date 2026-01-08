@@ -76,6 +76,9 @@ export default function BaziPage() {
   const [tonggenData, setTonggenData] = useState<any[] | null>(null);
   const [touganData, setTouganData] = useState<any[] | null>(null);
   const [delingData, setDelingData] = useState<any | null>(null);
+  const [rootqiData, setRootqiData] = useState<any | null>(null);
+  const [dezhuData, setDezhuData] = useState<any | null>(null);
+  const [keXieData, setKeXieData] = useState<any | null>(null);
 
   const dateParts = date ? date.split("-") : null;
   const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
@@ -120,6 +123,9 @@ export default function BaziPage() {
       setHiddenStemsData(null);
       setGanMetaData(null);
       setGanheData(null);
+      setRootqiData(null);
+      setDezhuData(null);
+      setKeXieData(null);
 
       // 调用八字排盘 API
       const response = await fetch("/api/bazi", {
@@ -253,6 +259,31 @@ export default function BaziPage() {
             console.warn("获取天干地支关系规则表失败:", error);
           }
           
+          // 从 step3 结果中获取根气和得助数据
+          // step3 会在后台自动调用 rootqi、dezhu API
+          const step3Data = data.steps?.find((s: any) => s.step === 3);
+          if (step3Data && step3Data.result) {
+            // 获取根气数据
+            if (step3Data.result.rootqi) {
+              setRootqiData(step3Data.result.rootqi);
+              console.log("[前端] 从 step3 获取根气数据:", step3Data.result.rootqi);
+            }
+            
+            // 获取得助数据
+            if (step3Data.result.dezhu) {
+              setDezhuData(step3Data.result.dezhu);
+              console.log("[前端] 从 step3 获取得助数据:", step3Data.result.dezhu);
+            }
+
+            // 获取受克泄耗数据
+            if (step3Data.result.ke_xie) {
+              setKeXieData(step3Data.result.ke_xie);
+              console.log("[前端] 从 step3 获取受克泄耗数据:", step3Data.result.ke_xie);
+            }
+          } else {
+            console.warn("[前端] step3 数据不存在或格式不正确");
+          }
+
           // 从 step4 结果中获取通根表、透干表和得令数据
           // step4 会在后台自动调用 tonggen、tougan、deling API
           const step4Data = data.steps?.find((s: any) => s.step === 4);
@@ -488,6 +519,7 @@ export default function BaziPage() {
         // 旺衰：日主强弱与身态 - 已有通根表和透干表展示，不显示占位文字
         return "";
       case 5:
+        return "季节偏性与五行分布修正取用";
       case 6:
       case 7:
       case 8:
@@ -1759,54 +1791,281 @@ export default function BaziPage() {
                                   </div>
                                 )}
                               </div>
-                              {/* 第二行：得令数据 */}
-                              {delingData && (
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">得令判定</h4>
+                              {/* 第二行：得令数据、根气表、得助表 */}
+                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                {/* 得令数据 */}
+                                {delingData && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">得令判定</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <tbody>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
+                                            <td className="border border-gray-300 px-3 py-2">{delingData.month_branch || "-"}</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">季节</td>
+                                            <td className="border border-gray-300 px-3 py-2">{delingData.season_code || "-"}</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主</td>
+                                            <td className="border border-gray-300 px-3 py-2">{delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）</td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主状态</td>
+                                            <td className="border border-gray-300 px-3 py-2">
+                                              {delingData.day_master_state || "-"}
+                                              {delingData.day_master_score !== undefined && (
+                                                <span className="text-gray-500 ml-2">（得分：{typeof delingData.day_master_score === 'number' ? delingData.day_master_score.toFixed(2) : parseFloat(String(delingData.day_master_score)).toFixed(2)}）</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">是否得令</td>
+                                            <td className="border border-gray-300 px-3 py-2">
+                                              {delingData.is_deling ? (
+                                                <span className="text-green-600 font-semibold">是</span>
+                                              ) : (
+                                                <span className="text-red-600 font-semibold">否</span>
+                                              )}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">判定规则</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.rule_text || "-"}</td>
+                                          </tr>
+                                          {delingData.ruleset_id && (
+                                            <tr className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则集</td>
+                                              <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.ruleset_id}</td>
+                                            </tr>
+                                          )}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* 根气表 */}
+                                {rootqiData && rootqiData.summaries && rootqiData.summaries.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">根气表</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">目标天干</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">总分</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">等级</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">根数</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">最佳根</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {rootqiData.summaries.map((item: any, idx: number) => {
+                                            const pillarNames: Record<string, string> = {
+                                              Y: "年",
+                                              M: "月",
+                                              D: "日",
+                                              H: "时",
+                                            };
+                                            const levelNames: Record<string, string> = {
+                                              NONE: "无根",
+                                              WEAK: "弱根",
+                                              MEDIUM: "中根",
+                                              STRONG: "强根",
+                                              UNKNOWN: "未知",
+                                            };
+                                            return (
+                                              <tr key={idx} className="hover:bg-gray-50">
+                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">
+                                                  {item.target_stem}（{pillarNames[item.target_pillar] || item.target_pillar}）
+                                                </td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {typeof item.total_root_score === 'number' ? item.total_root_score.toFixed(4) : parseFloat(String(item.total_root_score)).toFixed(4)}
+                                                </td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {levelNames[item.root_level] || item.root_level}
+                                                </td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.root_count}</td>
+                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  {item.best_root_branch ? `${item.best_root_branch}(${pillarNames[item.best_root_pillar] || item.best_root_pillar})` : "-"}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* 得助表 */}
+                                {dezhuData && dezhuData.summary && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">得助表</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <tbody>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">比劫得分</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {typeof dezhuData.summary.same_class_score === 'number' ? dezhuData.summary.same_class_score.toFixed(4) : parseFloat(String(dezhuData.summary.same_class_score)).toFixed(4)}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">生扶得分</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {typeof dezhuData.summary.shengfu_score === 'number' ? dezhuData.summary.shengfu_score.toFixed(4) : parseFloat(String(dezhuData.summary.shengfu_score)).toFixed(4)}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总得助分</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center font-semibold">
+                                              {typeof dezhuData.summary.total_support_score === 'number' ? dezhuData.summary.total_support_score.toFixed(4) : parseFloat(String(dezhuData.summary.total_support_score)).toFixed(4)}
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                              {keXieData && keXieData.summary && (
+                                <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">受克泄耗（制化）</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
                                         <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
-                                          <td className="border border-gray-300 px-3 py-2">{delingData.month_branch || "-"}</td>
-                                        </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">季节</td>
-                                          <td className="border border-gray-300 px-3 py-2">{delingData.season_code || "-"}</td>
-                                        </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主</td>
-                                          <td className="border border-gray-300 px-3 py-2">{delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）</td>
-                                        </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主状态</td>
-                                          <td className="border border-gray-300 px-3 py-2">
-                                            {delingData.day_master_state || "-"}
-                                            {delingData.day_master_score !== undefined && (
-                                              <span className="text-gray-500 ml-2">（得分：{typeof delingData.day_master_score === 'number' ? delingData.day_master_score.toFixed(2) : parseFloat(String(delingData.day_master_score)).toFixed(2)}）</span>
-                                            )}
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">泄分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof keXieData.summary.xie_score === "number"
+                                              ? keXieData.summary.xie_score.toFixed(4)
+                                              : parseFloat(String(keXieData.summary.xie_score)).toFixed(4)}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">耗分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof keXieData.summary.hao_score === "number"
+                                              ? keXieData.summary.hao_score.toFixed(4)
+                                              : parseFloat(String(keXieData.summary.hao_score)).toFixed(4)}
                                           </td>
                                         </tr>
                                         <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">是否得令</td>
-                                          <td className="border border-gray-300 px-3 py-2">
-                                            {delingData.is_deling ? (
-                                              <span className="text-green-600 font-semibold">是</span>
-                                            ) : (
-                                              <span className="text-red-600 font-semibold">否</span>
-                                            )}
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">克分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof keXieData.summary.ke_score === "number"
+                                              ? keXieData.summary.ke_score.toFixed(4)
+                                              : parseFloat(String(keXieData.summary.ke_score)).toFixed(4)}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">制化分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof keXieData.summary.zhihua_score === "number"
+                                              ? keXieData.summary.zhihua_score.toFixed(4)
+                                              : parseFloat(String(keXieData.summary.zhihua_score)).toFixed(4)}
                                           </td>
                                         </tr>
                                         <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">判定规则</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.rule_text || "-"}</td>
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center font-semibold" colSpan={3}>
+                                            {typeof keXieData.summary.total_score === "number"
+                                              ? keXieData.summary.total_score.toFixed(4)
+                                              : parseFloat(String(keXieData.summary.total_score)).toFixed(4)}
+                                          </td>
                                         </tr>
-                                        {delingData.ruleset_id && (
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则集</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.ruleset_id}</td>
-                                          </tr>
-                                        )}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {/* 步骤5显示寒暖燥湿与调候 */}
+                          {step.step === 5 && step.result?.climate_balance && (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">寒暖燥湿</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">温度</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.temperature || "-"}</td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">湿度</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.humidity || "-"}</td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">燥湿</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.dry_wet || "-"}</td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">调候建议</h4>
+                                  <div className="space-y-2 text-sm">
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">需要</div>
+                                      <div className="text-gray-700">
+                                        {step.result.climate_balance.needs?.length
+                                          ? step.result.climate_balance.needs.join("、")
+                                          : "-"}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <div className="text-xs text-gray-500 mb-1">备注</div>
+                                      <div className="text-gray-700">
+                                        {step.result.climate_balance.notes?.length
+                                          ? step.result.climate_balance.notes.join("、")
+                                          : "-"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              {step.result.han_zao?.summary && (
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">寒暖燥湿汇总</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">偏寒</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof step.result.han_zao.summary.han_score === "number"
+                                              ? step.result.han_zao.summary.han_score.toFixed(4)
+                                              : parseFloat(String(step.result.han_zao.summary.han_score)).toFixed(4)}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">偏热</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof step.result.han_zao.summary.re_score === "number"
+                                              ? step.result.han_zao.summary.re_score.toFixed(4)
+                                              : parseFloat(String(step.result.han_zao.summary.re_score)).toFixed(4)}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">偏燥</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof step.result.han_zao.summary.zao_score === "number"
+                                              ? step.result.han_zao.summary.zao_score.toFixed(4)
+                                              : parseFloat(String(step.result.han_zao.summary.zao_score)).toFixed(4)}
+                                          </td>
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">偏湿</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {typeof step.result.han_zao.summary.shi_score === "number"
+                                              ? step.result.han_zao.summary.shi_score.toFixed(4)
+                                              : parseFloat(String(step.result.han_zao.summary.shi_score)).toFixed(4)}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center font-semibold" colSpan={3}>
+                                            {step.result.han_zao.summary.final_tendency || "-"}
+                                          </td>
+                                        </tr>
                                       </tbody>
                                     </table>
                                   </div>

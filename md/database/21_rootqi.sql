@@ -17,7 +17,7 @@ BEGIN;
 -- -----------------------------
 CREATE TABLE public.bazi_root_qi_detail_tbl (
   id                BIGSERIAL PRIMARY KEY,
-  chart_id          BIGINT NOT NULL,
+  chart_id          TEXT NOT NULL,                       -- 排盘ID（UUID格式，对齐你的chart主表）
 
   -- 目标：哪个天干在找根（通常为年干/月干/日干/时干）
   target_pillar     TEXT NOT NULL
@@ -92,7 +92,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_root_qi_detail_nodup
 -- -----------------------------
 CREATE TABLE public.bazi_root_qi_summary_tbl (
   id                BIGSERIAL PRIMARY KEY,
-  chart_id          BIGINT NOT NULL,
+  chart_id          TEXT NOT NULL,                       -- 排盘ID（UUID格式，对齐你的chart主表）
 
   target_pillar     TEXT NOT NULL
                     CHECK (target_pillar IN ('Y','M','D','H')),

@@ -9,6 +9,8 @@
 - 后台程序：`/app/api/bazi/tonggen/route.ts`
 - 后台程序：`/app/api/bazi/tougan/route.ts`
 - 后台程序：`/app/api/bazi/deling/route.ts`
+- 后台程序：`/app/api/bazi/rootqi/route.ts`
+- 后台程序：`/app/api/bazi/dezhu/route.ts`
 - 步骤4程序：`/app/api/bazi/step4.ts`
 - 步骤5程序：`/app/api/bazi/step5.ts`
 - 步骤6程序：`/app/api/bazi/step6.ts`
@@ -31,9 +33,11 @@
 - 数据库 透干表：`/md/database/20_deling.sql`
 - 配置文件： `/lib/config.ts`
 ## 需要执行的操作
-- `/app/api/bazi/deling/route.ts`
-- 在步骤3程序：`/app/api/bazi/step3.ts` 中调用 `/app/api/bazi/tonggen/route.ts`  获取 通根表结果，调用 `/app/api/bazi/tougan/route.ts` 获取 透干表结果
-旺衰：日主强弱与身态
+- （无）
+
+## 已完成
+- 在步骤3程序：`/app/api/bazi/step3.ts` 中调用 `/app/api/bazi/rootqi/route.ts` 获取 根气 的结果，调用 `/app/api/bazi/dezhu/route.ts` 获取 得助 的结果
+- 在“旺衰：日主强弱与身态”中显示 根气 和 得助 的表格
 
 ## 已执行完毕、忽略以下不执行的操作
 

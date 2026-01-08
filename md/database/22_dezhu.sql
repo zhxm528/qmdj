@@ -82,3 +82,25 @@ COMMENT ON COLUMN dict_support_ruleset.hidden_rank_weights IS '藏干层级权�
 COMMENT ON COLUMN dict_support_ruleset.include_day_stem IS '是否计算日干本身';
 COMMENT ON COLUMN dict_support_ruleset.note IS '备注';
 COMMENT ON COLUMN dict_support_ruleset.created_at IS '创建时间';
+
+-- 插入默认规则集
+INSERT INTO dict_support_ruleset (
+  ruleset_id,
+  base_score_same_class,
+  base_score_shengfu,
+  stem_position_weights,
+  hidden_position_weights,
+  hidden_rank_weights,
+  include_day_stem,
+  note
+) VALUES (
+  'default',
+  1.0,
+  1.0,
+  '{"year": 1.0, "month": 1.3, "day": 0.0, "hour": 1.1}'::jsonb,
+  '{"year": 0.8, "month": 1.2, "day": 1.0, "hour": 0.9}'::jsonb,
+  '{"main": 1.0, "middle": 0.6, "residual": 0.3, "MAIN": 1.0, "MID": 0.6, "RES": 0.3}'::jsonb,
+  false,
+  '默认规则集：同类和生扶基础分均为1.0，月柱权重最高'
+)
+ON CONFLICT (ruleset_id) DO NOTHING;

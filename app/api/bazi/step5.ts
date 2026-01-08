@@ -4,6 +4,8 @@
  * 这一步常用来修正"强弱→取用"时的细节（有些流派把它当核心）。
  */
 
+import { calculateAndSaveHanZao, getHanZaoFromDB, HanZaoResult } from "./han_zao/route";
+
 export interface Step5Result {
   climate_balance: {
     temperature: string;
@@ -12,17 +14,20 @@ export interface Step5Result {
     needs: string[];
     notes: string[];
   };
+  han_zao?: HanZaoResult | null;
 }
 
-export function step5(
+export async function step5(
   fourPillars: {
     year: string;
     month: string;
     day: string;
     hour: string;
   },
-  step3Result: any
-): Step5Result {
+  step3Result: any,
+  chartId: string | null = null,
+  ruleSet: string = "default"
+): Promise<Step5Result> {
   const season = step3Result.month_command.season;
   const dominantQi = step3Result.month_command.dominant_qi;
 
@@ -75,6 +80,24 @@ export function step5(
     notes.push("调候需求不明显");
   }
 
+  let hanZaoData: HanZaoResult | null = null;
+  if (chartId) {
+    try {
+      console.log("[step5] 调用 han_zao API，chart_id:", chartId);
+      await calculateAndSaveHanZao(chartId, ruleSet);
+      hanZaoData = await getHanZaoFromDB(chartId);
+      console.log(
+        "[step5] 寒暖燥湿结果:",
+        hanZaoData ? `找到 ${hanZaoData.details.length} 条明细` : "null"
+      );
+    } catch (hanZaoError: any) {
+      console.error("[step5] 调用 han_zao API 时出错:", hanZaoError);
+      console.error("[step5] han_zao 错误堆栈:", hanZaoError.stack);
+    }
+  } else {
+    console.log("[step5] chart_id 为空，跳过 han_zao 计算");
+  }
+
   return {
     climate_balance: {
       temperature,
@@ -83,6 +106,7 @@ export function step5(
       needs,
       notes,
     },
+    han_zao: hanZaoData,
   };
 }
 

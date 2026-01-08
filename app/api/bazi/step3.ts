@@ -5,6 +5,9 @@
  */
 
 import { query } from "@/lib/db";
+import { calculateAndSaveRootqi, getRootQiFromDB, RootQiResult } from "./rootqi/route";
+import { calculateAndSaveDezhu, getDezhuFromDB, DezhuResult } from "./dezhu/route";
+import { calculateAndSaveKeXie, getKeXieFromDB, KeXieResult } from "./ke_xie/route";
 
 export interface Step3Result {
   month_command: {
@@ -22,6 +25,12 @@ export interface Step3Result {
     is_override: boolean; // 是否使用了覆盖规则
     override_note?: string; // 覆盖规则说明
   };
+  // 新增：根气结果
+  rootqi?: RootQiResult | null;
+  // 新增：得助结果
+  dezhu?: DezhuResult | null;
+  // 新增：受克泄耗（制化）结果
+  ke_xie?: KeXieResult | null;
 }
 
 /**
@@ -262,6 +271,70 @@ export async function step3(
   // 获取月令强弱信息
   const yuelingStrength = await getYuelingStrengthFromDB(monthBranch, dayMasterElement, ruleSet);
 
+  // 调用根气 API（需要 chartId）
+  let rootqiData: RootQiResult | null = null;
+  if (chartId) {
+    try {
+      console.log("[step3] 调用 rootqi API，chart_id:", chartId);
+      // 先计算并保存根气结果
+      await calculateAndSaveRootqi(chartId, ruleSet);
+      // 然后获取根气结果
+      rootqiData = await getRootQiFromDB(chartId);
+      console.log("[step3] 根气结果:", rootqiData ? `找到 ${rootqiData.details.length} 条明细，${rootqiData.summaries.length} 条汇总` : "null");
+    } catch (rootqiError: any) {
+      console.error("[step3] 调用 rootqi API 时出错:", rootqiError);
+      console.error("[step3] rootqi 错误堆栈:", rootqiError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step3] chart_id 为空，跳过 rootqi 计算");
+  }
+
+  // 调用得助 API（需要 chartId）
+  let dezhuData: DezhuResult | null = null;
+  if (chartId) {
+    try {
+      console.log("[step3] 调用 dezhu API，chart_id:", chartId);
+      // 先计算并保存得助结果
+      await calculateAndSaveDezhu(chartId, ruleSet);
+      // 然后获取得助结果
+      dezhuData = await getDezhuFromDB(chartId);
+      console.log("[step3] 得助结果:", dezhuData ? `找到 ${dezhuData.details.length} 条明细` : "null");
+      if (dezhuData) {
+        console.log("[step3] 得助结果内容:", JSON.stringify(dezhuData, null, 2));
+      }
+    } catch (dezhuError: any) {
+      console.error("[step3] 调用 dezhu API 时出错:", dezhuError);
+      console.error("[step3] dezhu 错误堆栈:", dezhuError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step3] chart_id 为空，跳过 dezhu 计算");
+  }
+
+  // 调用受克泄耗（制化） API（需要chartId）
+  let keXieData: KeXieResult | null = null;
+  if (chartId) {
+    try {
+      console.log("[step3] 调用 ke_xie API，chart_id:", chartId);
+      await calculateAndSaveKeXie(chartId, ruleSet);
+      keXieData = await getKeXieFromDB(chartId);
+      console.log(
+        "[step3] 受克泄耗结果:",
+        keXieData ? `找到 ${keXieData.details.length} 条明细` : "null"
+      );
+      if (keXieData) {
+        console.log("[step3] 受克泄耗结果内容:", JSON.stringify(keXieData, null, 2));
+      }
+    } catch (keXieError: any) {
+      console.error("[step3] 调用 ke_xie API 时出错:", keXieError);
+      console.error("[step3] ke_xie 错误堆栈:", keXieError.stack);
+      // 不抛出错误，继续执行
+    }
+  } else {
+    console.log("[step3] chart_id 为空，跳过 ke_xie 计算");
+  }
+
   return {
     month_command: {
       month_branch: monthBranch,
@@ -270,6 +343,9 @@ export async function step3(
       supporting_elements_rank: elementsRank,
     },
     yueling_strength: yuelingStrength,
+    rootqi: rootqiData,
+    dezhu: dezhuData,
+    ke_xie: keXieData,
   };
 }
 
