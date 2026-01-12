@@ -180,7 +180,6 @@ async function getRulesetFromDB(rulesetId: string) {
     );
 
     if (rows.length === 0) {
-      console.log(`[dezhu] 规则集 ${rulesetId} 不存在，使用默认规则集`);
       return DEFAULT_RULESET;
     }
 
@@ -206,7 +205,6 @@ async function getRulesetFromDB(rulesetId: string) {
   };
   } catch (error: any) {
     // 如果表不存在或其他数据库错误，使用默认规则集
-    console.warn(`[dezhu] 查询规则集失败（表可能不存在），使用默认规则集:`, error.message);
     return DEFAULT_RULESET;
   }
 }
@@ -289,7 +287,6 @@ export async function calculateAndSaveDezhu(
   rulesetId: string = "default"
 ): Promise<DezhuResult> {
   return await transaction(async (client) => {
-    console.log(`[dezhu] 开始计算得助，chart_id: ${chartId}, ruleset_id: ${rulesetId}`);
 
     const ruleset = await getRulesetFromDB(rulesetId);
 
@@ -307,7 +304,6 @@ export async function calculateAndSaveDezhu(
 
     const tenshenDetails = await getTenshenDetailsFromDB(chartId);
     if (tenshenDetails.length > 0) {
-      console.log(`[dezhu] 使用十神明细计算得助，数量: ${tenshenDetails.length}`);
 
       for (const item of tenshenDetails) {
         if (!ruleset.include_day_stem && item.item_type === "stem" && item.pillar === "day") {
@@ -365,7 +361,6 @@ export async function calculateAndSaveDezhu(
         });
       }
     } else {
-      console.log("[dezhu] 未找到十神明细，使用五行关系计算得助");
 
       const stems = pillars.map((pillar) => pillar.stem);
       const branches = pillars.map((pillar) => pillar.branch);
@@ -562,23 +557,13 @@ export async function calculateAndSaveDezhu(
           new Date(),
         ]
       );
-
-      console.log(`[dezhu] 成功保存 ${details.length} 条明细和 1 条汇总记录到数据库`);
     } catch (dbError: any) {
       // 如果表不存在，只记录警告，不抛出错误
       if (dbError.code === '42P01') {
-        console.warn(`[dezhu] 数据库表不存在，跳过保存（表需要从 md/database/22_dezhu.sql 创建）:`, dbError.message);
       } else {
         // 其他数据库错误也记录但不中断流程
-        console.warn(`[dezhu] 保存到数据库失败，但计算结果仍然返回:`, dbError.message);
       }
     }
-
-    console.log(
-      `[dezhu] 得助计算完成 same_class=${sameClassScore.toFixed(
-        4
-      )}, shengfu=${shengfuScore.toFixed(4)}, total=${totalSupportScore.toFixed(4)}`
-    );
 
     return {
       chart_id: chartId,
@@ -696,11 +681,9 @@ export async function getDezhuFromDB(chartId: string): Promise<DezhuResult | nul
   } catch (error: any) {
     // 如果表不存在，返回 null
     if (error.code === '42P01') {
-      console.warn(`[dezhu] 数据库表不存在，无法获取数据:`, error.message);
       return null;
     }
     // 其他错误也返回 null
-    console.warn(`[dezhu] 从数据库获取数据失败:`, error.message);
     return null;
   }
 }
@@ -708,6 +691,7 @@ export async function getDezhuFromDB(chartId: string): Promise<DezhuResult | nul
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[dezhu] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
 
     if (!chartId) {
@@ -730,7 +714,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         { status: 404 }
       );
     }
-
     return NextResponse.json({
       success: true,
       data: result,
@@ -750,6 +733,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[dezhu] input ok:", body);
     const { chart_id, ruleset_id = "default" } = body;
 
     if (!chart_id) {
@@ -763,7 +747,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const result = await calculateAndSaveDezhu(chart_id, ruleset_id);
-
     return NextResponse.json({
       success: true,
       data: result,

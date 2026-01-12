@@ -78,20 +78,21 @@ export async function POST(request: NextRequest) {
 
     // 使用事务执行所有操作
     const result = await transaction(async (client) => {
-      // 步骤1：查询初始会员等级（最低等级，min_points最小的）
+      // 步骤1：设置初始会员等级（默认为 2）
+      const initLevelId = 2;
+      
+      // 查询等级名称（用于返回）
       const levelResult = await client.query(
-        `SELECT level_id, level_name 
+        `SELECT level_name 
          FROM membership_level 
-         ORDER BY min_points ASC 
-         LIMIT 1`
+         WHERE level_id = $1
+         LIMIT 1`,
+        [initLevelId]
       );
-
-      if (!levelResult.rows || levelResult.rows.length === 0) {
-        throw new Error("系统中未找到会员等级配置，请联系管理员");
-      }
-
-      const initLevelId = levelResult.rows[0].level_id;
-      const initLevelName = levelResult.rows[0].level_name;
+      
+      const initLevelName = levelResult.rows && levelResult.rows.length > 0 
+        ? levelResult.rows[0].level_name 
+        : "普通会员";
 
       // 检查手机号或邮箱是否已存在
       if (mobile) {
@@ -114,15 +115,26 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 生成会员编码和卡号
-      let memberCode = generateMemberCode();
-      // 确保member_code唯一
+      // 生成会员编码：如果提供了 email，使用 email 前缀；否则使用生成的方式
+      let memberCode: string;
+      if (email) {
+        // 取 email 的前缀（@ 符号之前的部分）
+        memberCode = email.split("@")[0];
+      } else {
+        // 如果没有 email，使用原来的生成方式
+        memberCode = generateMemberCode();
+      }
+      
+      // 确保member_code唯一，如果已存在则添加后缀
       let codeExists = await client.query(
         `SELECT member_id FROM member WHERE member_code = $1 LIMIT 1`,
         [memberCode]
       );
+      let suffix = 1;
+      const originalMemberCode = memberCode;
       while (codeExists.rows && codeExists.rows.length > 0) {
-        memberCode = generateMemberCode();
+        memberCode = `${originalMemberCode}${suffix}`;
+        suffix++;
         codeExists = await client.query(
           `SELECT member_id FROM member WHERE member_code = $1 LIMIT 1`,
           [memberCode]
@@ -160,9 +172,9 @@ export async function POST(request: NextRequest) {
           gender || null,
           birth_date || null,
           1, // status = 1 正常
-          initLevelId,
-          0, // total_points = 0
-          0, // available_points = 0
+          initLevelId, // level_id = 2（默认）
+          200, // total_points = 200（默认）
+          200, // available_points = 200（默认）
           remark || null,
         ]
       );
@@ -196,7 +208,8 @@ export async function POST(request: NextRequest) {
 
       const cardId = cardResult.rows[0].card_id;
 
-      let newAvailablePoints = 0;
+      // 初始积分为 200
+      let newAvailablePoints = 200;
       let newBalance = 0.0;
 
       // 步骤5：注册赠送积分（如果配置了）

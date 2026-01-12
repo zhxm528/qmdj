@@ -283,6 +283,7 @@ export async function step2(
   dayMaster: string,
   chartId: string | null = null
 ): Promise<Step2Result> {
+  console.log("[step2] input ok:", { fourPillars, dayMaster, chartId });
   const yearStem = fourPillars.year.charAt(0);
   const yearBranch = fourPillars.year.charAt(1);
   const monthStem = fourPillars.month.charAt(0);
@@ -686,7 +687,6 @@ export async function step2(
   let shishenData: Step2Result["shishen"] | undefined = undefined;
   if (chartId) {
     try {
-      console.log("[step2] 调用 shishen 计算函数，chart_id:", chartId);
       const { calculateAndSaveShishen } = await import("./shishen/route");
       const shishenResult = await calculateAndSaveShishen(chartId, {
         year: fourPillars.year,
@@ -695,17 +695,13 @@ export async function step2(
         hour: fourPillars.hour,
       });
       shishenData = shishenResult;
-      console.log("[step2] shishen 计算成功，summary_id:", shishenData.summary_id);
-      console.log("[step2] 原始十神 details 数量:", shishenData.details?.length || 0);
     } catch (shishenError: any) {
       console.error("[step2] 调用 shishen 计算函数时出错:", shishenError);
       console.error("[step2] shishen 错误堆栈:", shishenError.stack);
       // 不抛出错误，继续执行
     }
-  } else {
-    console.log("[step2] chart_id 为空，跳过 shishen 计算");
   }
-
+  console.log("[step2] response ok:", { hasStructureTable: !!structureTable, hasShishen: !!shishenData });
   return {
     five_elements: fiveElements,
     hidden_stems: hiddenStems,

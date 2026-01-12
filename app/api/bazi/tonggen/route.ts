@@ -41,15 +41,19 @@ async function getBranchHiddenStemsFromDB(): Promise<
     );
 
     if (rows && rows.length > 0) {
+      const levelWeightMap: Record<string, number> = {
+        主: 1.0,
+        中: 0.6,
+        余: 0.3,
+      };
       return rows.map((row) => ({
         branch_code: row.branch_code,
         hidden_stem_code: row.hidden_stem_code,
         hidden_level: row.hidden_level,
-        weight: row.weight,
+        weight: row.weight ?? levelWeightMap[row.hidden_level] ?? 1.0,
       }));
     }
   } catch (error) {
-    console.log("[tonggen] 尝试使用18_tonggen.sql表结构失败，尝试兼容模式");
   }
 
   // 兼容模式：使用12_cangganbiao.sql的表结构（stem_code, role）
@@ -101,20 +105,16 @@ async function getBranchHiddenStemsFromDB(): Promise<
  */
 export async function calculateAndSaveTonggen(): Promise<TonggenResult[]> {
   return await transaction(async (client) => {
-    console.log("[tonggen] 开始计算通根表");
 
     // 1. 获取所有地支藏干信息
     const hiddenStems = await getBranchHiddenStemsFromDB();
-    console.log(`[tonggen] 获取到 ${hiddenStems.length} 条藏干记录`);
 
     if (hiddenStems.length === 0) {
-      console.warn("[tonggen] 未找到藏干数据，请先初始化地支藏干表");
       return [];
     }
 
     // 2. 清空现有通根表数据（可选，如果表已通过SQL初始化，可以跳过）
     // 这里我们使用 UPSERT 策略，避免重复插入
-    console.log("[tonggen] 准备插入/更新通根表数据");
 
     // 3. 生成通根记录并批量插入
     const results: TonggenResult[] = [];
@@ -123,7 +123,12 @@ export async function calculateAndSaveTonggen(): Promise<TonggenResult[]> {
       const stemCode = hidden.hidden_stem_code;
       const branchCode = hidden.branch_code;
       const rootLevel = hidden.hidden_level;
-      const weight = hidden.weight;
+      const levelWeightMap: Record<string, number> = {
+        主: 1.0,
+        中: 0.6,
+        余: 0.3,
+      };
+      const weight = hidden.weight ?? levelWeightMap[hidden.hidden_level] ?? 1.0;
 
       // 生成"同干通根"记录
       // 转换hidden_level为root_role和root_position
@@ -199,7 +204,6 @@ export async function calculateAndSaveTonggen(): Promise<TonggenResult[]> {
 
         await client.query(sql, values);
       }
-      console.log(`[tonggen] 成功插入/更新 ${results.length} 条通根记录`);
     }
 
     return results;
@@ -276,11 +280,11 @@ export async function getTonggenFromDB(
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[tonggen] input ok:", Object.fromEntries(searchParams.entries()));
     const stemCode = searchParams.get("stem_code") || undefined;
     const branchCode = searchParams.get("branch_code") || undefined;
 
     const results = await getTonggenFromDB(stemCode, branchCode);
-
     return NextResponse.json({
       success: true,
       data: results,
@@ -302,8 +306,8 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
+    console.log("[tonggen] input ok:", {});
     const results = await calculateAndSaveTonggen();
-
     return NextResponse.json({
       success: true,
       data: results,

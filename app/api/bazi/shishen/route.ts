@@ -58,6 +58,19 @@ const WUXING_KE: Record<string, string> = {
   金: "木",
 };
 
+const GAN_META_FALLBACK: Record<string, { yin_yang: string; wu_xing: string }> = {
+  甲: { yin_yang: "YANG", wu_xing: "木" },
+  乙: { yin_yang: "YIN", wu_xing: "木" },
+  丙: { yin_yang: "YANG", wu_xing: "火" },
+  丁: { yin_yang: "YIN", wu_xing: "火" },
+  戊: { yin_yang: "YANG", wu_xing: "土" },
+  己: { yin_yang: "YIN", wu_xing: "土" },
+  庚: { yin_yang: "YANG", wu_xing: "金" },
+  辛: { yin_yang: "YIN", wu_xing: "金" },
+  壬: { yin_yang: "YANG", wu_xing: "水" },
+  癸: { yin_yang: "YIN", wu_xing: "水" },
+};
+
 /**
  * 判断五行关系
  * @param dmElement 日主五行
@@ -132,6 +145,12 @@ async function getGanMetaFromDB(
       yin_yang: row.yin_yang,
       wu_xing: row.wu_xing,
     };
+  });
+
+  gans.forEach((stem) => {
+    if (!mapping[stem] && GAN_META_FALLBACK[stem]) {
+      mapping[stem] = GAN_META_FALLBACK[stem];
+    }
   });
 
   return mapping;
@@ -375,9 +394,8 @@ export async function calculateAndSaveShishen(
 export async function POST(req: NextRequest): Promise<NextResponse<ShishenResponse>> {
   try {
     const body = (await req.json()) as ShishenRequest;
+    console.log("[shishen] input ok:", body);
     const { chart_id, four_pillars } = body;
-
-    console.log("[十神计算API] POST请求收到:", JSON.stringify(body, null, 2));
 
     if (!chart_id || !four_pillars) {
       return NextResponse.json(
@@ -405,10 +423,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<ShishenRespon
 
     // 计算并保存十神
     const result = await calculateAndSaveShishen(chart_id, four_pillars);
-
-    console.log("[十神计算API] 计算完成，summary_id:", result.summary_id);
-    console.log("[十神计算API] 明细数量:", result.details.length);
-
     return NextResponse.json({
       success: true,
       data: result,

@@ -194,7 +194,6 @@ async function getRulesetFromDB(rulesetId: string) {
     );
 
     if (rows.length === 0) {
-      console.log(`[ke_xie] ruleset ${rulesetId} not found, using default`);
       return DEFAULT_RULESET;
     }
 
@@ -215,7 +214,6 @@ async function getRulesetFromDB(rulesetId: string) {
       type_weights: row.type_weights || DEFAULT_RULESET.type_weights,
     };
   } catch (error: any) {
-    console.warn("[ke_xie] failed to load ruleset, using default:", error.message);
     return DEFAULT_RULESET;
   }
 }
@@ -253,7 +251,6 @@ export async function calculateAndSaveKeXie(
   rulesetId: string = "default"
 ): Promise<KeXieResult> {
   return await transaction(async (client) => {
-    console.log(`[ke_xie] start calculate, chart_id: ${chartId}, ruleset_id: ${rulesetId}`);
 
     const pillars = await getFourPillarsFromDB(chartId);
     if (pillars.length !== 4) {
@@ -474,20 +471,9 @@ export async function calculateAndSaveKeXie(
       );
     } catch (dbError: any) {
       if (dbError.code === "42P01") {
-        console.warn(
-          "[ke_xie] table missing, skip saving (create via md/database/23_ke_xie.sql)",
-          dbError.message
-        );
       } else {
-        console.warn("[ke_xie] save failed, return result only:", dbError.message);
       }
     }
-
-    console.log(
-      `[ke_xie] done xie=${xieScore.toFixed(4)} hao=${haoScore.toFixed(4)} ke=${keScore.toFixed(
-        4
-      )} zhihua=${zhihuaScore.toFixed(4)}`
-    );
 
     return {
       chart_id: chartId,
@@ -605,10 +591,8 @@ export async function getKeXieFromDB(chartId: string): Promise<KeXieResult | nul
     };
   } catch (error: any) {
     if (error.code === "42P01") {
-      console.warn("[ke_xie] table missing, skip fetch:", error.message);
       return null;
     }
-    console.warn("[ke_xie] fetch failed:", error.message);
     return null;
   }
 }
@@ -616,6 +600,7 @@ export async function getKeXieFromDB(chartId: string): Promise<KeXieResult | nul
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[ke_xie] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
 
     if (!chartId) {
@@ -626,7 +611,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (!result) {
       return NextResponse.json({ success: false, error: "no result" }, { status: 404 });
     }
-
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error("[ke_xie] GET failed:", error);
@@ -640,6 +624,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[ke_xie] input ok:", body);
     const { chart_id, ruleset_id = "default" } = body;
 
     if (!chart_id) {

@@ -64,15 +64,12 @@ export async function calculateAndSaveDeling(
   rulesetId: string = "default"
 ): Promise<DelingResult> {
   return await transaction(async (client) => {
-    console.log(`[deling] 开始计算得令，chart_id: ${chartId}, ruleset_id: ${rulesetId}`);
 
     // 1. 获取四柱数据
     const pillars = await getFourPillarsFromDB(chartId);
     if (pillars.length !== 4) {
       throw new Error(`四柱数据不完整，期望4条，实际${pillars.length}条`);
     }
-
-    console.log(`[deling] 获取到 ${pillars.length} 条四柱数据`);
 
     // 2. 提取月支和日干
     const monthPillar = pillars.find((p) => p.pillar === "month");
@@ -85,15 +82,11 @@ export async function calculateAndSaveDeling(
     const monthBranch = monthPillar.branch;
     const dayStem = dayPillar.stem;
 
-    console.log(`[deling] 月支: ${monthBranch}, 日干: ${dayStem}`);
-
     // 3. 获取日主五行
     const dayMasterElement = getDayMasterElement(dayStem);
     if (!dayMasterElement) {
       throw new Error(`无法获取日干 ${dayStem} 对应的五行`);
     }
-
-    console.log(`[deling] 日主五行: ${dayMasterElement}`);
 
     // 4. 调用 yueling/route.ts 获取月令强弱信息
     const yuelingData = await getYuelingStrengthFromDB(
@@ -105,8 +98,6 @@ export async function calculateAndSaveDeling(
     if (!yuelingData) {
       throw new Error("无法获取月令强弱信息");
     }
-
-    console.log(`[deling] 月令强弱信息:`, JSON.stringify(yuelingData, null, 2));
 
     const season = yuelingData.season;
     const dayMasterState = yuelingData.day_master_state;
@@ -134,11 +125,9 @@ export async function calculateAndSaveDeling(
     }
 
     const ruleset = rulesetRows.rows[0];
-    console.log(`[deling] 规则集信息:`, JSON.stringify(ruleset, null, 2));
 
     // 6. 将 state_rank 转换为 score
     const dayMasterScore = convertStateRankToScore(dayMasterStateRank);
-    console.log(`[deling] 日主状态: ${dayMasterState}, 状态值: ${dayMasterStateRank}, 转换后分数: ${dayMasterScore}`);
 
     // 7. 查询覆盖规则表，判断每个五行是否有覆盖规则
     const overrideRows = await client.query<{
@@ -232,8 +221,6 @@ export async function calculateAndSaveDeling(
           created_at = NOW()`,
         snapshotValues
       );
-
-      console.log(`[deling] 成功保存 ${snapshotData.length} 条快照记录`);
     }
 
     // 9. 根据规则判定是否得令
@@ -244,12 +231,10 @@ export async function calculateAndSaveDeling(
       // 状态阈值优先
       isDeling = ruleset.state_thresholds.includes(dayMasterState);
       ruleText = `按状态阈值判定：${ruleset.state_thresholds.join("、")}为得令`;
-      console.log(`[deling] 使用状态阈值判定: ${dayMasterState} 是否在 [${ruleset.state_thresholds.join(", ")}] 中 => ${isDeling}`);
     } else if (ruleset.score_min !== null) {
       // 分数阈值作为备选
       isDeling = dayMasterScore >= ruleset.score_min;
       ruleText = `按分数阈值判定：分数 >= ${ruleset.score_min} 为得令`;
-      console.log(`[deling] 使用分数阈值判定: ${dayMasterScore} >= ${ruleset.score_min} => ${isDeling}`);
     } else {
       throw new Error(`规则集 ${rulesetId} 既没有设置 state_thresholds 也没有设置 score_min`);
     }
@@ -300,19 +285,6 @@ export async function calculateAndSaveDeling(
         JSON.stringify(evidenceJson),
       ]
     );
-
-    console.log(`[deling] 得令计算结果:`, {
-      chart_id: chartId,
-      ruleset_id: rulesetId,
-      month_branch: monthBranch,
-      season: season,
-      day_stem: dayStem,
-      day_master_element: dayMasterElement,
-      day_master_state: dayMasterState,
-      day_master_score: dayMasterScore,
-      is_deling: isDeling,
-      rule_text: ruleText,
-    });
 
     // 12. 返回结果
     return {
@@ -384,6 +356,7 @@ export async function getDelingFromDB(
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[deling] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
     const rulesetId = searchParams.get("ruleset_id") || "default";
 
@@ -408,7 +381,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         { status: 404 }
       );
     }
-
     return NextResponse.json({
       success: true,
       data: result,
@@ -431,6 +403,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[deling] input ok:", body);
     const { chart_id, ruleset_id = "default" } = body;
 
     if (!chart_id) {
@@ -444,9 +417,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const result = await calculateAndSaveDeling(chart_id, ruleset_id);
-
-    console.log("[deling] 得令计算完成，结果:", JSON.stringify(result, null, 2));
-
     return NextResponse.json({
       success: true,
       data: result,

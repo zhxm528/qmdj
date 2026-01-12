@@ -50,6 +50,7 @@ export function step1(fourPillars: {
   day: string;
   hour: string;
 }): Step1Result {
+  console.log("[step1] input ok:", { fourPillars });
   // 提取四柱的天干地支
   const pillars = extractPillars(fourPillars);
   const yearStem = pillars.year.stem;
@@ -98,6 +99,7 @@ export function step1(fourPillars: {
   // 获取日主信息
   const dayMasterInfo = getDayMasterInfo(dayStem);
 
+  console.log("[step1] response ok:", { dayMaster: dayMasterInfo.stem, dayMasterElement: dayMasterInfo.element });
   return {
     day_master: {
       stem: dayMasterInfo.stem,

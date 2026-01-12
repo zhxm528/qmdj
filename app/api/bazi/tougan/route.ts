@@ -119,7 +119,6 @@ async function getBranchHiddenStemsFromDB(
       return mapping;
     }
   } catch (error) {
-    console.log("[tougan] 尝试使用18_tonggen.sql表结构失败，尝试兼容模式");
   }
 
   // 兼容模式：使用12_cangganbiao.sql的表结构（stem_code, role, position）
@@ -175,7 +174,6 @@ export async function calculateAndSaveTougan(
   chartId: string
 ): Promise<TouganResult[]> {
   return await transaction(async (client) => {
-    console.log(`[tougan] 开始计算透干表，chart_id: ${chartId}`);
 
     // 1. 获取四柱数据
     const pillars = await getFourPillarsFromDB(chartId);
@@ -183,12 +181,9 @@ export async function calculateAndSaveTougan(
       throw new Error(`四柱数据不完整，期望4条，实际${pillars.length}条`);
     }
 
-    console.log(`[tougan] 获取到 ${pillars.length} 条四柱数据`);
-
     // 2. 收集四柱天干集合
     const fourStems = pillars.map((p) => p.stem);
     const stemSet = new Set(fourStems);
-    console.log(`[tougan] 四柱天干集合: ${Array.from(stemSet).join(", ")}`);
 
     // 3. 获取所有地支
     const allBranches = pillars.map((p) => p.branch);
@@ -196,9 +191,6 @@ export async function calculateAndSaveTougan(
 
     // 4. 获取所有地支的藏干信息
     const branchHiddenStems = await getBranchHiddenStemsFromDB(uniqueBranches);
-    console.log(
-      `[tougan] 获取到 ${Object.keys(branchHiddenStems).length} 个地支的藏干信息`
-    );
 
     // 5. 生成透干记录
     const results: TouganResult[] = [];
@@ -251,8 +243,6 @@ export async function calculateAndSaveTougan(
       }
     }
 
-    console.log(`[tougan] 生成 ${results.length} 条透干记录`);
-
     // 6. 删除旧的透干记录（如果存在）
     await client.query(
       `DELETE FROM public.bazi_tougan_result_tbl WHERE chart_id = $1`,
@@ -300,7 +290,6 @@ export async function calculateAndSaveTougan(
 
         await client.query(sql, values);
       }
-      console.log(`[tougan] 成功插入 ${results.length} 条透干记录`);
     }
 
     return results;
@@ -380,7 +369,6 @@ export async function getTouganFromDB(
             );
           touganPillars = parsed.length > 0 ? parsed : null;
         } catch (e) {
-          console.warn("[tougan] 解析 tougan_pillars 失败:", row.tougan_pillars, e);
           touganPillars = null;
         }
       }
@@ -409,6 +397,7 @@ export async function getTouganFromDB(
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[tougan] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
 
     if (!chartId) {
@@ -424,7 +413,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     const isTouganOnly = searchParams.get("is_tougan_only") === "true";
 
     const results = await getTouganFromDB(chartId, isTouganOnly);
-
     return NextResponse.json({
       success: true,
       data: results,
@@ -447,6 +435,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[tougan] input ok:", body);
     const { chart_id } = body;
 
     if (!chart_id) {
@@ -460,7 +449,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const results = await calculateAndSaveTougan(chart_id);
-
     return NextResponse.json({
       success: true,
       data: results,

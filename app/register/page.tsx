@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Layout from "@/components/Layout";
 import Button from "@/components/Button";
 import { useRouter } from "next/navigation";
@@ -14,6 +14,7 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [modalContent, setModalContent] = useState({ type: "success" as "success" | "error", message: "" });
+  const isRegisterSuccessRef = useRef(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +37,7 @@ export default function Register() {
       const data = await response.json();
       
       if (response.ok) {
+        isRegisterSuccessRef.current = true;
         setModalContent({ 
           type: "success", 
           message: data.emailSent 
@@ -43,20 +45,15 @@ export default function Register() {
             : "注册成功！" 
         });
         setModalVisible(true);
-        // 延迟跳转，让用户看到成功提示
-        setTimeout(() => {
-          setModalVisible(false);
-          // 如果发送了验证邮件，不自动跳转，让用户去邮箱验证
-          if (!data.emailSent) {
-            router.push("/login");
-          }
-        }, 3000);
       } else {
+        isRegisterSuccessRef.current = false;
         setModalContent({ type: "error", message: data.error || "注册失败，请重试" });
         setModalVisible(true);
+        // 注册失败时停留在注册页面，不进行跳转
       }
     } catch (error) {
       console.error("Register error:", error);
+      isRegisterSuccessRef.current = false;
       setModalContent({ type: "error", message: "注册时发生错误，请稍后重试" });
       setModalVisible(true);
     } finally {
@@ -149,7 +146,14 @@ export default function Register() {
 
       <Modal
         open={modalVisible}
-        onCancel={() => setModalVisible(false)}
+        onCancel={() => {
+          setModalVisible(false);
+          // 如果注册成功，关闭提示框后刷新页面并返回首页
+          if (isRegisterSuccessRef.current) {
+            window.location.href = "/";
+          }
+          // 如果注册失败，关闭提示框后停留在注册页面（不进行任何操作）
+        }}
         footer={null}
         centered
         width={400}

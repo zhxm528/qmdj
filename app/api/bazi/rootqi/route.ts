@@ -313,7 +313,6 @@ export async function calculateAndSaveRootqi(
   rulesetId: string = "default"
 ): Promise<RootQiResult> {
   return await transaction(async (client) => {
-    console.log(`[rootqi] 开始计算根气，chart_id: ${chartId}, ruleset_id: ${rulesetId}`);
 
     // 1. 获取四柱数据
     const pillars = await getFourPillarsFromDB(chartId);
@@ -321,23 +320,17 @@ export async function calculateAndSaveRootqi(
       throw new Error(`四柱数据不完整，期望4条，实际${pillars.length}条`);
     }
 
-    console.log(`[rootqi] 获取到 ${pillars.length} 条四柱数据`);
-
     // 2. 获取地支藏干字典
     const hiddenStemsDict = await getHiddenStemsFromDB();
-    console.log(`[rootqi] 获取到 ${Object.keys(hiddenStemsDict).length} 个地支的藏干数据`);
 
     // 3. 获取天干五行映射
     const stemElementMap = await getHeavenlyStemElement();
-    console.log(`[rootqi] 获取到 ${Object.keys(stemElementMap).length} 个天干的五行映射`);
 
     // 4. 获取季节元素状态（得令快照）
     const seasonElementStates = await getDelingSnapshotFromDB(chartId, rulesetId);
-    console.log(`[rootqi] 获取到 ${Object.keys(seasonElementStates).length} 个五行的季节状态`);
 
     // 5. 获取根气分级阈值
     const thresholds = await getRootLevelThresholds("DEFAULT");
-    console.log(`[rootqi] 获取到 ${thresholds.length} 个分级阈值`);
 
     // 6. Step 1 & 2: 找根并计算分数
     const details: RootQiDetail[] = [];
@@ -349,11 +342,8 @@ export async function calculateAndSaveRootqi(
       const targetElement = stemElementMap[targetStem];
 
       if (!targetElement) {
-        console.warn(`[rootqi] 无法获取天干 ${targetStem} 的五行，跳过`);
         continue;
       }
-
-      console.log(`[rootqi] 处理目标天干: ${targetStem} (${targetElement}) 在 ${targetPillarCode} 柱`);
 
       // 遍历所有四个地支，查找根
       for (const rootPillar of pillars) {
@@ -436,16 +426,10 @@ export async function calculateAndSaveRootqi(
               is_root: true,
               evidence_json: evidenceJson,
             });
-
-            console.log(
-              `[rootqi] 找到根: ${targetStem} 在 ${rootBranch}(${rootPillarCode}) 的 ${hiddenStemCode}(${hiddenRank}), 分数: ${rootScore.toFixed(4)}`
-            );
           }
         }
       }
     }
-
-    console.log(`[rootqi] 共找到 ${details.length} 条根气明细`);
 
     // 7. Step 3: 汇总每个目标天干的根气
     const summaries: RootQiSummary[] = [];
@@ -507,10 +491,6 @@ export async function calculateAndSaveRootqi(
         best_root_branch: bestRoot ? bestRoot.root_branch : null,
         evidence_json: summaryEvidenceJson,
       });
-
-      console.log(
-        `[rootqi] 汇总: ${targetStem}(${targetPillar}) 总分=${totalRootScore.toFixed(4)}, 等级=${rootLevel}, 根数=${validDetails.length}`
-      );
     }
 
     // 8. 保存明细表
@@ -557,8 +537,6 @@ export async function calculateAndSaveRootqi(
         ) VALUES ${detailPlaceholders.join(",")}`,
         detailValues
       );
-
-      console.log(`[rootqi] 成功保存 ${details.length} 条明细记录`);
     }
 
     // 9. 保存汇总表
@@ -590,8 +568,6 @@ export async function calculateAndSaveRootqi(
           ]
         );
       }
-
-      console.log(`[rootqi] 成功保存 ${summaries.length} 条汇总记录`);
     }
 
     // 10. 返回结果
@@ -701,6 +677,7 @@ export async function getRootQiFromDB(
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[rootqi] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
 
     if (!chartId) {
@@ -724,7 +701,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
         { status: 404 }
       );
     }
-
     return NextResponse.json({
       success: true,
       data: result,
@@ -747,6 +723,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[rootqi] input ok:", body);
     const { chart_id, ruleset_id = "default" } = body;
 
     if (!chart_id) {
@@ -760,9 +737,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     const result = await calculateAndSaveRootqi(chart_id, ruleset_id);
-
-    console.log("[rootqi] 根气计算完成，结果:", JSON.stringify(result, null, 2));
-
     return NextResponse.json({
       success: true,
       data: result,

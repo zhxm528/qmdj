@@ -20,6 +20,7 @@ interface BaziRequest {
   date: string;
   hour: string;
   minute: string;
+  gender?: string;
 }
 
 interface BaziResponse {
@@ -37,6 +38,7 @@ interface BaziResponse {
     day: string;
     hour: string;
   };
+  chart_id?: string | null;
   error?: string;
 }
 
@@ -80,10 +82,106 @@ async function getCurrentUserEmail(): Promise<string | null> {
   }
 }
 
+async function getExistingChartByInput(
+  userEmail: string,
+  date: string,
+  hour: string,
+  minute: string,
+  gender: string
+): Promise<{ chart_id: string; meta: any } | null> {
+  const rows = await query<{ chart_id: string; meta: any }>(
+    `SELECT chart_id, meta
+     FROM public.bazi_chart_tbl
+     WHERE user_email = $1
+       AND meta->'input'->'optional_context'->>'date' = $2
+       AND meta->'input'->'optional_context'->>'hour' = $3
+       AND meta->'input'->'optional_context'->>'minute' = $4
+       AND meta->'input'->'optional_context'->>'gender' = $5
+     ORDER BY updated_at DESC
+     LIMIT 1`,
+    [userEmail, date, hour, minute, gender]
+  );
+
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0];
+  const meta = typeof row.meta === "string" ? JSON.parse(row.meta) : row.meta;
+  return { chart_id: row.chart_id, meta };
+}
+
+async function getCachedBaziResult(chartId: string): Promise<any | null> {
+  const rows = await query<{ result_json: any }>(
+    `SELECT result_json
+     FROM public.bazi_chart_result_tbl
+     WHERE chart_id = $1
+     LIMIT 1`,
+    [chartId]
+  );
+  if (!rows || rows.length === 0) return null;
+  const row = rows[0];
+  return typeof row.result_json === "string" ? JSON.parse(row.result_json) : row.result_json;
+}
+
+async function saveCachedBaziResult(chartId: string, resultJson: any): Promise<void> {
+  try {
+    await query(
+      `INSERT INTO public.bazi_chart_result_tbl (chart_id, result_json, created_at, updated_at)
+       VALUES ($1, $2, now(), now())
+       ON CONFLICT (chart_id) DO UPDATE SET
+         result_json = EXCLUDED.result_json,
+         updated_at = now()`,
+      [chartId, JSON.stringify(resultJson)]
+    );
+  } catch (dbError: any) {
+    if (dbError.code === "42P01") {
+    } else {
+    }
+  }
+}
+
+function isStep3Incomplete(steps: any[]): boolean {
+  const step3 = steps.find((s) => s.step === 3);
+  const monthCommand = step3?.result?.month_command;
+  if (!monthCommand) return true;
+  const validSeasons = ["春", "夏", "秋", "冬"];
+  if (!validSeasons.includes(monthCommand.season)) return true;
+  if (!/[木火土金水]旺/.test(monthCommand.dominant_qi || "")) return true;
+  const rank = monthCommand.supporting_elements_rank;
+  if (!Array.isArray(rank) || rank.length === 0) return true;
+  if (!rank.every((item: string) => /^[木火土金水]$/.test(item))) return true;
+  const yueling = step3?.result?.yueling_strength;
+  const elementsState = yueling?.all_elements_state;
+  if (!elementsState || Object.keys(elementsState).length === 0) return true;
+  const keys = Object.keys(elementsState);
+  if (!["木", "火", "土", "金", "水"].every((k) => keys.includes(k))) return true;
+  return false;
+}
+
+function isStep4Incomplete(steps: any[]): boolean {
+  const step4 = steps.find((s) => s.step === 4);
+  const tonggen = step4?.result?.tonggen;
+  if (!Array.isArray(tonggen) || tonggen.length === 0) return true;
+  return !tonggen.every(
+    (item: any) =>
+      typeof item?.stem_code === "string" &&
+      item.stem_code.length > 0 &&
+      typeof item?.branch_code === "string" &&
+      item.branch_code.length > 0 &&
+      typeof item?.root_from_hidden_stem_code === "string" &&
+      item.root_from_hidden_stem_code.length > 0 &&
+      Number.isFinite(item?.root_position) &&
+      item.root_position >= 1 &&
+      item.root_position <= 3 &&
+      typeof item?.root_role === "string" &&
+      item.root_role.length > 0 &&
+      Number.isFinite(item?.weight) &&
+      item.weight > 0
+  );
+}
 export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>> {
   try {
     const body = (await req.json()) as BaziRequest;
-    const { date, hour, minute } = body;
+    console.log("[bazi] input ok:", body);
+    const { date, hour, minute, gender } = body;
 
     if (!date || !hour) {
       return NextResponse.json(
@@ -106,12 +204,41 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     const day = parseInt(parts[2], 10);
     const hourNum = parseInt(hour, 10);
     const minuteNum = parseInt(minute || "0", 10);
+    const minuteStr = String(Number.isNaN(minuteNum) ? 0 : minuteNum).padStart(2, "0");
 
     if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day) || Number.isNaN(hourNum)) {
       return NextResponse.json(
         { success: false, error: "日期或时间格式不正确" },
         { status: 400 }
       );
+    }
+
+    const userEmail = await getCurrentUserEmail();
+    if (userEmail) {
+      const existing = await getExistingChartByInput(
+        userEmail,
+        date,
+        hour,
+        minuteStr,
+        gender || "男"
+      );
+      if (existing?.chart_id) {
+        const cached = await getCachedBaziResult(existing.chart_id);
+        if (
+          cached?.steps &&
+          cached?.fourPillars &&
+          !isStep3Incomplete(cached.steps) &&
+          !isStep4Incomplete(cached.steps)
+        ) {
+    console.log("[bazi] response ok:", { success: true });
+          return NextResponse.json({
+            success: true,
+            fourPillars: cached.fourPillars,
+            steps: cached.steps,
+            chart_id: existing.chart_id,
+          });
+        }
+      }
     }
 
     // 计算四柱
@@ -128,7 +255,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     // 先保存 chart 获取 chart_id（用于 step2 中调用 shishen API）
     let chartId: string | null = null;
     try {
-      const userEmail = await getCurrentUserEmail();
       if (userEmail) {
         // 临时构建 baziData 用于保存（后续会重新构建完整数据）
         const tempBaziData = {
@@ -144,11 +270,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
               day: { stem: fourPillars.day.charAt(0), branch: fourPillars.day.charAt(1) },
               hour: { stem: fourPillars.hour.charAt(0), branch: fourPillars.hour.charAt(1) },
             },
+            optional_context: {
+              date,
+              hour,
+              minute: minuteStr,
+              gender: gender || "男",
+            },
           },
           steps: [],
         };
         chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2ResultWithoutShishen, tempBaziData);
-        console.log("[bazi] 提前保存 chart 获取 chart_id:", chartId);
       }
     } catch (saveError: any) {
       console.error("[bazi] 提前保存 chart 失败:", saveError);
@@ -159,7 +290,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     let step2Result = step2ResultWithoutShishen;
     if (chartId) {
       try {
-        console.log("[bazi] 调用 shishen 计算函数，chart_id:", chartId);
         const { calculateAndSaveShishen } = await import("./shishen/route");
         const shishenResult = await calculateAndSaveShishen(chartId, {
           year: fourPillars.year,
@@ -168,7 +298,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
           hour: fourPillars.hour,
         });
         step2Result.shishen = shishenResult;
-        console.log("[bazi] shishen 计算成功，summary_id:", shishenResult.summary_id);
       } catch (shishenError: any) {
         console.error("[bazi] 调用 shishen 计算函数时出错:", shishenError);
         console.error("[bazi] shishen 错误堆栈:", shishenError.stack);
@@ -177,15 +306,21 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     }
     
     const step3Result = await step3(fourPillars, dayMasterElement, chartId);
-    console.log("[bazi] step3Result 完整内容:", JSON.stringify(step3Result, null, 2));
     const ruleSet = "default"; // 得令计算规则集ID
     const step4Result = await step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result, chartId, ruleSet);
     const step5Result = await step5(fourPillars, step3Result, chartId, ruleSet);
-    const step6Result = step6(fourPillars, dayMaster, step2Result, step4Result);
-    const step7Result = step7(step4Result, step5Result, step6Result);
-    const step8Result = step8(step4Result, step6Result, step7Result, step2Result);
-    const step9Result = step9(step2Result, step4Result);
-    const step10Result = step10(fourPillars, step7Result);
+    const step6Result = await step6(fourPillars, dayMaster, step2Result, step4Result, chartId);
+    const step7Result = await step7(step4Result, step5Result, step6Result, chartId);
+    const step8Result = await step8(step4Result, step6Result, step7Result, step2Result, step5Result, chartId);
+    const step9Result = await step9(step2Result, step4Result, chartId);
+    const step10Result = await step10(
+      {
+        birth: { year, month, day, hour: hourNum, minute: minuteNum },
+        gender: gender || "男",
+        fourPillars,
+      },
+      chartId
+    );
     const step11Result = step11(step7Result);
     const step12Result = step12();
     const step13Result = step13(step4Result, step6Result, step7Result, step8Result);
@@ -286,7 +421,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     ];
 
     // 获取当前用户email
-    const userEmail = await getCurrentUserEmail();
     if (!userEmail) {
       return NextResponse.json(
         { success: false, error: "请先登录才能排盘" },
@@ -329,7 +463,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
         optional_context: {
           date,
           hour,
-          minute,
+          minute: minuteStr,
+          gender: gender || "男",
         },
       },
       steps: steps.map(s => ({
@@ -345,7 +480,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     if (!chartId) {
       try {
         chartId = await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, baziData);
-        console.log("[bazi] 保存排盘结果，chart_id:", chartId);
       } catch (saveError: any) {
         console.error("[bazi] 保存排盘结果失败:", saveError);
         // 保存失败不影响返回结果，只记录错误
@@ -354,7 +488,6 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
       // 如果之前已保存，更新完整数据
       try {
         await saveBaziChartToDB(userEmail, fourPillars, step1Result, step2Result, baziData);
-        console.log("[bazi] 更新排盘结果，chart_id:", chartId);
       } catch (saveError: any) {
         console.error("[bazi] 更新排盘结果失败:", saveError);
         // 更新失败不影响返回结果，只记录错误
@@ -363,13 +496,20 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
 
     // 在返回前检查 step 3 数据
     const step3InSteps = steps.find(s => s.step === 3);
-    console.log("[bazi] 返回前检查 - step 3 是否存在:", step3InSteps ? "是" : "否");
     if (step3InSteps) {
       const step3Result = step3InSteps.result as Step3Result;
-      console.log("[bazi] 返回前检查 - step 3 result 完整内容:", JSON.stringify(step3Result, null, 2));
     }
 
     // 构建完整的返回数据，包含四柱信息
+    if (chartId) {
+      await saveCachedBaziResult(chartId, { fourPillars, steps });
+    }
+
+    console.log("[bazi] response ok:", {
+      success: true,
+      chart_id: chartId || null,
+      stepsCount: steps.length,
+    });
     return NextResponse.json({
       success: true,
       fourPillars,
@@ -398,8 +538,6 @@ async function saveBaziChartToDB(
   return await transaction(async (client) => {
     // 构建四柱唯一标识（存储在meta中用于快速查询）
     const fourPillarsKey = `${fourPillars.year}-${fourPillars.month}-${fourPillars.day}-${fourPillars.hour}`;
-    
-    console.log("[bazi] 保存排盘结果:", { userEmail, fourPillarsKey });
 
     // 在meta中添加四柱标识，用于查询
     const metaWithKey = {
@@ -445,7 +583,6 @@ async function saveBaziChartToDB(
     if (existingChart.rows.length > 0) {
       // 已存在，更新
       chartId = existingChart.rows[0].chart_id;
-      console.log("[bazi] 更新已存在的排盘结果:", chartId);
       
       await client.query(
         `UPDATE public.bazi_chart_tbl 
@@ -465,14 +602,12 @@ async function saveBaziChartToDB(
       );
       
       // 删除旧的 pillar 数据，然后重新插入
-      console.log("[bazi] 删除旧的 pillar 数据");
       await client.query(
         `DELETE FROM public.bazi_pillar_tbl WHERE chart_id = $1`,
         [chartId]
       );
     } else {
       // 不存在，创建新的
-      console.log("[bazi] 创建新的排盘结果");
       
       const newChart = await client.query(
         `INSERT INTO public.bazi_chart_tbl 
@@ -574,7 +709,6 @@ async function saveBaziChartToDB(
     }
     
     // 批量插入所有4个 pillar（使用单个 INSERT 语句，避免触发器在中间状态检查）
-    console.log(`[bazi] 准备批量插入 ${pillarData.length} 个 pillar`);
     
     try {
       // 构建批量插入的 VALUES 子句
@@ -604,17 +738,12 @@ async function saveBaziChartToDB(
         (chart_id, pillar, sort_order, stem, stem_element, stem_yinyang, stem_tenshen, branch, branch_element)
         VALUES ${values}
       `;
-      
-      console.log(`[bazi] 执行批量插入 SQL，参数数量: ${params.length}`);
       await client.query(insertSql, params);
-      console.log(`[bazi] 所有 ${pillarData.length} 个 pillar 批量插入成功`);
     } catch (insertError: any) {
       console.error(`[bazi] 批量插入 pillar 失败:`, insertError);
       console.error(`[bazi] pillar 数据:`, JSON.stringify(pillarData, null, 2));
       throw insertError;
     }
-
-    console.log("[bazi] 排盘结果已保存/更新:", chartId);
     
     return chartId;
   });

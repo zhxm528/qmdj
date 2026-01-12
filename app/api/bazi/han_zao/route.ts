@@ -152,7 +152,6 @@ async function getRulesetFromDB(rulesetId: string) {
     );
 
     if (rows.length === 0) {
-      console.log(`[han_zao] ruleset ${rulesetId} not found, using default`);
       return DEFAULT_RULESET;
     }
 
@@ -165,7 +164,6 @@ async function getRulesetFromDB(rulesetId: string) {
         row.strength_level_weights || DEFAULT_RULESET.strength_level_weights,
     };
   } catch (error: any) {
-    console.warn("[han_zao] failed to load ruleset, using default:", error.message);
     return DEFAULT_RULESET;
   }
 }
@@ -181,7 +179,6 @@ export async function calculateAndSaveHanZao(
   rulesetId: string = "default"
 ): Promise<HanZaoResult> {
   return await transaction(async (client) => {
-    console.log(`[han_zao] start calculate, chart_id: ${chartId}, ruleset_id: ${rulesetId}`);
 
     const pillars = await getFourPillarsFromDB(chartId);
     if (pillars.length !== 4) {
@@ -361,20 +358,9 @@ export async function calculateAndSaveHanZao(
       );
     } catch (dbError: any) {
       if (dbError.code === "42P01") {
-        console.warn(
-          "[han_zao] table missing, skip saving (create via md/database/24_han_zao.sql)",
-          dbError.message
-        );
       } else {
-        console.warn("[han_zao] save failed, return result only:", dbError.message);
       }
     }
-
-    console.log(
-      `[han_zao] done han=${summary.han_score.toFixed(4)} re=${summary.re_score.toFixed(
-        4
-      )} zao=${summary.zao_score.toFixed(4)} shi=${summary.shi_score.toFixed(4)}`
-    );
 
     return {
       chart_id: chartId,
@@ -479,10 +465,8 @@ export async function getHanZaoFromDB(chartId: string): Promise<HanZaoResult | n
     };
   } catch (error: any) {
     if (error.code === "42P01") {
-      console.warn("[han_zao] table missing, skip fetch:", error.message);
       return null;
     }
-    console.warn("[han_zao] fetch failed:", error.message);
     return null;
   }
 }
@@ -490,6 +474,7 @@ export async function getHanZaoFromDB(chartId: string): Promise<HanZaoResult | n
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[han_zao] input ok:", Object.fromEntries(searchParams.entries()));
     const chartId = searchParams.get("chart_id");
 
     if (!chartId) {
@@ -500,7 +485,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
     if (!result) {
       return NextResponse.json({ success: false, error: "no result" }, { status: 404 });
     }
-
     return NextResponse.json({ success: true, data: result });
   } catch (error: any) {
     console.error("[han_zao] GET failed:", error);
@@ -514,6 +498,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.json();
+    console.log("[han_zao] input ok:", body);
     const { chart_id, ruleset_id = "default" } = body;
 
     if (!chart_id) {

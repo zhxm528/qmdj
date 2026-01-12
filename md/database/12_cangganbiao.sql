@@ -49,6 +49,17 @@ CREATE TABLE IF NOT EXISTS public.bazi_branch_hidden_stem_dict (
     REFERENCES public.bazi_heavenly_stem_dim(stem_code)
     ON UPDATE CASCADE ON DELETE RESTRICT,
 
+  -- 兼容旧结构（18_tonggen.sql）：供历史查询字段使用
+  hidden_stem_code VARCHAR(1) GENERATED ALWAYS AS (stem_code) STORED,
+  hidden_level     TEXT GENERATED ALWAYS AS (
+    CASE role
+      WHEN '主气' THEN '主'
+      WHEN '中气' THEN '中'
+      WHEN '余气' THEN '余'
+      ELSE role
+    END
+  ) STORED,
+
   role TEXT NOT NULL CHECK (role IN ('主气', '中气', '余气')),
 
   weight NUMERIC(6,4), -- 可空；例如 1.0 / 0.6 / 0.3 之类

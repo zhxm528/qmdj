@@ -39,7 +39,11 @@ export function getPool(): Pool {
  */
 export async function getClient(): Promise<PoolClient> {
   const pool = getPool();
-  return await pool.connect();
+  const client = await pool.connect();
+  client.on("error", (err) => {
+    console.error("数据库连接错误:", err);
+  });
+  return client;
 }
 
 /**
@@ -61,16 +65,26 @@ export async function transaction<T>(
   callback: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await getClient();
+  let originalError: unknown = null;
   try {
     await client.query("BEGIN");
     const result = await callback(client);
     await client.query("COMMIT");
     return result;
   } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
+    originalError = error;
+    try {
+      await client.query("ROLLBACK");
+    } catch (rollbackError) {
+      console.error("事务回滚失败:", rollbackError);
+    }
+    throw originalError;
   } finally {
-    client.release();
+    try {
+      client.release();
+    } catch (releaseError) {
+      console.error("释放数据库连接失败:", releaseError);
+    }
   }
 }
 

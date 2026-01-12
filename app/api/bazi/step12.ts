@@ -10,6 +10,8 @@ export interface Step12Result {
 }
 
 export function step12(): Step12Result {
+  console.log("[step12] input ok:", {});
+  console.log("[step12] response ok:", { enabled: false, count: 0 });
   return {
     enabled: false,
     liu_yue_or_liu_ri: [],

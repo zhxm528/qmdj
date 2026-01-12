@@ -9,7 +9,7 @@
  * - /api/bazi/deling: 计算并获取得令结果
  */
 
-import { getTonggenFromDB, TonggenResult } from "./tonggen/route";
+import { calculateAndSaveTonggen, getTonggenFromDB, TonggenResult } from "./tonggen/route";
 import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/route";
 import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/route";
 
@@ -54,6 +54,7 @@ export async function step4(
   chartId: string | null = null,
   ruleSet: string = "default"
 ): Promise<Step4Result> {
+  console.log("[step4] input ok:", { fourPillars, dayMaster, dayMasterElement, step2Result, step3Result, chartId, ruleSet });
   const yearStem = fourPillars.year.charAt(0);
   const yearBranch = fourPillars.year.charAt(1);
   const monthStem = fourPillars.month.charAt(0);
@@ -172,9 +173,8 @@ export async function step4(
   // 调用通根表 API
   let tonggenData: TonggenResult[] | undefined = undefined;
   try {
-    console.log("[step4] 调用 tonggen API 获取通根表");
+    await calculateAndSaveTonggen();
     tonggenData = await getTonggenFromDB();
-    console.log("[step4] 通根表结果数量:", tonggenData?.length || 0);
   } catch (tonggenError: any) {
     console.error("[step4] 调用 tonggen API 时出错:", tonggenError);
     console.error("[step4] tonggen 错误堆栈:", tonggenError.stack);
@@ -185,44 +185,34 @@ export async function step4(
   let touganData: TouganResult[] | undefined = undefined;
   if (chartId) {
     try {
-      console.log("[step4] 调用 tougan API，chart_id:", chartId);
       // 先计算并保存透干表
       await calculateAndSaveTougan(chartId);
       // 然后获取透干表结果
       touganData = await getTouganFromDB(chartId);
-      console.log("[step4] 透干表结果数量:", touganData?.length || 0);
     } catch (touganError: any) {
       console.error("[step4] 调用 tougan API 时出错:", touganError);
       console.error("[step4] tougan 错误堆栈:", touganError.stack);
       // 不抛出错误，继续执行
     }
-  } else {
-    console.log("[step4] chart_id 为空，跳过 tougan 计算");
-  }
+    }
 
   // 调用得令计算 API（需要 chartId）
   let delingData: DelingResult | null = null;
   if (chartId) {
     try {
-      console.log("[step4] 调用 deling API，chart_id:", chartId);
       // 先计算并保存得令结果
       await calculateAndSaveDeling(chartId, ruleSet);
       // 然后获取得令结果
       delingData = await getDelingFromDB(chartId, ruleSet);
-      console.log("[step4] 得令计算结果:", delingData ? JSON.stringify(delingData, null, 2) : "null");
       if (delingData) {
-        console.log("[step4] 是否得令:", delingData.is_deling);
-        console.log("[step4] 判定规则:", delingData.rule_text);
       }
     } catch (delingError: any) {
       console.error("[step4] 调用 deling API 时出错:", delingError);
       console.error("[step4] deling 错误堆栈:", delingError.stack);
       // 不抛出错误，继续执行
     }
-  } else {
-    console.log("[step4] chart_id 为空，跳过 deling 计算");
-  }
-
+    }
+  console.log("[step4] response ok:", { bodyState, tonggenCount: tonggenData?.length || 0, touganCount: touganData?.length || 0, deling: !!delingData });
   return {
     strength_judgement: {
       body_state: bodyState,

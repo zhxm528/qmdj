@@ -48,8 +48,6 @@ async function getRelationRulesFromDB() {
     ORDER BY r.rule_code, e.entry_id
   `;
 
-  console.log("[干合规则表] 查询SQL:", sql);
-
   const rows = await query<{
     rule_code: string;
     name_cn: string;
@@ -59,9 +57,6 @@ async function getRelationRulesFromDB() {
     output_wuxing: string | null;
     meta: any;
   }>(sql);
-
-  console.log("[干合规则表] 数据库查询结果行数:", rows.length);
-  console.log("[干合规则表] 数据库查询原始结果:", JSON.stringify(rows, null, 2));
 
   return rows;
 }
@@ -78,14 +73,10 @@ async function getGanWuxingFromDB(): Promise<Record<string, string>> {
     ORDER BY display_order
   `;
 
-  console.log("[干合规则表] 查询天干五行SQL:", sql);
-
   const rows = await query<{
     stem: string;
     wu_xing: string;
   }>(sql);
-
-  console.log("[干合规则表] 天干五行查询结果:", JSON.stringify(rows, null, 2));
 
   const mapping: Record<string, string> = {};
   rows.forEach((row) => {
@@ -247,23 +238,18 @@ async function buildGanheData() {
     }
   });
 
-  console.log("[干合规则表] 构建后的结果数据:", JSON.stringify(result, null, 2));
-
   return result;
 }
 
 export async function GET(): Promise<NextResponse<GanheResponse>> {
   try {
-    console.log("[干合规则表API] GET请求开始");
+    console.log("[ganhe] input ok:", {});
     const data = await buildGanheData();
 
     const response = {
       success: true,
       data,
     };
-
-    console.log("[干合规则表API] 最终返回响应:", JSON.stringify(response, null, 2));
-
     return NextResponse.json(response);
   } catch (error: any) {
     console.error("[干合规则表API] GET错误:", error);

@@ -28,6 +28,7 @@ export async function step5(
   chartId: string | null = null,
   ruleSet: string = "default"
 ): Promise<Step5Result> {
+  console.log("[step5] input ok:", { fourPillars, step3Result, chartId, ruleSet });
   const season = step3Result.month_command.season;
   const dominantQi = step3Result.month_command.dominant_qi;
 
@@ -83,21 +84,14 @@ export async function step5(
   let hanZaoData: HanZaoResult | null = null;
   if (chartId) {
     try {
-      console.log("[step5] 调用 han_zao API，chart_id:", chartId);
       await calculateAndSaveHanZao(chartId, ruleSet);
       hanZaoData = await getHanZaoFromDB(chartId);
-      console.log(
-        "[step5] 寒暖燥湿结果:",
-        hanZaoData ? `找到 ${hanZaoData.details.length} 条明细` : "null"
-      );
     } catch (hanZaoError: any) {
       console.error("[step5] 调用 han_zao API 时出错:", hanZaoError);
       console.error("[step5] han_zao 错误堆栈:", hanZaoError.stack);
     }
-  } else {
-    console.log("[step5] chart_id 为空，跳过 han_zao 计算");
   }
-
+  console.log("[step5] response ok:", { temperature, humidity, dry_wet: dryWet, hanZao: !!hanZaoData });
   return {
     climate_balance: {
       temperature,

@@ -1,7 +1,6 @@
 /**
- * 步骤3：抓月令与季节（定大方向）
- * 以月支（月令）为第一权重：这决定"当令之气"（季节力量），很多判断从这里定调。
- * 从数据库获取月令强弱/得令信息
+ * Step 3: 月令与季节（第一权重）
+ * 输出：当令之气、旺相休囚与季节信息
  */
 
 import { query } from "@/lib/db";
@@ -16,68 +15,95 @@ export interface Step3Result {
     dominant_qi: string;
     supporting_elements_rank: string[];
   };
-  // 新增：月令强弱/得令信息
   yueling_strength?: {
     day_master_element: string;
-    day_master_state: string; // 日主五行的旺相休囚死状态
-    day_master_state_rank: number; // 日主五行的强弱数值（1-5）
-    all_elements_state: Record<string, { state: string; state_rank: number }>; // 所有五行的旺相休囚死状态
-    is_override: boolean; // 是否使用了覆盖规则
-    override_note?: string; // 覆盖规则说明
+    day_master_state: string;
+    day_master_state_rank: number;
+    all_elements_state: Record<string, { state: string; state_rank: number }>;
+    is_override: boolean;
+    override_note?: string;
   };
-  // 新增：根气结果
   rootqi?: RootQiResult | null;
-  // 新增：得助结果
   dezhu?: DezhuResult | null;
-  // 新增：受克泄耗（制化）结果
   ke_xie?: KeXieResult | null;
 }
 
-/**
- * 从数据库获取月令强弱信息
- * @param monthBranch 月支
- * @param dayMasterElement 日主五行
- * @param ruleSet 规则集，默认 'default'
- * @returns 月令强弱信息
- */
+const BRANCH_SEASON_FALLBACK: Record<string, string> = {
+  寅: "春",
+  卯: "春",
+  辰: "春",
+  巳: "夏",
+  午: "夏",
+  未: "夏",
+  申: "秋",
+  酉: "秋",
+  戌: "秋",
+  亥: "冬",
+  子: "冬",
+  丑: "冬",
+};
+
+const SEASON_ELEMENT_FALLBACK: Record<
+  string,
+  Record<string, { state: string; state_rank: number }>
+> = {
+  春: {
+    木: { state: "旺", state_rank: 5 },
+    火: { state: "相", state_rank: 4 },
+    水: { state: "休", state_rank: 3 },
+    金: { state: "囚", state_rank: 2 },
+    土: { state: "死", state_rank: 1 },
+  },
+  夏: {
+    火: { state: "旺", state_rank: 5 },
+    土: { state: "相", state_rank: 4 },
+    木: { state: "休", state_rank: 3 },
+    水: { state: "囚", state_rank: 2 },
+    金: { state: "死", state_rank: 1 },
+  },
+  秋: {
+    金: { state: "旺", state_rank: 5 },
+    水: { state: "相", state_rank: 4 },
+    土: { state: "休", state_rank: 3 },
+    火: { state: "囚", state_rank: 2 },
+    木: { state: "死", state_rank: 1 },
+  },
+  冬: {
+    水: { state: "旺", state_rank: 5 },
+    木: { state: "相", state_rank: 4 },
+    金: { state: "休", state_rank: 3 },
+    土: { state: "囚", state_rank: 2 },
+    火: { state: "死", state_rank: 1 },
+  },
+};
+
 async function getYuelingStrengthFromDB(
   monthBranch: string,
   dayMasterElement: string,
   ruleSet: string = "default"
 ): Promise<Step3Result["yueling_strength"]> {
-  console.log("[step3 月令强弱] 查询参数:", { monthBranch, dayMasterElement, ruleSet });
-
-  // 1. 查询月支对应的季节
   const seasonRows = await query<{ branch: string; season: string }>(
     `SELECT branch, season FROM public.dict_branch_season WHERE branch = $1`,
     [monthBranch]
   );
 
-  if (seasonRows.length === 0) {
-    console.warn(`[step3 月令强弱] 未找到月支 ${monthBranch} 对应的季节，使用默认值`);
-    return undefined;
-  }
+  const season =
+    seasonRows.length > 0 ? seasonRows[0].season : BRANCH_SEASON_FALLBACK[monthBranch];
+  if (!season) return undefined;
 
-  const season = seasonRows[0].season;
-  console.log("[step3 月令强弱] 月支对应季节:", season);
-
-  // 2. 查询季节×五行的旺相休囚死状态（默认规则）
   const stateRows = await query<{
     season: string;
     element: string;
     state: string;
     state_rank: number;
   }>(
-    `SELECT season, element, state, state_rank 
-     FROM public.dict_season_element_state 
-     WHERE rule_set = $1 AND season = $2 
+    `SELECT season, element, state, state_rank
+     FROM public.dict_season_element_state
+     WHERE rule_set = $1 AND season = $2
      ORDER BY state_rank DESC`,
     [ruleSet, season]
   );
 
-  console.log("[step3 月令强弱] 季节×五行状态查询结果:", JSON.stringify(stateRows, null, 2));
-
-  // 3. 查询是否有覆盖规则（优先使用覆盖）
   const overrideRows = await query<{
     branch: string;
     element: string;
@@ -92,13 +118,9 @@ async function getYuelingStrengthFromDB(
     [ruleSet, monthBranch]
   );
 
-  console.log("[step3 月令强弱] 覆盖规则查询结果:", JSON.stringify(overrideRows, null, 2));
-
-  // 4. 构建所有五行的状态映射（优先使用覆盖规则）
   const allElementsState: Record<string, { state: string; state_rank: number }> = {};
   const overrideMap: Record<string, { state: string; state_rank: number; note: string }> = {};
 
-  // 先处理覆盖规则
   overrideRows.forEach((row) => {
     overrideMap[row.element] = {
       state: row.state,
@@ -107,39 +129,43 @@ async function getYuelingStrengthFromDB(
     };
   });
 
-  // 再处理默认规则（如果某个五行没有覆盖规则，使用默认规则）
-  stateRows.forEach((row) => {
-    if (overrideMap[row.element]) {
-      // 使用覆盖规则
-      allElementsState[row.element] = {
-        state: overrideMap[row.element].state,
-        state_rank: overrideMap[row.element].state_rank,
-      };
-    } else {
-      // 使用默认规则
-      allElementsState[row.element] = {
-        state: row.state,
-        state_rank: row.state_rank,
-      };
-    }
-  });
-
-  // 5. 获取日主五行的状态
-  const dayMasterStateInfo = allElementsState[dayMasterElement];
-  if (!dayMasterStateInfo) {
-    console.warn(`[step3 月令强弱] 未找到日主五行 ${dayMasterElement} 的旺相休囚死状态`);
-    return undefined;
+  if (stateRows.length === 0) {
+    const fallback = SEASON_ELEMENT_FALLBACK[season] || {};
+    Object.keys(fallback).forEach((element) => {
+      const base = fallback[element];
+      if (overrideMap[element]) {
+        allElementsState[element] = {
+          state: overrideMap[element].state,
+          state_rank: overrideMap[element].state_rank,
+        };
+      } else {
+        allElementsState[element] = {
+          state: base.state,
+          state_rank: base.state_rank,
+        };
+      }
+    });
+  } else {
+    stateRows.forEach((row) => {
+      if (overrideMap[row.element]) {
+        allElementsState[row.element] = {
+          state: overrideMap[row.element].state,
+          state_rank: overrideMap[row.element].state_rank,
+        };
+      } else {
+        allElementsState[row.element] = {
+          state: row.state,
+          state_rank: row.state_rank,
+        };
+      }
+    });
   }
+
+  const dayMasterStateInfo = allElementsState[dayMasterElement];
+  if (!dayMasterStateInfo) return undefined;
 
   const isOverride = !!overrideMap[dayMasterElement];
   const overrideNote = isOverride ? overrideMap[dayMasterElement].note : undefined;
-
-  console.log("[step3 月令强弱] 最终结果:", {
-    day_master_element: dayMasterElement,
-    day_master_state: dayMasterStateInfo.state,
-    day_master_state_rank: dayMasterStateInfo.state_rank,
-    is_override: isOverride,
-  });
 
   return {
     day_master_element: dayMasterElement,
@@ -162,9 +188,9 @@ export async function step3(
   chartId: string | null = null,
   ruleSet: string = "default"
 ): Promise<Step3Result> {
+  console.log("[step3] input ok:", { fourPillars, dayMasterElement, chartId, ruleSet });
   const monthBranch = fourPillars.month.charAt(1);
 
-  // 从数据库获取月支对应的季节
   const seasonRows = await query<{ branch: string; season: string }>(
     `SELECT branch, season FROM public.dict_branch_season WHERE branch = $1`,
     [monthBranch]
@@ -173,9 +199,10 @@ export async function step3(
   let season = "未知";
   if (seasonRows.length > 0) {
     season = seasonRows[0].season;
+  } else if (BRANCH_SEASON_FALLBACK[monthBranch]) {
+    season = BRANCH_SEASON_FALLBACK[monthBranch];
   }
 
-  // 从数据库获取当令之气（旺的五行）
   const wangRows = await query<{
     element: string;
     state: string;
@@ -190,7 +217,6 @@ export async function step3(
     [monthBranch, ruleSet]
   );
 
-  // 检查是否有覆盖规则（如辰戌丑未土旺）
   const overrideWangRows = await query<{
     element: string;
     state: string;
@@ -209,9 +235,14 @@ export async function step3(
     dominantQi = `${overrideWangRows[0].element}旺`;
   } else if (wangRows.length > 0) {
     dominantQi = `${wangRows[0].element}旺`;
+  } else if (season !== "未知") {
+    const fallback = SEASON_ELEMENT_FALLBACK[season];
+    if (fallback) {
+      const wan = Object.entries(fallback).find(([, v]) => v.state === "旺");
+      if (wan) dominantQi = `${wan[0]}旺`;
+    }
   }
 
-  // 获取所有五行的状态（用于排序）
   const allStateRows = await query<{
     element: string;
     state: string;
@@ -225,7 +256,6 @@ export async function step3(
     [monthBranch, ruleSet]
   );
 
-  // 查询覆盖规则
   const allOverrideRows = await query<{
     element: string;
     state: string;
@@ -238,7 +268,6 @@ export async function step3(
     [ruleSet, monthBranch]
   );
 
-  // 构建覆盖映射
   const overrideMap: Record<string, { state: string; state_rank: number }> = {};
   allOverrideRows.forEach((row) => {
     overrideMap[row.element] = {
@@ -247,94 +276,71 @@ export async function step3(
     };
   });
 
-  // 构建五行排序（优先使用覆盖规则）
   const elementsRank: string[] = [];
   const elementStateMap: Record<string, { state: string; state_rank: number }> = {};
 
-  allStateRows.forEach((row) => {
-    if (overrideMap[row.element]) {
-      elementStateMap[row.element] = overrideMap[row.element];
-    } else {
-      elementStateMap[row.element] = {
-        state: row.state,
-        state_rank: row.state_rank,
-      };
-    }
-  });
+  if (allStateRows.length === 0 && season !== "未知") {
+    const fallback = SEASON_ELEMENT_FALLBACK[season] || {};
+    Object.keys(fallback).forEach((element) => {
+      if (overrideMap[element]) {
+        elementStateMap[element] = overrideMap[element];
+      } else {
+        elementStateMap[element] = {
+          state: fallback[element].state,
+          state_rank: fallback[element].state_rank,
+        };
+      }
+    });
+  } else {
+    allStateRows.forEach((row) => {
+      if (overrideMap[row.element]) {
+        elementStateMap[row.element] = overrideMap[row.element];
+      } else {
+        elementStateMap[row.element] = {
+          state: row.state,
+          state_rank: row.state_rank,
+        };
+      }
+    });
+  }
 
-  // 按 state_rank 排序
   const sortedElements = Object.entries(elementStateMap).sort(
     (a, b) => b[1].state_rank - a[1].state_rank
   );
   elementsRank.push(...sortedElements.map(([element]) => element));
 
-  // 获取月令强弱信息
   const yuelingStrength = await getYuelingStrengthFromDB(monthBranch, dayMasterElement, ruleSet);
 
-  // 调用根气 API（需要 chartId）
   let rootqiData: RootQiResult | null = null;
   if (chartId) {
     try {
-      console.log("[step3] 调用 rootqi API，chart_id:", chartId);
-      // 先计算并保存根气结果
       await calculateAndSaveRootqi(chartId, ruleSet);
-      // 然后获取根气结果
       rootqiData = await getRootQiFromDB(chartId);
-      console.log("[step3] 根气结果:", rootqiData ? `找到 ${rootqiData.details.length} 条明细，${rootqiData.summaries.length} 条汇总` : "null");
-    } catch (rootqiError: any) {
-      console.error("[step3] 调用 rootqi API 时出错:", rootqiError);
-      console.error("[step3] rootqi 错误堆栈:", rootqiError.stack);
-      // 不抛出错误，继续执行
+    } catch (error) {
+      console.error("[step3] rootqi error:", error);
     }
-  } else {
-    console.log("[step3] chart_id 为空，跳过 rootqi 计算");
   }
 
-  // 调用得助 API（需要 chartId）
   let dezhuData: DezhuResult | null = null;
   if (chartId) {
     try {
-      console.log("[step3] 调用 dezhu API，chart_id:", chartId);
-      // 先计算并保存得助结果
       await calculateAndSaveDezhu(chartId, ruleSet);
-      // 然后获取得助结果
       dezhuData = await getDezhuFromDB(chartId);
-      console.log("[step3] 得助结果:", dezhuData ? `找到 ${dezhuData.details.length} 条明细` : "null");
-      if (dezhuData) {
-        console.log("[step3] 得助结果内容:", JSON.stringify(dezhuData, null, 2));
-      }
-    } catch (dezhuError: any) {
-      console.error("[step3] 调用 dezhu API 时出错:", dezhuError);
-      console.error("[step3] dezhu 错误堆栈:", dezhuError.stack);
-      // 不抛出错误，继续执行
+    } catch (error) {
+      console.error("[step3] dezhu error:", error);
     }
-  } else {
-    console.log("[step3] chart_id 为空，跳过 dezhu 计算");
   }
 
-  // 调用受克泄耗（制化） API（需要chartId）
   let keXieData: KeXieResult | null = null;
   if (chartId) {
     try {
-      console.log("[step3] 调用 ke_xie API，chart_id:", chartId);
       await calculateAndSaveKeXie(chartId, ruleSet);
       keXieData = await getKeXieFromDB(chartId);
-      console.log(
-        "[step3] 受克泄耗结果:",
-        keXieData ? `找到 ${keXieData.details.length} 条明细` : "null"
-      );
-      if (keXieData) {
-        console.log("[step3] 受克泄耗结果内容:", JSON.stringify(keXieData, null, 2));
-      }
-    } catch (keXieError: any) {
-      console.error("[step3] 调用 ke_xie API 时出错:", keXieError);
-      console.error("[step3] ke_xie 错误堆栈:", keXieError.stack);
-      // 不抛出错误，继续执行
+    } catch (error) {
+      console.error("[step3] ke_xie error:", error);
     }
-  } else {
-    console.log("[step3] chart_id 为空，跳过 ke_xie 计算");
   }
-
+  console.log("[step3] response ok:", { season, dominantQi, hasRootqi: !!rootqiData, hasDezhu: !!dezhuData, hasKeXie: !!keXieData });
   return {
     month_command: {
       month_branch: monthBranch,
@@ -348,4 +354,3 @@ export async function step3(
     ke_xie: keXieData,
   };
 }
-

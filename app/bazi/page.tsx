@@ -9,6 +9,7 @@ import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
+import GenderSelector from "@/components/GenderSelector";
 
 const { Panel } = Collapse;
 
@@ -36,6 +37,53 @@ function getCurrentMinute(): string {
   return String(now.getMinutes()).padStart(2, "0");
 }
 
+// 将寒暖燥湿的英文枚举值转换为中文
+function getTendencyChinese(tendency: string | null | undefined): string {
+  if (!tendency) return "-";
+  const map: Record<string, string> = {
+    HAN: "偏寒",
+    RE: "偏热",
+    ZAO: "偏燥",
+    SHI: "偏湿",
+    NEUTRAL: "中和",
+  };
+  return map[tendency] || tendency;
+}
+
+function getDayunDirectionLabel(direction: string | null | undefined): string {
+  if (!direction) return "-";
+  if (direction === "FORWARD" || direction === "forward") return "顺行";
+  if (direction === "BACKWARD" || direction === "backward") return "逆行";
+  return direction;
+}
+
+// 将年干阴阳的英文值转换为中文
+function getYinyangChinese(yinyang: string | null | undefined): string {
+  if (!yinyang) return "-";
+  const map: Record<string, string> = {
+    YIN: "阴",
+    YANG: "阳",
+  };
+  return map[yinyang.toUpperCase()] || yinyang;
+}
+
+// 将性别的英文值转换为中文
+function getGenderChinese(gender: string | null | undefined): string {
+  if (!gender) return "-";
+  const map: Record<string, string> = {
+    MALE: "男",
+    FEMALE: "女",
+  };
+  return map[gender.toUpperCase()] || gender;
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  return d.toLocaleString("zh-CN", { hour12: false });
+}
+
 interface BaziStep {
   step: number;
   name: string;
@@ -48,6 +96,7 @@ export default function BaziPage() {
   const [date, setDate] = useState<string>(getCurrentDate());
   const [hour, setHour] = useState<string>(getCurrentHour());
   const [minute, setMinute] = useState<string>(getCurrentMinute());
+  const [gender, setGender] = useState<string>("男");
   const [loading, setLoading] = useState(false);
   const [baziSteps, setBaziSteps] = useState<BaziStep[]>([]);
   const [fourPillars, setFourPillars] = useState<{
@@ -79,6 +128,7 @@ export default function BaziPage() {
   const [rootqiData, setRootqiData] = useState<any | null>(null);
   const [dezhuData, setDezhuData] = useState<any | null>(null);
   const [keXieData, setKeXieData] = useState<any | null>(null);
+  const visibleSteps = baziSteps.filter((step) => ![11, 12, 13].includes(step.step));
 
   const dateParts = date ? date.split("-") : null;
   const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
@@ -135,6 +185,7 @@ export default function BaziPage() {
           date,
           hour,
           minute,
+          gender,
         }),
       });
 
@@ -315,7 +366,7 @@ export default function BaziPage() {
           const userCheckResponse = await fetch("/api/user/me");
           if (userCheckResponse.ok) {
             // 构建JSON数据
-            const baziJson = buildBaziJson(data.steps, data.fourPillars, date, hour, minute);
+            const baziJson = buildBaziJson(data.steps, data.fourPillars, date, hour, minute, gender);
             
             const saveResponse = await fetch("/api/qimen_pan", {
               method: "POST",
@@ -520,10 +571,79 @@ export default function BaziPage() {
         return "";
       case 5:
         return "季节偏性与五行分布修正取用";
-      case 6:
-      case 7:
-      case 8:
-      case 9:
+      case 6: {
+        const structure = result?.structure;
+        if (!structure) {
+          return "格局/成局结果为空。";
+        }
+
+        const summary = structure.summary || {};
+        const candidatesText = Array.isArray(structure.candidates)
+          ? structure.candidates
+              .map((c: any) => `${c.pattern_code}(${typeof c.score === "number" ? c.score.toFixed(1) : c.score})`)
+              .join("，")
+          : "";
+        const formationsText = Array.isArray(structure.formed_combinations)
+          ? structure.formed_combinations.join("，")
+          : "";
+
+        let text = `主格局：${structure.primary_pattern || "-"}\n`;
+        text += `清纯/破格：${structure.purity || "-"}\n`;
+        if (summary.purity_score !== undefined) {
+          text += `清纯分：${summary.purity_score}\n`;
+        }
+        if (summary.break_level) {
+          text += `破格等级：${summary.break_level}\n`;
+        }
+        if (candidatesText) {
+          text += `候选：${candidatesText}\n`;
+        }
+        if (formationsText) {
+          text += `成局：${formationsText}\n`;
+        }
+        if (Array.isArray(structure.breakers) && structure.breakers.length > 0) {
+          text += `破格点：${structure.breakers.join("，")}\n`;
+        }
+        return text;
+      }
+      case 7: {
+        const useful = result?.useful_gods;
+        if (!useful) {
+          return "用神/喜神/忌神结果为空。";
+        }
+        const xi = useful.xi_shen?.map((x: any) => x.element).join("，") || "-";
+        const ji = useful.ji_shen?.map((j: any) => j.element).join("，") || "-";
+        return (
+          `用神：${useful.yong_shen?.element || "-"}（${useful.yong_shen?.ten_god || "-"}）\n` +
+          `喜神：${xi}\n` +
+          `忌神：${ji}`
+        );
+      }
+      case 8: {
+        const check = result?.consistency_check;
+        if (!check) {
+          return "验盘结果为空。";
+        }
+        const tags = check.disease_tags?.length ? check.disease_tags.join("，") : "-";
+        const issues = check.issues?.length ? check.issues.length : 0;
+        return (
+          `自洽评分：${check.consistency_score}\n` +
+          `病标签：${tags}\n` +
+          `问题数：${issues}`
+        );
+      }
+      case 9: {
+        const profile = result?.tenshen_profile_static;
+        if (!profile) {
+          return "十神专题画像结果为空。";
+        }
+        const top = profile.top_tenshen?.length ? profile.top_tenshen.join("，") : "-";
+        return (
+          `主导十神：${top}\n` +
+          `置信度：${profile.confidence}\n` +
+          `证据条数：${profile.evidence_count}`
+        );
+      }
       case 10:
       case 11:
       case 12:
@@ -847,7 +967,8 @@ export default function BaziPage() {
     fourPillarsData: { year: string; month: string; day: string; hour: string } | null,
     date: string,
     hour: string,
-    minute: string
+    minute: string,
+    genderValue: string
   ) => {
     // 从四柱数据构建输入格式
     const fourPillarsInput = fourPillarsData
@@ -891,7 +1012,7 @@ export default function BaziPage() {
       input: {
         four_pillars: fourPillarsInput,
         optional_context: {
-          sex: "",
+          sex: genderValue || "",
           birth_place: "",
           notes: "",
         },
@@ -915,7 +1036,7 @@ export default function BaziPage() {
 
             {/* 日期与时辰选择 */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1.5fr_0.8fr] gap-6">
                 <DateSelector
                   value={date}
                   onChange={(newDate) => {
@@ -945,6 +1066,17 @@ export default function BaziPage() {
                       }}
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    性别
+                  </label>
+                  <GenderSelector
+                    value={gender}
+                    onChange={(newGender) => {
+                      setGender(newGender);
+                    }}
+                  />
                 </div>
               </div>
 
@@ -982,7 +1114,7 @@ export default function BaziPage() {
             </div>
 
             {/* 13个步骤结果展示 */}
-            {baziSteps.length > 0 && (
+            {visibleSteps.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">排盘结果</h2>
                 {fourPillars && (
@@ -1009,7 +1141,7 @@ export default function BaziPage() {
                   </div>
                 )}
                 <Collapse defaultActiveKey={["1"]} accordion>
-                  {[...baziSteps].sort((a, b) => {
+                  {[...visibleSteps].sort((a, b) => {
                     // step 1 始终第一
                     if (a.step === 1) return -1;
                     if (b.step === 1) return 1;
@@ -1792,7 +1924,7 @@ export default function BaziPage() {
                                 )}
                               </div>
                               {/* 第二行：得令数据、根气表、得助表 */}
-                              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                              <div className="flex flex-col gap-4">
                                 {/* 得令数据 */}
                                 {delingData && (
                                   <div className="bg-white rounded-lg p-4 border border-gray-200">
@@ -1801,29 +1933,35 @@ export default function BaziPage() {
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
                                           <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
-                                            <td className="border border-gray-300 px-3 py-2">{delingData.month_branch || "-"}</td>
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">月支</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">{delingData.month_branch || "-"}</td>
                                           </tr>
                                           <tr className="hover:bg-gray-50">
                                             <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">季节</td>
-                                            <td className="border border-gray-300 px-3 py-2">{delingData.season_code || "-"}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">{delingData.season_code || "-"}</td>
                                           </tr>
                                           <tr className="hover:bg-gray-50">
                                             <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主</td>
-                                            <td className="border border-gray-300 px-3 py-2">{delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）
+                                            </td>
                                           </tr>
                                           <tr className="hover:bg-gray-50">
                                             <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主状态</td>
-                                            <td className="border border-gray-300 px-3 py-2">
+                                            <td className="border border-gray-300 px-3 py-2 text-center text-xs">
                                               {delingData.day_master_state || "-"}
                                               {delingData.day_master_score !== undefined && (
-                                                <span className="text-gray-500 ml-2">（得分：{typeof delingData.day_master_score === 'number' ? delingData.day_master_score.toFixed(2) : parseFloat(String(delingData.day_master_score)).toFixed(2)}）</span>
+                                                <span className="text-gray-500 ml-1">
+                                                  （{typeof delingData.day_master_score === "number"
+                                                    ? delingData.day_master_score.toFixed(2)
+                                                    : parseFloat(String(delingData.day_master_score)).toFixed(2)}）
+                                                </span>
                                               )}
                                             </td>
                                           </tr>
                                           <tr className="hover:bg-gray-50">
                                             <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">是否得令</td>
-                                            <td className="border border-gray-300 px-3 py-2">
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
                                               {delingData.is_deling ? (
                                                 <span className="text-green-600 font-semibold">是</span>
                                               ) : (
@@ -1832,15 +1970,11 @@ export default function BaziPage() {
                                             </td>
                                           </tr>
                                           <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">判定规则</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.rule_text || "-"}</td>
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-600">
+                                              {delingData.rule_text || delingData.ruleset_id || "-"}
+                                            </td>
                                           </tr>
-                                          {delingData.ruleset_id && (
-                                            <tr className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则集</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-xs text-gray-600">{delingData.ruleset_id}</td>
-                                            </tr>
-                                          )}
                                         </tbody>
                                       </table>
                                     </div>
@@ -1852,17 +1986,8 @@ export default function BaziPage() {
                                     <h4 className="text-sm font-semibold text-gray-700 mb-3">根气表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
-                                        <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">目标天干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">总分</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">等级</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">根数</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">最佳根</th>
-                                          </tr>
-                                        </thead>
                                         <tbody>
-                                          {rootqiData.summaries.map((item: any, idx: number) => {
+                                          {(() => {
                                             const pillarNames: Record<string, string> = {
                                               Y: "年",
                                               M: "月",
@@ -1876,24 +2001,61 @@ export default function BaziPage() {
                                               STRONG: "强根",
                                               UNKNOWN: "未知",
                                             };
-                                            return (
-                                              <tr key={idx} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">
-                                                  {item.target_stem}（{pillarNames[item.target_pillar] || item.target_pillar}）
-                                                </td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
-                                                  {typeof item.total_root_score === 'number' ? item.total_root_score.toFixed(4) : parseFloat(String(item.total_root_score)).toFixed(4)}
-                                                </td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
-                                                  {levelNames[item.root_level] || item.root_level}
-                                                </td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.root_count}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
-                                                  {item.best_root_branch ? `${item.best_root_branch}(${pillarNames[item.best_root_pillar] || item.best_root_pillar})` : "-"}
-                                                </td>
-                                              </tr>
+                                            const summaries = rootqiData.summaries || [];
+                                            const totalRoots = summaries.reduce(
+                                              (sum: number, item: any) => sum + (item.root_count || 0),
+                                              0
                                             );
-                                          })}
+                                            const best = summaries.reduce(
+                                              (acc: any, item: any) => {
+                                                const score = typeof item.total_root_score === "number"
+                                                  ? item.total_root_score
+                                                  : parseFloat(String(item.total_root_score || 0));
+                                                return score > acc.score ? { item, score } : acc;
+                                              },
+                                              { item: null, score: -1 }
+                                            );
+                                            const bestItem = best.item;
+                                            const targetLabel = bestItem
+                                              ? `${bestItem.target_stem}（${pillarNames[bestItem.target_pillar] || bestItem.target_pillar}）`
+                                              : "-";
+                                            const bestScore = bestItem
+                                              ? typeof bestItem.total_root_score === "number"
+                                                ? bestItem.total_root_score.toFixed(4)
+                                                : parseFloat(String(bestItem.total_root_score)).toFixed(4)
+                                              : "-";
+                                            const bestLevel = bestItem ? levelNames[bestItem.root_level] || bestItem.root_level : "-";
+                                            const bestRoot = bestItem?.best_root_branch
+                                              ? `${bestItem.best_root_branch}(${pillarNames[bestItem.best_root_pillar] || bestItem.best_root_pillar})`
+                                              : "-";
+
+                                            return (
+                                              <>
+                                                <tr className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">目标天干</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">
+                                                    {targetLabel}
+                                                  </td>
+                                                </tr>
+                                                <tr className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总根数</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{totalRoots}</td>
+                                                </tr>
+                                                <tr className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最高根分</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestScore}</td>
+                                                </tr>
+                                                <tr className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最高等级</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestLevel}</td>
+                                                </tr>
+                                                <tr className="hover:bg-gray-50">
+                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最佳根</td>
+                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestRoot}</td>
+                                                </tr>
+                                              </>
+                                            );
+                                          })()}
                                         </tbody>
                                       </table>
                                     </div>
@@ -2063,9 +2225,501 @@ export default function BaziPage() {
                                         <tr className="hover:bg-gray-50">
                                           <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
                                           <td className="border border-gray-300 px-3 py-2 text-center font-semibold" colSpan={3}>
-                                            {step.result.han_zao.summary.final_tendency || "-"}
+                                            {getTendencyChinese(step.result.han_zao.summary.final_tendency)}
                                           </td>
                                         </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {step.step === 6 && step.result?.structure && (() => {
+                            const structure = step.result.structure;
+                            const summary = structure.summary || {};
+                            return (
+                              <div className="mt-4 space-y-4">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">格局摘要</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <tbody>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">主格局</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {structure.primary_pattern || "-"}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">清纯/破格</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {structure.purity || "-"}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">清纯分</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {summary.purity_score ?? "-"}
+                                            </td>
+                                          </tr>
+                                          <tr className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">破格等级</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {summary.break_level || "-"}
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">破格点</h4>
+                                    <div className="text-sm text-gray-700">
+                                      {structure.breakers?.length ? structure.breakers.join("，") : "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                                {Array.isArray(structure.candidates) && structure.candidates.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">候选格局</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">格局</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">核心十神</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">置信度</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {structure.candidates.map((c: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                                {c.pattern_code || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {c.core_tenshen || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {typeof c.score === "number" ? c.score.toFixed(1) : c.score ?? "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {typeof c.confidence === "number" ? c.confidence.toFixed(2) : c.confidence ?? "-"}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                                {Array.isArray(structure.formations) && structure.formations.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">成局列表</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">类型</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">局名</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">状态</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {structure.formations.map((f: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                                {f.formation_type || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {f.formation_code || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {f.status || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {typeof f.score === "number" ? f.score.toFixed(1) : f.score ?? "-"}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          {step.step === 7 && step.result?.useful_gods && (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">用神/喜神/忌神</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">用神</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.useful_gods.yong_shen?.element || "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">喜神</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.useful_gods.xi_shen?.length
+                                              ? step.result.useful_gods.xi_shen.map((x: any) => x.element).join("，")
+                                              : "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">忌神</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.useful_gods.ji_shen?.length
+                                              ? step.result.useful_gods.ji_shen.map((x: any) => x.element).join("，")
+                                              : "-"}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">取用理由</h4>
+                                  <div className="space-y-2 text-sm text-gray-700">
+                                    <div>
+                                      <span className="text-xs text-gray-500">用神：</span>
+                                      {step.result.useful_gods.yong_shen?.why || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">喜神：</span>
+                                      {step.result.useful_gods.xi_shen?.length
+                                        ? step.result.useful_gods.xi_shen.map((x: any) => x.why).join("，")
+                                        : "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">忌神：</span>
+                                      {step.result.useful_gods.ji_shen?.length
+                                        ? step.result.useful_gods.ji_shen.map((x: any) => x.why).join("，")
+                                        : "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {step.step === 8 && step.result?.consistency_check && (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">自洽评分</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">评分</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.consistency_check.consistency_score ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.consistency_check.self_consistency || "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">病标签</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.consistency_check.disease_tags?.length
+                                              ? step.result.consistency_check.disease_tags.join("，")
+                                              : "-"}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">药与风险</h4>
+                                  <div className="space-y-2 text-sm text-gray-700">
+                                    <div>
+                                      <span className="text-xs text-gray-500">用神：</span>
+                                      {step.result.consistency_check.remedy_candidates?.primary_yongshen || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">调候：</span>
+                                      {step.result.consistency_check.remedy_candidates?.tiao_hou || "-"}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">问题：</span>
+                                      {step.result.consistency_check.risk_points?.length
+                                        ? step.result.consistency_check.risk_points.join("，")
+                                        : "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              {Array.isArray(step.result.consistency_check.issues) &&
+                                step.result.consistency_check.issues.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">问题明细</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">类型</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">等级</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {step.result.consistency_check.issues.map((i: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                                {i.issue_type || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {i.severity || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2">
+                                                {i.message || "-"}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                          {step.step === 9 && step.result?.tenshen_profile_static && (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">十神画像摘要</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">主导十神</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.top_tenshen?.length
+                                              ? step.result.tenshen_profile_static.top_tenshen.join("，")
+                                              : "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">置信度</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.confidence ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">证据条数</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.evidence_count ?? "-"}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">六类占比</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">财</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.category_ratio?.财 ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">官杀</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.category_ratio?.官杀 ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">印</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.category_ratio?.印 ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">食伤</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.category_ratio?.食伤 ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">比劫</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.tenshen_profile_static.category_ratio?.比劫 ?? "-"}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                              {Array.isArray(step.result.tenshen_profile_static.items) &&
+                                step.result.tenshen_profile_static.items.length > 0 && (
+                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">十神明细</h4>
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full border-collapse text-sm">
+                                        <thead>
+                                          <tr className="bg-gray-50">
+                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">十神</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">出现数</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
+                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">排名</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {step.result.tenshen_profile_static.items.map((item: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                                {item.tenshen_code || "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {item.count_total ?? "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {typeof item.score_total === "number"
+                                                  ? item.score_total.toFixed(2)
+                                                  : item.score_total ?? "-"}
+                                              </td>
+                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                                {item.rank_no ?? "-"}
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                          {step.step === 10 && step.result?.dayun && (
+                            <div className="mt-4 space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">起运信息</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <tbody>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">顺逆</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {getDayunDirectionLabel(step.result.dayun.meta?.direction)}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运年龄</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.dayun.meta?.start_age ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运年份</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.dayun.meta?.start_year ?? "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">目标节气</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.dayun.meta?.target_jieqi_name || "-"}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">节气时间</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {formatDateTime(step.result.dayun.meta?.target_jieqi_datetime)}
+                                          </td>
+                                        </tr>
+                                        <tr className="hover:bg-gray-50">
+                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运天数</td>
+                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                            {step.result.dayun.meta?.diff_days ?? "-"}
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">规则摘要</h4>
+                                  <div className="space-y-2 text-sm text-gray-700">
+                                    <div>
+                                      <span className="text-xs text-gray-500">年干阴阳：</span>
+                                      {getYinyangChinese(step.result.dayun.meta?.year_stem_yinyang)}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">性别：</span>
+                                      {getGenderChinese(step.result.dayun.meta?.gender)}
+                                    </div>
+                                    <div>
+                                      <span className="text-xs text-gray-500">规则版本：</span>
+                                      {step.result.dayun.meta?.rule_version || "-"}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              {Array.isArray(step.result.dayun.list) && step.result.dayun.list.length > 0 && (
+                                <div className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">大运列表</h4>
+                                  <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse text-sm">
+                                      <thead>
+                                        <tr className="bg-gray-50">
+                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">运序</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">大运干支</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运年龄</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运年份</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运月份</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">结束年份</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">结束月份</th>
+                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">顺逆</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {step.result.dayun.list.map((item: any) => (
+                                          <tr key={item.seq} className="hover:bg-gray-50">
+                                            <td className="border border-gray-300 px-3 py-2 font-medium">{item.seq}</td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.dayun_pillar || "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.start_age ?? "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.start_year ?? "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.start_month ?? "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.end_year ?? "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {item.end_month ?? "-"}
+                                            </td>
+                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                              {getDayunDirectionLabel(item.direction)}
+                                            </td>
+                                          </tr>
+                                        ))}
                                       </tbody>
                                     </table>
                                   </div>

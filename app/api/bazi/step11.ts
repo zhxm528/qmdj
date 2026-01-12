@@ -31,6 +31,7 @@ export interface Step11Result {
 export function step11(
   step7Result: any
 ): Step11Result {
+  console.log("[step11] input ok:", { step7Result });
   // 生成示例流年数据
   const liuNian = [
     {
@@ -73,6 +74,7 @@ export function step11(
     },
   ];
 
+  console.log("[step11] response ok:", { count: liuNian.length });
   return { liu_nian: liuNian };
 }
 

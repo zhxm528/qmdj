@@ -30,7 +30,7 @@ export const mailConfig = {
   from: process.env.MAIL_FROM || "noreply@cosmodeus.com",
   fromName: process.env.MAIL_FROM_NAME || "缘来运势",
   smtp: {
-    host: process.env.MAIL_SMTP_HOST || "rrow.mxrouting.net",
+    host: process.env.MAIL_SMTP_HOST || "arrow.mxrouting.net",
     port: parseInt(process.env.MAIL_SMTP_PORT || "465", 10),
     secure: process.env.MAIL_SMTP_SECURE === "false" ? false : true,
     auth: {
@@ -38,7 +38,7 @@ export const mailConfig = {
       pass: process.env.MAIL_SMTP_PASS || "suanming",
     },
   },
-  baseUrl: process.env.MAIL_BASE_URL || "http://www.cosmodeus.com",
+  baseUrl: process.env.MAIL_BASE_URL || "https://www.cosmodeus.com",
 };
 
 // 时区配置

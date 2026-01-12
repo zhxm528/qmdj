@@ -2,15 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
 /**
- * 月令强弱/得令API
- * 根据月支和日主五行，查询旺相休囚死状态
- * 数据从数据库表 dict_branch_season, dict_season_element_state, dict_month_branch_override 读取
+ * Yueling strength / Deling API
+ * Reads dict_branch_season / dict_season_element_state / dict_month_branch_override
  */
 
 interface YuelingRequest {
-  month_branch: string; // 月支：子丑寅卯辰巳午未申酉戌亥
-  day_master_element: string; // 日主五行：木火土金水
-  rule_set?: string; // 可选：规则集，默认 'default'
+  month_branch: string;
+  day_master_element: string;
+  rule_set?: string;
 }
 
 interface YuelingResponse {
@@ -19,59 +18,95 @@ interface YuelingResponse {
     month_branch: string;
     season: string;
     day_master_element: string;
-    day_master_state: string; // 日主五行的旺相休囚死状态
-    day_master_state_rank: number; // 日主五行的强弱数值（1-5）
-    all_elements_state: Record<string, { state: string; state_rank: number }>; // 所有五行的旺相休囚死状态
-    is_override: boolean; // 是否使用了覆盖规则
-    override_note?: string; // 覆盖规则说明
+    day_master_state: string;
+    day_master_state_rank: number;
+    all_elements_state: Record<string, { state: string; state_rank: number }>;
+    is_override: boolean;
+    override_note?: string;
   };
   error?: string;
 }
 
-/**
- * 从数据库获取月令强弱信息
- * @param monthBranch 月支
- * @param dayMasterElement 日主五行
- * @param ruleSet 规则集，默认 'default'
- * @returns 月令强弱信息
- */
+const BRANCH_SEASON_FALLBACK: Record<string, string> = {
+  "\u5bc5": "\u6625",
+  "\u536f": "\u6625",
+  "\u8fb0": "\u6625",
+  "\u5df3": "\u590f",
+  "\u5348": "\u590f",
+  "\u672a": "\u590f",
+  "\u7533": "\u79cb",
+  "\u9149": "\u79cb",
+  "\u620c": "\u79cb",
+  "\u4ea5": "\u51ac",
+  "\u5b50": "\u51ac",
+  "\u4e11": "\u51ac",
+};
+
+const SEASON_ELEMENT_FALLBACK: Record<
+  string,
+  Record<string, { state: string; state_rank: number }>
+> = {
+  "\u6625": {
+    "\u6728": { state: "\u65fa", state_rank: 5 },
+    "\u706b": { state: "\u76f8", state_rank: 4 },
+    "\u6c34": { state: "\u4f11", state_rank: 3 },
+    "\u91d1": { state: "\u56da", state_rank: 2 },
+    "\u571f": { state: "\u6b7b", state_rank: 1 },
+  },
+  "\u590f": {
+    "\u706b": { state: "\u65fa", state_rank: 5 },
+    "\u571f": { state: "\u76f8", state_rank: 4 },
+    "\u6728": { state: "\u4f11", state_rank: 3 },
+    "\u6c34": { state: "\u56da", state_rank: 2 },
+    "\u91d1": { state: "\u6b7b", state_rank: 1 },
+  },
+  "\u79cb": {
+    "\u91d1": { state: "\u65fa", state_rank: 5 },
+    "\u6c34": { state: "\u76f8", state_rank: 4 },
+    "\u571f": { state: "\u4f11", state_rank: 3 },
+    "\u706b": { state: "\u56da", state_rank: 2 },
+    "\u6728": { state: "\u6b7b", state_rank: 1 },
+  },
+  "\u51ac": {
+    "\u6c34": { state: "\u65fa", state_rank: 5 },
+    "\u6728": { state: "\u76f8", state_rank: 4 },
+    "\u91d1": { state: "\u4f11", state_rank: 3 },
+    "\u571f": { state: "\u56da", state_rank: 2 },
+    "\u706b": { state: "\u6b7b", state_rank: 1 },
+  },
+};
+
 export async function getYuelingStrengthFromDB(
   monthBranch: string,
   dayMasterElement: string,
   ruleSet: string = "default"
 ): Promise<YuelingResponse["data"]> {
-  console.log("[月令强弱] 查询参数:", { monthBranch, dayMasterElement, ruleSet });
-
-  // 1. 查询月支对应的季节
   const seasonRows = await query<{ branch: string; season: string }>(
     `SELECT branch, season FROM public.dict_branch_season WHERE branch = $1`,
     [monthBranch]
   );
 
-  if (seasonRows.length === 0) {
-    throw new Error(`未找到月支 ${monthBranch} 对应的季节`);
+  const season =
+    seasonRows.length > 0 ? seasonRows[0].season : BRANCH_SEASON_FALLBACK[monthBranch];
+  if (!season) {
+    throw new Error(
+      `\u672a\u627e\u5230\u6708\u652f${monthBranch} \u5bf9\u5e94\u7684\u5b63\u8282`
+    );
   }
 
-  const season = seasonRows[0].season;
-  console.log("[月令强弱] 月支对应季节:", season);
-
-  // 2. 查询季节×五行的旺相休囚死状态（默认规则）
   const stateRows = await query<{
     season: string;
     element: string;
     state: string;
     state_rank: number;
   }>(
-    `SELECT season, element, state, state_rank 
-     FROM public.dict_season_element_state 
-     WHERE rule_set = $1 AND season = $2 
+    `SELECT season, element, state, state_rank
+     FROM public.dict_season_element_state
+     WHERE rule_set = $1 AND season = $2
      ORDER BY state_rank DESC`,
     [ruleSet, season]
   );
 
-  console.log("[月令强弱] 季节×五行状态查询结果:", JSON.stringify(stateRows, null, 2));
-
-  // 3. 查询是否有覆盖规则（优先使用覆盖）
   const overrideRows = await query<{
     branch: string;
     element: string;
@@ -86,13 +121,9 @@ export async function getYuelingStrengthFromDB(
     [ruleSet, monthBranch]
   );
 
-  console.log("[月令强弱] 覆盖规则查询结果:", JSON.stringify(overrideRows, null, 2));
-
-  // 4. 构建所有五行的状态映射（优先使用覆盖规则）
   const allElementsState: Record<string, { state: string; state_rank: number }> = {};
   const overrideMap: Record<string, { state: string; state_rank: number; note: string }> = {};
 
-  // 先处理覆盖规则
   overrideRows.forEach((row) => {
     overrideMap[row.element] = {
       state: row.state,
@@ -101,41 +132,47 @@ export async function getYuelingStrengthFromDB(
     };
   });
 
-  // 再处理默认规则（如果某个五行没有覆盖规则，使用默认规则）
-  stateRows.forEach((row) => {
-    if (overrideMap[row.element]) {
-      // 使用覆盖规则
-      allElementsState[row.element] = {
-        state: overrideMap[row.element].state,
-        state_rank: overrideMap[row.element].state_rank,
-      };
-    } else {
-      // 使用默认规则
-      allElementsState[row.element] = {
-        state: row.state,
-        state_rank: row.state_rank,
-      };
-    }
-  });
+  if (stateRows.length === 0) {
+    const fallback = SEASON_ELEMENT_FALLBACK[season] || {};
+    Object.keys(fallback).forEach((element) => {
+      const base = fallback[element];
+      if (overrideMap[element]) {
+        allElementsState[element] = {
+          state: overrideMap[element].state,
+          state_rank: overrideMap[element].state_rank,
+        };
+      } else {
+        allElementsState[element] = {
+          state: base.state,
+          state_rank: base.state_rank,
+        };
+      }
+    });
+  } else {
+    stateRows.forEach((row) => {
+      if (overrideMap[row.element]) {
+        allElementsState[row.element] = {
+          state: overrideMap[row.element].state,
+          state_rank: overrideMap[row.element].state_rank,
+        };
+      } else {
+        allElementsState[row.element] = {
+          state: row.state,
+          state_rank: row.state_rank,
+        };
+      }
+    });
+  }
 
-  // 5. 获取日主五行的状态
   const dayMasterStateInfo = allElementsState[dayMasterElement];
   if (!dayMasterStateInfo) {
-    throw new Error(`未找到日主五行 ${dayMasterElement} 的旺相休囚死状态`);
+    throw new Error(
+      `\u672a\u627e\u5230\u65e5\u4e3b\u4e94\u884c${dayMasterElement} \u7684\u65fa\u76f8\u4f11\u56da\u6b7b\u72b6\u6001`
+    );
   }
 
   const isOverride = !!overrideMap[dayMasterElement];
   const overrideNote = isOverride ? overrideMap[dayMasterElement].note : undefined;
-
-  console.log("[月令强弱] 最终结果:", {
-    month_branch: monthBranch,
-    season,
-    day_master_element: dayMasterElement,
-    day_master_state: dayMasterStateInfo.state,
-    day_master_state_rank: dayMasterStateInfo.state_rank,
-    all_elements_state: allElementsState,
-    is_override: isOverride,
-  });
 
   return {
     month_branch: monthBranch,
@@ -152,6 +189,7 @@ export async function getYuelingStrengthFromDB(
 export async function GET(req: NextRequest): Promise<NextResponse<YuelingResponse>> {
   try {
     const { searchParams } = new URL(req.url);
+    console.log("[yueling] input ok:", Object.fromEntries(searchParams.entries()));
     const monthBranch = searchParams.get("month_branch");
     const dayMasterElement = searchParams.get("day_master_element");
     const ruleSet = searchParams.get("rule_set") || "default";
@@ -160,25 +198,18 @@ export async function GET(req: NextRequest): Promise<NextResponse<YuelingRespons
       return NextResponse.json(
         {
           success: false,
-          error: "请提供 month_branch 和 day_master_element 参数",
+          error: "\u8bf7\u63d0\u4f9b month_branch \u548c day_master_element \u53c2\u6570",
         },
         { status: 400 }
       );
     }
 
     const data = await getYuelingStrengthFromDB(monthBranch, dayMasterElement, ruleSet);
-
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error("[月令强弱] API错误:", error);
+    console.error("[yueling] GET failed:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "查询月令强弱信息失败",
-      },
+      { success: false, error: error.message || "query failed" },
       { status: 500 }
     );
   }
@@ -187,33 +218,26 @@ export async function GET(req: NextRequest): Promise<NextResponse<YuelingRespons
 export async function POST(req: NextRequest): Promise<NextResponse<YuelingResponse>> {
   try {
     const body = (await req.json()) as YuelingRequest;
+    console.log("[yueling] input ok:", body);
     const { month_branch, day_master_element, rule_set = "default" } = body;
 
     if (!month_branch || !day_master_element) {
       return NextResponse.json(
         {
           success: false,
-          error: "请提供 month_branch 和 day_master_element 参数",
+          error: "\u8bf7\u63d0\u4f9b month_branch \u548c day_master_element \u53c2\u6570",
         },
         { status: 400 }
       );
     }
 
     const data = await getYuelingStrengthFromDB(month_branch, day_master_element, rule_set);
-
-    return NextResponse.json({
-      success: true,
-      data,
-    });
+    return NextResponse.json({ success: true, data });
   } catch (error: any) {
-    console.error("[月令强弱] API错误:", error);
+    console.error("[yueling] POST failed:", error);
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "查询月令强弱信息失败",
-      },
+      { success: false, error: error.message || "query failed" },
       { status: 500 }
     );
   }
 }
-

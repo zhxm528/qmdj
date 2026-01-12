@@ -25,6 +25,7 @@ export function step13(
   step7Result: any,
   step8Result: any
 ): Step13Result {
+  console.log("[step13] input ok:", { step4Result, step6Result, step7Result, step8Result });
   const bodyState = step4Result.strength_judgement.body_state;
   const primaryPattern = step6Result.structure.primary_pattern;
   const mainConflict = step8Result.consistency_check.main_conflict;
@@ -37,6 +38,7 @@ export function step13(
     ...xiShen.map((x: any) => `助${x.element}（${x.ten_god}）`),
   ];
 
+  console.log("[step13] response ok:", { coreStructure, mainConflict });
   return {
     summary: {
       core_structure: coreStructure,
