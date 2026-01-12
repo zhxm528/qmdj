@@ -4,7 +4,7 @@
  */
 
 import { query } from "@/lib/db";
-import { calculateAndSaveRootqi, getRootQiFromDB, RootQiResult } from "./rootqi/route";
+import { calculateAndSaveRootqi, getRootQiFromDB, RootQiResult } from "./rootqi/utils";
 import { calculateAndSaveDezhu, getDezhuFromDB, DezhuResult } from "./dezhu/route";
 import { calculateAndSaveKeXie, getKeXieFromDB, KeXieResult } from "./ke_xie/utils";
 
