@@ -12,6 +12,7 @@ interface HehuaResponse {
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse<HehuaResponse>> {
+  try {
     const { searchParams } = new URL(req.url);
     console.log("[hehua] input ok:", Object.fromEntries(searchParams.entries()));
 
@@ -38,6 +39,7 @@ export async function GET(req: NextRequest): Promise<NextResponse<HehuaResponse>
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse<HehuaResponse>> {
+  try {
     const body = await req.json().catch(() => ({}));
     console.log("[hehua] input ok:", body);
 
