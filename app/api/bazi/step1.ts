@@ -4,7 +4,7 @@
  */
 
 import { extractPillars } from "./fourpillars/utils";
-import { GAN_TO_ELEMENT, GAN_TO_YINYANG, getDayMasterInfo } from "./rizhuwuxing/route";
+import { GAN_TO_ELEMENT, GAN_TO_YINYANG, getDayMasterInfo } from "./rizhuwuxing/utils";
 
 export interface Step1Result {
   day_master: {

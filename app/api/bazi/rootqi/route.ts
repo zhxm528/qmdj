@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, transaction } from "@/lib/db";
 import { getDelingFromDB } from "../deling/route";
-import { getDayMasterElement } from "../rizhuwuxing/route";
+import { getDayMasterElement } from "../rizhuwuxing/utils";
 
 /**
  * 根气明细记录

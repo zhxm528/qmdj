@@ -57,4 +57,3 @@ export function getDayMasterFromPillars(fourPillars: {
   const dayStem = fourPillars.day.charAt(0);
   return getDayMasterInfo(dayStem);
 }
-
