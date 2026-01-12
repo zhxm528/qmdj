@@ -3,7 +3,7 @@
  * 以日干为核心，先明确"我是谁"（后面所有十神、喜忌都围绕它展开）。
  */
 
-import { extractPillars } from "./fourpillars/route";
+import { extractPillars } from "./fourpillars/utils";
 import { GAN_TO_ELEMENT, GAN_TO_YINYANG, getDayMasterInfo } from "./rizhuwuxing/route";
 
 export interface Step1Result {

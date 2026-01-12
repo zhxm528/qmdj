@@ -66,4 +66,3 @@ export function extractPillar(pillar: string): { stem: string; branch: string } 
     branch: pillar.charAt(1),
   };
 }
-
