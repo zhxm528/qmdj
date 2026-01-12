@@ -4,7 +4,7 @@
  * 这一步常用来修正"强弱→取用"时的细节（有些流派把它当核心）。
  */
 
-import { calculateAndSaveHanZao, getHanZaoFromDB, HanZaoResult } from "./han_zao/route";
+import { calculateAndSaveHanZao, getHanZaoFromDB, HanZaoResult } from "./han_zao/utils";
 
 export interface Step5Result {
   climate_balance: {
