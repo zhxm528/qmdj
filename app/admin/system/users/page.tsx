@@ -180,6 +180,31 @@ export default function UsersManagement() {
     loadUsers(stableQueryParams, 1, pageSize);
   }, [stableQueryParams, pageSize, loadUsers]);
 
+  // 处理重发注册邮件
+  const handleResendEmail = async (userId: number) => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/admin/system/users/resend_email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        message.success(result.message || "验证邮件已重新发送");
+      } else {
+        message.error(result.error || "重发邮件失败");
+      }
+    } catch (error) {
+      console.error("重发邮件失败:", error);
+      message.error("重发邮件失败，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 表格列定义
   const columns: ColumnsType<User> = [
     {
@@ -247,6 +272,22 @@ export default function UsersManagement() {
       width: 180,
       render: (date: string) =>
         date ? new Date(date).toLocaleString("zh-CN") : "-",
+    },
+    {
+      title: "操作",
+      key: "action",
+      width: 120,
+      fixed: "right",
+      render: (_: any, record: User) => (
+        <Button
+          type="primary"
+          size="small"
+          onClick={() => handleResendEmail(record.id)}
+          disabled={loading}
+        >
+          注册邮件
+        </Button>
+      ),
     },
   ];
 
