@@ -3,7 +3,7 @@
  * 输出：候选格局 + 成局 + 清纯/破格评分
  */
 
-import { GejuFormation, GejuResult, GejuSummary, saveGejuResult } from "./geju/route";
+import { GejuFormation, GejuResult, GejuSummary, saveGejuResult } from "./geju/utils";
 
 export interface Step6Result {
   structure: {
