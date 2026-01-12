@@ -3,7 +3,7 @@
  * 做一致性校验并落库
  */
 
-import { saveCheckResult, CheckIssue, CheckResultRow } from "./check/route";
+import { saveCheckResult, CheckIssue, CheckResultRow } from "./check/utils";
 
 export interface Step8Result {
   consistency_check: {
