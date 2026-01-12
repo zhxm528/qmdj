@@ -3,7 +3,7 @@
  * 规则：年干阴阳 + 性别判顺逆；节气差 / 3 得起运岁数；月柱为起点推干支。
  */
 
-import { calculateDayun, saveDayunResult } from "./dayun/route";
+import { calculateDayun, saveDayunResult } from "./dayun/utils";
 
 export interface Step10Result {
   dayun: {
