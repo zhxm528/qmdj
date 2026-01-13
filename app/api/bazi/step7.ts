@@ -3,7 +3,7 @@
  * 基于：强弱、格局、调候、合冲刑害的破坏与扶助
  */
 
-import { saveYongshenResult, YongshenResultRow, ElementScoreRow } from "./yongshen/route";
+import { saveYongshenResult, YongshenResultRow, ElementScoreRow } from "./yongshen/utils";
 
 export interface Step7Result {
   useful_gods: {
