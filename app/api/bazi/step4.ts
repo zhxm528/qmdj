@@ -11,7 +11,7 @@
 
 import { calculateAndSaveTonggen, getTonggenFromDB, TonggenResult } from "./tonggen/utils";
 import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/utils";
-import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/route";
+import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/utils";
 
 export interface Step4Result {
   strength_judgement: {
