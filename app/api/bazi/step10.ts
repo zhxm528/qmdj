@@ -58,7 +58,7 @@ export async function step10(
     });
   }
 
-  console.log("[step10] response ok:", { dayunCount: calc.dayun_list?.length || 0 });
+  console.log("[step10] response ok:", { dayunCount: calc.list?.length || 0 });
   return {
     dayun: {
       meta: {
