@@ -290,7 +290,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     let step2Result = step2ResultWithoutShishen;
     if (chartId) {
       try {
-        const { calculateAndSaveShishen } = await import("./shishen/route");
+        const { calculateAndSaveShishen } = await import("./shishen/utils");
         const shishenResult = await calculateAndSaveShishen(chartId, {
           year: fourPillars.year,
           month: fourPillars.month,

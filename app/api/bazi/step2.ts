@@ -687,7 +687,7 @@ export async function step2(
   let shishenData: Step2Result["shishen"] | undefined = undefined;
   if (chartId) {
     try {
-      const { calculateAndSaveShishen } = await import("./shishen/route");
+      const { calculateAndSaveShishen } = await import("./shishen/utils");
       const shishenResult = await calculateAndSaveShishen(chartId, {
         year: fourPillars.year,
         month: fourPillars.month,
