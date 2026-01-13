@@ -14,7 +14,29 @@ import GenderSelector from "@/components/GenderSelector";
 const { Panel } = Collapse;
 
 // 动态导入 ECharts 组件（避免 SSR 问题）
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+const ReactECharts = dynamic(
+  () => import("echarts-for-react").catch((err) => {
+    console.error("Failed to load echarts-for-react:", err);
+    // 返回一个占位组件
+    return {
+      default: () => (
+        <div className="flex items-center justify-center h-full min-h-[400px] text-gray-500">
+          <div className="text-center">
+            <p>图表加载失败，请刷新页面重试</p>
+          </div>
+        </div>
+      ),
+    };
+  }),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex items-center justify-center h-full min-h-[400px]">
+        <Spin size="large" />
+      </div>
+    ),
+  }
+);
 
 // 获取当前日期的格式化字符串 (YYYY-MM-DD)
 function getCurrentDate(): string {
