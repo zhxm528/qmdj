@@ -10,7 +10,7 @@
  */
 
 import { calculateAndSaveTonggen, getTonggenFromDB, TonggenResult } from "./tonggen/utils";
-import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/route";
+import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/utils";
 import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/route";
 
 export interface Step4Result {
