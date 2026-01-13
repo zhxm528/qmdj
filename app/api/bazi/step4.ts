@@ -9,7 +9,7 @@
  * - /api/bazi/deling: 计算并获取得令结果
  */
 
-import { calculateAndSaveTonggen, getTonggenFromDB, TonggenResult } from "./tonggen/route";
+import { calculateAndSaveTonggen, getTonggenFromDB, TonggenResult } from "./tonggen/utils";
 import { calculateAndSaveTougan, getTouganFromDB, TouganResult } from "./tougan/route";
 import { calculateAndSaveDeling, getDelingFromDB, DelingResult } from "./deling/route";
 
