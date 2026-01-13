@@ -60,7 +60,7 @@ export function generateVerificationEmailHtml(
     
     <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
       <p style="font-size: 12px; color: #999; margin: 0;">
-        如有任何疑问，请联系：<a href="mailto:yuanlaiyunshi@126.com" style="color: #F59E0B;">yuanlaiyunshi@126.com</a>
+        如有任何疑问，请联系：<a href="mailto:${mailConfig.supportEmail}" style="color: #F59E0B;">${mailConfig.supportEmail}</a>
       </p>
       <p style="font-size: 11px; color: #ccc; margin-top: 20px;">
         © ${new Date().getFullYear()} 【缘来运势】. 保留所有权利.
@@ -80,7 +80,7 @@ export function generateVerificationEmailText(
   verificationUrl: string
 ): string {
   return `
-您好${userName ? `，${userName}` : ""}，感谢注册【运势】！
+您好${userName ? `，${userName}` : ""}，感谢注册【缘来运势】！
 
 为了确认这是您的邮箱地址，请在 24 小时内点击以下链接完成验证：
 
@@ -90,9 +90,9 @@ ${verificationUrl}
 - 此链接将在 24 小时后失效
 - 如果这不是您本人的操作，请忽略本邮件，您的账号不会被激活
 
-如有任何疑问，请联系：yuanlaiyunshi@126.com
+如有任何疑问，请联系：${mailConfig.supportEmail}
 
-© ${new Date().getFullYear()} 【缘来运势】. 保留所有权利.
+© ${new Date().getFullYear()} 【缘来运势】.【cosmodeus.com】. 保留所有权利.
   `.trim();
 }
 

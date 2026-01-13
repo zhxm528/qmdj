@@ -4,15 +4,20 @@
 cd qmdj
 git pull --ff-only    //从git上拉取最新文件
 npm run build    //重新编译项目
-pm2 restart qmdj --update-env    //用pm2重启项目
+pm2 restart qmdj    //用pm2重启项目
 pm2 logs qmdj  //实时查看控制台日志
+pm2 logs qmdj --lines 1000
 
 pm2 start npm --name qmdj -- run dev     //如果你是用开发模式
 
+
 pm2 list
 pm2 delete next-app
-pm2 start npm --name qmdj -- start
+pm2 start npm --name qmdj -- start   //生产环境模式
 pm2 save
+
+rm -f ~/.pm2/logs/qmdj-*.log   //不想停服务只清某一个应用日志
+pm2 logs qmdj --lines 50   //确认日志已清空
 
 
 rm -rf .next   //删除历史编译文件，可选
@@ -53,7 +58,7 @@ CREATE DATABASE bookdistill
 \c bookdistill
 
 ```
-
+12qw!@QW
 
 ## Windows（推荐用 Windows Terminal / PowerShell）
 ```bash
