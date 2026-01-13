@@ -8,7 +8,7 @@ import {
   TenshenProfileSummaryRow,
   TenshenProfileItemRow,
   TenshenEvidenceRow,
-} from "./tenshen_profile/route";
+} from "./tenshen_profile/utils";
 
 export interface Step9Result {
   tenshen_profile_static: {
