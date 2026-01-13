@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, transaction } from "@/lib/db";
-import { getYuelingStrengthFromDB } from "../yueling/route";
+import { getYuelingStrengthFromDB } from "../yueling/utils";
 import { getDayMasterElement } from "../rizhuwuxing/utils";
 
 /**
