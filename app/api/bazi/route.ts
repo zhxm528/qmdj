@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { query, transaction } from "@/lib/db";
 import { getFourPillars } from "@/lib/ganzhi";
+import { deepseekConfig } from "@/lib/config";
 import { step1, Step1Result } from "./step1";
 import { step2, Step2Result } from "./step2";
 import { step3, Step3Result } from "./step3";
@@ -119,6 +120,81 @@ async function getCachedBaziResult(chartId: string): Promise<any | null> {
   if (!rows || rows.length === 0) return null;
   const row = rows[0];
   return typeof row.result_json === "string" ? JSON.parse(row.result_json) : row.result_json;
+}
+
+/**
+ * 使用 DeepSeek LLM 为「定命主【我】」生成自然语言描述
+ * 规范见：md/bazi/deepseek_llm.md
+ */
+async function generateDayMasterDescription(step1Result: Step1Result): Promise<string | null> {
+  try {
+    const apiUrl = `${deepseekConfig.baseURL}/v1/chat/completions`;
+    const headers = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${deepseekConfig.apiKey}`,
+    };
+
+    const systemMessage =
+      "你是八字命理助手。请根据输入的“定命主”JSON，生成一句到两句中文描述，格式自然、简洁。";
+
+    const userMessage =
+      "以下是“定命主”板块 JSON，请生成描述：\n" +
+      JSON.stringify(step1Result, null, 2);
+
+    const body = {
+      model: deepseekConfig.model || "deepseek-chat",
+      messages: [
+        { role: "system" as const, content: systemMessage },
+        { role: "user" as const, content: userMessage },
+      ],
+      temperature: 0.4,
+      max_tokens: 200,
+    };
+
+    console.log("\n[bazi][step1] DeepSeek API 调用入参:");
+    console.log("URL:", apiUrl);
+    console.log("Body:", JSON.stringify(body, null, 2));
+
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(
+        "[bazi][step1] DeepSeek API 调用失败:",
+        response.status,
+        errorText
+      );
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(
+      "[bazi][step1] DeepSeek API 原始返回:",
+      JSON.stringify(data, null, 2)
+    );
+
+    let text: any = data?.choices?.[0]?.message?.content;
+    if (Array.isArray(text)) {
+      // 兼容 content 为数组的情况
+      text = text.map((chunk: any) => chunk?.text || "").join("");
+    }
+
+    if (!text || typeof text !== "string") {
+      return null;
+    }
+
+    text = text.trim();
+    if (!text) return null;
+
+    return text;
+  } catch (error: any) {
+    console.error("[bazi][step1] 调用 DeepSeek 生成定命主描述失败:", error);
+    return null;
+  }
 }
 
 async function saveCachedBaziResult(chartId: string, resultJson: any): Promise<void> {
@@ -246,6 +322,16 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
 
     // 执行13个步骤
     const step1Result = step1(fourPillars);
+    // 先尝试调用 LLM 为「定命主【我】」生成自然语言描述
+    try {
+      const llmText = await generateDayMasterDescription(step1Result);
+      if (llmText) {
+        (step1Result as any).llm_text = llmText;
+      }
+    } catch (e) {
+      // LLM 失败时忽略错误，回退为本地拼接文案
+      console.error("[bazi][step1] 生成 LLM 描述时发生异常:", e);
+    }
     const dayMaster = step1Result.day_master.stem;
     const dayMasterElement = step1Result.day_master.element;
 

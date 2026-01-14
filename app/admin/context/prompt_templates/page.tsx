@@ -19,7 +19,7 @@ import {
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import ContextTimeline from "@/components/ContextTimeline";
 
@@ -79,6 +79,9 @@ export default function PromptTemplatesPage() {
   const [pageSize, setPageSize] = useState(10);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<PromptTemplate | null>(null);
+  const [copyModalVisible, setCopyModalVisible] = useState(false);
+  const [copyForm] = Form.useForm<{ logical_key: string; project_id?: string }>();
+  const [copyingTemplate, setCopyingTemplate] = useState<PromptTemplate | null>(null);
   const [projects, setProjects] = useState<Array<{ id: string; name: string }>>([]);
   const [versions, setVersions] = useState<Array<{ id: string; version: string; template_id: string }>>([]);
   const [templateList, setTemplateList] = useState<Array<{ id: string; logical_key: string }>>([]);
@@ -178,6 +181,19 @@ export default function PromptTemplatesPage() {
     loadTemplateList();
     loadTemplates(1, 10);
   }, []);
+
+  const handleCopyModalAfterOpenChange = (open: boolean) => {
+    if (!open || !copyingTemplate) return;
+    copyForm.setFieldsValue({
+      logical_key: copyingTemplate.logical_key || "",
+      project_id: copyingTemplate.project_id || undefined,
+    });
+    console.log("[prompt_templates] 复制弹窗打开后设置表单值:", {
+      logical_key: copyingTemplate.logical_key || "",
+      project_id: copyingTemplate.project_id || null,
+    });
+    console.log("[prompt_templates] 复制弹窗当前表单值:", copyForm.getFieldsValue());
+  };
 
   // 处理 Modal 打开后的表单值设置
   const handleModalAfterOpenChange = (open: boolean) => {
@@ -304,6 +320,66 @@ export default function PromptTemplatesPage() {
       console.error("删除失败:", error);
       message.error("删除失败");
     }
+  };
+
+  const handleCopy = (record: PromptTemplate) => {
+    console.log("[prompt_templates] 点击复制按钮，当前行模板:", {
+      id: record.id,
+      logical_key: record.logical_key,
+      project_id: record.project_id,
+    });
+    setCopyingTemplate(record);
+    setCopyModalVisible(true);
+  };
+
+  const handleCopyOk = async () => {
+    try {
+      const values = await copyForm.validateFields();
+      if (!copyingTemplate) return;
+
+      // 构建复制数据，使用原记录的所有字段，但替换逻辑键和项目
+      const payload: any = {
+        logical_key: values.logical_key || copyingTemplate.logical_key,
+        scope: copyingTemplate.scope || null,
+        project_id: values.project_id || copyingTemplate.project_id || null,
+        scene_code: copyingTemplate.scene_code || null,
+        role: copyingTemplate.role || null,
+        language: copyingTemplate.language || "zh-CN",
+        description: copyingTemplate.description || null,
+        current_version_id: copyingTemplate.current_version_id || null,
+        status: copyingTemplate.status || "active",
+        task_type: copyingTemplate.task_type || null,
+        sensitivity: copyingTemplate.sensitivity || null,
+        metadata: copyingTemplate.metadata || null,
+      };
+
+      const res = await fetch("/api/admin/context/prompt_templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        message.success("复制成功");
+        setCopyModalVisible(false);
+        copyForm.resetFields();
+        setCopyingTemplate(null);
+        const filters = queryForm.getFieldsValue();
+        loadTemplates(currentPage, pageSize, filters);
+      } else {
+        message.error(data.error || "复制失败");
+      }
+    } catch (error) {
+      console.error("复制失败:", error);
+      message.error("复制失败");
+    }
+  };
+
+  const handleCopyCancel = () => {
+    setCopyModalVisible(false);
+    copyForm.resetFields();
+    setCopyingTemplate(null);
   };
 
   const handleModalOk = async () => {
@@ -458,7 +534,7 @@ export default function PromptTemplatesPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -468,6 +544,14 @@ export default function PromptTemplatesPage() {
             style={{ padding: 0 }}
           >
             编辑
+          </Button>
+          <Button
+            type="link"
+            icon={<CopyOutlined />}
+            onClick={() => handleCopy(record)}
+            style={{ padding: 0 }}
+          >
+            复制
           </Button>
           <Popconfirm
             title="确定要删除该提示词模板吗？"
@@ -769,10 +853,55 @@ export default function PromptTemplatesPage() {
                 </Form.Item>
               </Form>
             </Modal>
+
+            {/* 复制Modal */}
+            <Modal
+              title="复制提示词模板"
+              open={copyModalVisible}
+              onOk={handleCopyOk}
+              onCancel={handleCopyCancel}
+              afterOpenChange={handleCopyModalAfterOpenChange}
+              maskClosable={false}
+              destroyOnClose
+              width={600}
+              footer={[
+                <Button key="cancel" onClick={handleCopyCancel}>
+                  取消
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleCopyOk}>
+                  确定
+                </Button>,
+              ]}
+            >
+              <Form<{ logical_key: string; project_id?: string }>
+                form={copyForm}
+                layout="vertical"
+                preserve={false}
+              >
+                <Form.Item
+                  label="逻辑键（200个字符以内）"
+                  name="logical_key"
+                  rules={[{ required: true, message: "请输入逻辑键" }]}
+                >
+                  <Input placeholder="如：qmdj.master.analyze_chart" />
+                </Form.Item>
+                <Form.Item label="项目（可选）" name="project_id">
+                  <Select
+                    showSearch
+                    placeholder="请选择项目（可选）"
+                    allowClear
+                    optionFilterProp="children"
+                    options={projects.map((p) => ({
+                      value: p.id,
+                      label: p.name,
+                    }))}
+                  />
+                </Form.Item>
+              </Form>
+            </Modal>
           </div>
         </div>
       </Layout>
     </ConfigProvider>
   );
 }
-

@@ -19,7 +19,7 @@ import {
 } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import type { ColumnsType } from "antd/es/table";
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from "@ant-design/icons";
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, CopyOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import ContextTimeline from "@/components/ContextTimeline";
 
@@ -63,6 +63,9 @@ export default function PromptTemplateVersionsPage() {
   const [pageSize, setPageSize] = useState(10);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingVersion, setEditingVersion] = useState<PromptTemplateVersion | null>(null);
+  const [copyModalVisible, setCopyModalVisible] = useState(false);
+  const [copyForm] = Form.useForm<{ template_id: string }>();
+  const [copyingVersion, setCopyingVersion] = useState<PromptTemplateVersion | null>(null);
   const [templates, setTemplates] = useState<Array<{ id: string; logical_key: string }>>([]);
 
   const loadTemplates = async () => {
@@ -194,6 +197,61 @@ export default function PromptTemplateVersionsPage() {
       status: "active",
     });
     setModalVisible(true);
+  };
+
+  const handleCopy = (record: PromptTemplateVersion) => {
+    setCopyingVersion(record);
+    setCopyModalVisible(true);
+  };
+
+  const handleCopyModalAfterOpenChange = (open: boolean) => {
+    if (!open || !copyingVersion) return;
+    copyForm.setFieldsValue({
+      template_id: copyingVersion.template_id || "",
+    });
+  };
+
+  const handleCopyOk = async () => {
+    try {
+      const values = await copyForm.validateFields();
+      if (!copyingVersion) return;
+
+      const payload: any = {
+        template_id: values.template_id || copyingVersion.template_id,
+        version: copyingVersion.version,
+        template_text: copyingVersion.template_text,
+        config: copyingVersion.config || null,
+        status: copyingVersion.status || "active",
+        changelog: copyingVersion.changelog || null,
+        created_by: copyingVersion.created_by || null,
+      };
+
+      const res = await fetch("/api/admin/context/prompt_template_versions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        message.success("复制成功");
+        setCopyModalVisible(false);
+        copyForm.resetFields();
+        setCopyingVersion(null);
+        const filters = queryForm.getFieldsValue();
+        loadVersions(currentPage, pageSize, filters);
+      } else {
+        message.error(data.error || "复制失败");
+      }
+    } catch (error) {
+      console.error("复制失败:", error);
+      message.error("复制失败");
+    }
+  };
+
+  const handleCopyCancel = () => {
+    setCopyModalVisible(false);
+    copyForm.resetFields();
+    setCopyingVersion(null);
   };
 
   const handleEdit = async (record: PromptTemplateVersion) => {
@@ -393,7 +451,7 @@ export default function PromptTemplateVersionsPage() {
       title: "操作",
       key: "action",
       fixed: "right",
-      width: 160,
+      width: 220,
       render: (_, record) => (
         <Space size="small">
           <Button
@@ -403,6 +461,14 @@ export default function PromptTemplateVersionsPage() {
             style={{ padding: 0 }}
           >
             编辑
+          </Button>
+          <Button
+            type="link"
+            icon={<CopyOutlined />}
+            onClick={() => handleCopy(record)}
+            style={{ padding: 0 }}
+          >
+            复制
           </Button>
           <Popconfirm
             title="确定要删除该模板版本吗？"
@@ -580,6 +646,48 @@ export default function PromptTemplateVersionsPage() {
                 </Form.Item>
                 <Form.Item label="创建者" name="created_by">
                   <Input placeholder="账号/姓名" />
+                </Form.Item>
+              </Form>
+            </Modal>
+
+            {/* 复制Modal */}
+            <Modal
+              title="复制模板版本"
+              open={copyModalVisible}
+              onOk={handleCopyOk}
+              onCancel={handleCopyCancel}
+              afterOpenChange={handleCopyModalAfterOpenChange}
+              maskClosable={false}
+              destroyOnClose
+              width={600}
+              footer={[
+                <Button key="cancel" onClick={handleCopyCancel}>
+                  取消
+                </Button>,
+                <Button key="submit" type="primary" onClick={handleCopyOk}>
+                  确定
+                </Button>,
+              ]}
+            >
+              <Form<{ template_id: string }>
+                form={copyForm}
+                layout="vertical"
+                preserve={false}
+              >
+                <Form.Item
+                  label="模板"
+                  name="template_id"
+                  rules={[{ required: true, message: "请选择模板" }]}
+                >
+                  <Select
+                    showSearch
+                    placeholder="请选择模板"
+                    optionFilterProp="children"
+                    options={templates.map((t) => ({
+                      value: t.id,
+                      label: t.logical_key,
+                    }))}
+                  />
                 </Form.Item>
               </Form>
             </Modal>

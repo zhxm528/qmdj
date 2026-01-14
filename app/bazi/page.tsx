@@ -99,6 +99,70 @@ function getGenderChinese(gender: string | null | undefined): string {
   return map[gender.toUpperCase()] || gender;
 }
 
+// 将破格等级的英文值转换为中文
+function getBreakLevelChinese(level: string | null | undefined): string {
+  if (!level) return "-";
+  const map: Record<string, string> = {
+    NONE: "无破",
+    LIGHT: "轻破",
+    MEDIUM: "中破",
+    HEAVY: "重破",
+  };
+  return map[level.toUpperCase()] || level;
+}
+
+// 将成局状态的英文值转换为中文
+function getFormationStatusChinese(status: string | null | undefined): string {
+  if (!status) return "-";
+  const map: Record<string, string> = {
+    FORMED: "成局",
+    PARTIAL: "半成",
+  };
+  return map[status.toUpperCase()] || status;
+}
+
+// 将自洽结论的英文值转换为中文
+function getSelfConsistencyChinese(consistency: string | null | undefined): string {
+  if (!consistency) return "-";
+  const map: Record<string, string> = {
+    CONSISTENT: "自洽",
+    NEEDS_REVIEW: "需复核",
+  };
+  return map[consistency.toUpperCase()] || consistency;
+}
+
+// 将问题类型的英文值转换为中文
+function getIssueTypeChinese(issueType: string | null | undefined): string {
+  if (!issueType) return "-";
+  const map: Record<string, string> = {
+    REMEDY_MISMATCH: "用神不匹配",
+    CLIMATE_MISMATCH: "调候不匹配",
+  };
+  return map[issueType.toUpperCase()] || issueType;
+}
+
+// 将问题严重程度的英文值转换为中文
+function getSeverityChinese(severity: string | null | undefined): string {
+  if (!severity) return "-";
+  const map: Record<string, string> = {
+    LOW: "低",
+    MEDIUM: "中",
+    HIGH: "高",
+  };
+  return map[severity.toUpperCase()] || severity;
+}
+
+// 将病标签的英文值转换为中文
+function getDiseaseTagChinese(tag: string): string {
+  const map: Record<string, string> = {
+    dm_too_weak: "身弱",
+    dm_too_strong: "身强",
+    cold_need_fire: "需火暖",
+    dry_need_moist: "需水润",
+  };
+  return map[tag] || tag;
+}
+
 function formatDateTime(value: string | null | undefined): string {
   if (!value) return "-";
   const d = new Date(value);
@@ -431,8 +495,15 @@ export default function BaziPage() {
       case 1: {
         // 定日主（命主）
         const { day_master, day_pillar } = result;
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
+        }
+
+        // 回退：使用本地拼接文案
         let text = `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。\n`;
-        
         return text;
       }
       
@@ -615,7 +686,7 @@ export default function BaziPage() {
           text += `清纯分：${summary.purity_score}\n`;
         }
         if (summary.break_level) {
-          text += `破格等级：${summary.break_level}\n`;
+          text += `破格等级：${getBreakLevelChinese(summary.break_level)}\n`;
         }
         if (candidatesText) {
           text += `候选：${candidatesText}\n`;
@@ -646,7 +717,7 @@ export default function BaziPage() {
         if (!check) {
           return "验盘结果为空。";
         }
-        const tags = check.disease_tags?.length ? check.disease_tags.join("，") : "-";
+        const tags = check.disease_tags?.length ? check.disease_tags.map((tag: string) => getDiseaseTagChinese(tag)).join("，") : "-";
         const issues = check.issues?.length ? check.issues.length : 0;
         return (
           `自洽评分：${check.consistency_score}\n` +
@@ -2289,7 +2360,7 @@ export default function BaziPage() {
                                           <tr className="hover:bg-gray-50">
                                             <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">破格等级</td>
                                             <td className="border border-gray-300 px-3 py-2 text-center">
-                                              {summary.break_level || "-"}
+                                              {getBreakLevelChinese(summary.break_level)}
                                             </td>
                                           </tr>
                                         </tbody>
@@ -2361,7 +2432,7 @@ export default function BaziPage() {
                                                 {f.formation_code || "-"}
                                               </td>
                                               <td className="border border-gray-300 px-3 py-2 text-center">
-                                                {f.status || "-"}
+                                                {getFormationStatusChinese(f.status)}
                                               </td>
                                               <td className="border border-gray-300 px-3 py-2 text-center">
                                                 {typeof f.score === "number" ? f.score.toFixed(1) : f.score ?? "-"}
@@ -2451,14 +2522,14 @@ export default function BaziPage() {
                                         <tr className="hover:bg-gray-50">
                                           <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
                                           <td className="border border-gray-300 px-3 py-2 text-center">
-                                            {step.result.consistency_check.self_consistency || "-"}
+                                            {getSelfConsistencyChinese(step.result.consistency_check.self_consistency)}
                                           </td>
                                         </tr>
                                         <tr className="hover:bg-gray-50">
                                           <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">病标签</td>
                                           <td className="border border-gray-300 px-3 py-2 text-center">
                                             {step.result.consistency_check.disease_tags?.length
-                                              ? step.result.consistency_check.disease_tags.join("，")
+                                              ? step.result.consistency_check.disease_tags.map((tag: string) => getDiseaseTagChinese(tag)).join("，")
                                               : "-"}
                                           </td>
                                         </tr>
@@ -2503,10 +2574,10 @@ export default function BaziPage() {
                                           {step.result.consistency_check.issues.map((i: any, idx: number) => (
                                             <tr key={idx} className="hover:bg-gray-50">
                                               <td className="border border-gray-300 px-3 py-2 font-medium">
-                                                {i.issue_type || "-"}
+                                                {getIssueTypeChinese(i.issue_type)}
                                               </td>
                                               <td className="border border-gray-300 px-3 py-2 text-center">
-                                                {i.severity || "-"}
+                                                {getSeverityChinese(i.severity)}
                                               </td>
                                               <td className="border border-gray-300 px-3 py-2">
                                                 {i.message || "-"}
