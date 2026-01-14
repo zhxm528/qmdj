@@ -108,7 +108,11 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <div className="mb-6">
         <span 
-          className="text-5xl font-bold text-amber-600"
+          className={`font-bold text-amber-600 ${
+            plan.name === "黄金会员" 
+              ? "text-5xl" 
+              : "text-4xl"
+          }`}
           style={{ fontFamily: '"PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif', letterSpacing: '0.02em' }}
         >
           {plan.price}

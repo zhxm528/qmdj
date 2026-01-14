@@ -58,7 +58,7 @@ CREATE DATABASE bookdistill
 \c bookdistill
 
 ```
-12qw!@QW
+
 
 ## Windows（推荐用 Windows Terminal / PowerShell）
 ```bash
