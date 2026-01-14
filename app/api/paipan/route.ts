@@ -44,8 +44,8 @@ interface PaipanResponse {
  * 内部调用 API 端点
  */
 async function callInternalAPI(req: NextRequest, endpoint: string, body: any): Promise<any> {
-  // 使用请求的 origin 作为基础 URL
-  const baseUrl = req.nextUrl.origin;
+  // Prefer an explicit internal base URL to avoid HTTPS->HTTP mismatch in production.
+  const baseUrl = process.env.INTERNAL_API_BASE_URL || req.nextUrl.origin;
   const url = `${baseUrl}${endpoint}`;
   
   try {

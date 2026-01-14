@@ -1632,11 +1632,11 @@ export default function HomePage() {
                   className="flex flex-wrap gap-2"
                 >
                   <Radio value="flow.qmdj.kanpan.default">综合</Radio>
-                  <Radio value="flow.qmdj.kanpan.career">事业</Radio>
                   <Radio value="flow.qmdj.kanpan.wealth">财运</Radio>
                   <Radio value="flow.qmdj.kanpan.relationship">感情</Radio>
                   <Radio value="flow.qmdj.kanpan.study">学业</Radio>
                   <Radio value="flow.qmdj.kanpan.health">健康</Radio>
+                  <Radio value="flow.qmdj.kanpan.career">事业</Radio>
                   <Radio value="flow.qmdj.kanpan.lawsuit">官司</Radio>
                 </Radio.Group>
               </div>
