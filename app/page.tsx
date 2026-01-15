@@ -143,13 +143,9 @@ export default function HomePage() {
   
   // AI分析时的轮播提示语
   const loadingMessages = [
-    "我正在认真整理你的情况，请稍等片刻。",
-    "我在这里，正在为你梳理关键点。",
-    "先深呼吸一下，我正在把信息理清，马上给你更清晰的方向。",
-    "我正在仔细分析，不会敷衍你。",
-    "你的问题很重要，我正在认真看，马上回复你。",
-    "我正在把你的感受与重点逐一整理，请稍等。",
-    "我在思考最适合你的建议，马上就好。",
+    "正在认真整理你的情况，请稍等片刻。",
+    "先深呼吸一下，正在把信息理清，马上给你更清晰的方向。",
+    "你的问题很重要，正在认真看，马上回复你。",
   ];
 
   // 从日期字符串解析年月日（使用 useMemo 而不是状态）
@@ -1155,7 +1151,7 @@ export default function HomePage() {
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-white text-center px-6 py-4 bg-black bg-opacity-10 rounded-lg backdrop-blur-sm">
                       <h3 className="text-2xl md:text-3xl font-bold mb-2">缘启天机 来定乾坤</h3>
-                      <p className="text-sm md:text-base">奇门问事定当下 . 四柱八字定运势</p>
+                      <p className="text-sm md:text-base">奇门遁甲问当下 . 四柱八字看运势</p>
                     </div>
                   </div>
                 </div>
@@ -1171,9 +1167,9 @@ export default function HomePage() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-30 rounded-lg backdrop-blur-sm">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">专业服务 精准解答</h3>
-                      <p className="text-sm md:text-base">看清感情走向、掌控人生节奏、抓住关键时机，温柔却坚定地把未来握在自己手里。</p>
+                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-10 rounded-lg backdrop-blur-sm">
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2">精准解答</h3>
+                      <p className="text-sm md:text-base">看清方向 掌控人生 . 抓住时机 把握未来。</p>
                     </div>
                   </div>
                 </div>
@@ -1189,9 +1185,9 @@ export default function HomePage() {
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-50 rounded-lg backdrop-blur-sm">
-                      <h3 className="text-2xl md:text-3xl font-bold mb-2">会员价格计划</h3>
-                      <p className="text-sm md:text-base">从轻柔的陪伴到更深入、更全面的专属解读，把关键问题看清、把心安稳下来，完整的深度方案，会更贴近你。</p>
+                    <div className="text-white text-center px-6 py-4 bg-black bg-opacity-10 rounded-lg backdrop-blur-sm">
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2">会员计划</h3>
+                      <p className="text-sm md:text-base">轻柔的陪伴 到 深入的解读</p>
                     </div>
                   </div>
                 </div>

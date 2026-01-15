@@ -61,9 +61,10 @@ export default function NineGrid({ data }: NineGridProps) {
         }
         const tianQinJiGongText = tianQinOrJiGong.join(" ");
 
+        const cellKey = cell?.id ?? `${palaceNumber}-${idx}`;
         return (
           <div
-            key={cell.id}
+            key={cellKey}
             className="aspect-square bg-white border-2 border-amber-200 rounded-lg p-2"
           >
             {/* 宫标题 */}
@@ -129,4 +130,3 @@ function extractDiGan(content?: string): string {
   const m = content.match(/地盘干[:：]\s*([甲乙丙丁戊己庚辛壬癸])/);
   return m ? m[1] : "";
 }
-

@@ -43,7 +43,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-amber-600">
-              缘来运势
+              缘来
               </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">
@@ -173,7 +173,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm text-gray-400">
-            <p>&copy; 2026 缘来运势. 保留所有权利 All rights reserved.</p>
+            <p>&copy; 2026 缘来. 保留所有权利 All rights reserved.</p>
           </div>
         </div>
       </footer>

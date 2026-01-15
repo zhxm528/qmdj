@@ -4,12 +4,14 @@ import React, { useState } from "react";
 import { Button, ConfigProvider, Card, Spin, Collapse, Tooltip } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import dynamic from "next/dynamic";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import GenderSelector from "@/components/GenderSelector";
+import SidebarDrawer from "@/components/SidebarDrawer";
 
 const { Panel } = Collapse;
 
@@ -179,6 +181,11 @@ interface BaziStep {
 }
 
 export default function BaziPage() {
+  const pathname = usePathname();
+  const isQimenRoute = pathname?.startsWith("/qimen");
+  const isBaziRoute = pathname?.startsWith("/bazi");
+  const [sidebarTab, setSidebarTab] = useState<"ask" | "look">(isBaziRoute ? "look" : "ask");
+  const [activeStepKey, setActiveStepKey] = useState<string>("1");
   const [date, setDate] = useState<string>(getCurrentDate());
   const [hour, setHour] = useState<string>(getCurrentHour());
   const [minute, setMinute] = useState<string>(getCurrentMinute());
@@ -215,6 +222,21 @@ export default function BaziPage() {
   const [dezhuData, setDezhuData] = useState<any | null>(null);
   const [keXieData, setKeXieData] = useState<any | null>(null);
   const visibleSteps = baziSteps.filter((step) => ![11, 12, 13].includes(step.step));
+  const baziTimeline = [
+    { label: "定命主", step: 1 },
+    { label: "月令与季节", step: 3 },
+    { label: "基础盘面", step: 2 },
+    { label: "旺衰强弱", step: 4 },
+    { label: "寒暖燥湿", step: 5 },
+    { label: "格局成局", step: 6 },
+    { label: "用喜神忌神", step: 7 },
+    { label: "验盘", step: 8 },
+    { label: "十神解读", step: 9 },
+    { label: "大运", step: 10 },
+  ];
+
+  const getBaziStepHref = (step: number) =>
+    isBaziRoute ? `#bazi-step-${step}` : `/bazi#bazi-step-${step}`;
 
   const dateParts = date ? date.split("-") : null;
   const year = dateParts && dateParts.length === 3 ? dateParts[0] : "";
@@ -244,6 +266,19 @@ export default function BaziPage() {
       }
     };
     fetchUserInfo();
+  }, []);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const applyHash = () => {
+      const match = window.location.hash.match(/^#bazi-step-(\d+)$/);
+      if (match) {
+        setActiveStepKey(match[1]);
+      }
+    };
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
   }, []);
 
   // 生成八字排盘
@@ -1216,7 +1251,6 @@ export default function BaziPage() {
             {/* 13个步骤结果展示 */}
             {visibleSteps.length > 0 && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">排盘结果</h2>
                 {fourPillars && (
                   <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">四柱信息</h3>
@@ -1240,7 +1274,17 @@ export default function BaziPage() {
                     </div>
                   </div>
                 )}
-                <Collapse defaultActiveKey={["1"]} accordion>
+                <Collapse
+                  accordion
+                  activeKey={activeStepKey}
+                  onChange={(key) => {
+                    if (Array.isArray(key)) {
+                      setActiveStepKey(String(key[0] || ""));
+                    } else {
+                      setActiveStepKey(String(key || ""));
+                    }
+                  }}
+                >
                   {[...visibleSteps].sort((a, b) => {
                     // step 1 始终第一
                     if (a.step === 1) return -1;
@@ -1266,9 +1310,10 @@ export default function BaziPage() {
                             )}
                           </div>
                         }
-                        key={step.step}
+                        key={String(step.step)}
                       >
                         <div className="space-y-4">
+                          <div id={`bazi-step-${step.step}`} className="scroll-mt-24" />
                           {step.step !== 2 && (
                             <div className="bg-gray-50 rounded-lg p-4">
                               <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
@@ -1580,7 +1625,7 @@ export default function BaziPage() {
                               <h4 className="text-sm font-semibold text-gray-700 mb-3">合冲刑害破 + 干合干克</h4>
                               <div className="space-y-6">
                                 {/* 四个表格一行显示：五合、六合、三合、三会 */}
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                   {/* 五合（天干五合） */}
                                   <div>
                                     <h5 className="text-xs font-semibold text-gray-600 mb-2">五合（天干五合）</h5>
@@ -1685,7 +1730,7 @@ export default function BaziPage() {
                                 </div>
                                 
                                 {/* 四个表格一行显示：冲、刑、害、破 */}
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="grid grid-cols-1 gap-4">
                                   {/* 冲（地支六冲） */}
                                   <div>
                                     <h5 className="text-xs font-semibold text-gray-600 mb-2">冲（地支六冲）</h5>
@@ -1799,7 +1844,7 @@ export default function BaziPage() {
                                 {/* 干克（天干相克） */}
                                 <div>
                                   <h5 className="text-xs font-semibold text-gray-600 mb-2">干克（天干相克）</h5>
-                                  <div className="grid grid-cols-2 gap-4">
+                                  <div className="grid grid-cols-1 gap-4">
                                     <div>
                                       <div className="text-xs text-gray-500 mb-1">天干五行映射：</div>
                                       <div className="overflow-x-auto">
@@ -2855,6 +2900,88 @@ export default function BaziPage() {
             )}
           </div>
         </div>
+        <SidebarDrawer title="瞬间移动">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => setSidebarTab("ask")}
+                className={`rounded-md py-2 text-sm transition-colors ${
+                  sidebarTab === "ask"
+                    ? "bg-amber-600 text-white"
+                    : "text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                问问
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab("look")}
+                className={`rounded-md py-2 text-sm transition-colors ${
+                  sidebarTab === "look"
+                    ? "bg-amber-600 text-white"
+                    : "text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                看看
+              </button>
+            </div>
+            {sidebarTab === "ask" ? (
+              <div className="text-sm">
+                <a href="/qimen#qimen-date" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  起盘
+                </a>
+                <a href="/qimen#qimen-question" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  问事
+                </a>
+                <a href="/qimen#qimen-history" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  历史
+                </a>
+              </div>
+            ) : (
+              <div className="text-sm">
+                {baziTimeline.map((item) => (
+                  <a
+                    key={item.step}
+                    href={getBaziStepHref(item.step)}
+                    onClick={() => {
+                      if (isBaziRoute) {
+                        setActiveStepKey(String(item.step));
+                      }
+                    }}
+                    className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800"
+                  >
+                    <span className="flex w-4 flex-col items-center">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="relative mt-2 h-4 w-px bg-amber-200">
+                        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                      </span>
+                    </span>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </SidebarDrawer>
       </Layout>
     </ConfigProvider>
   );

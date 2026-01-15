@@ -28,7 +28,7 @@ export const dbConfig = {
 // 邮件配置
 export const mailConfig = {
   from: process.env.MAIL_FROM || "noreply@cosmodeus.com",
-  fromName: process.env.MAIL_FROM_NAME || "缘来运势",
+  fromName: process.env.MAIL_FROM_NAME || "缘来",
   supportEmail: process.env.MAIL_SUPPORT_EMAIL || "support@cosmodeus.com",
   smtp: {
     host: process.env.MAIL_SMTP_HOST || "arrow.mxrouting.net",

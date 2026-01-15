@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, startTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import Layout from "@/components/Layout";
@@ -9,6 +9,7 @@ import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import NineGrid from "@/components/NineGrid";
+import SidebarDrawer from "@/components/SidebarDrawer";
 import { getFourPillars } from "@/lib/ganzhi";
 import { Button, ConfigProvider, Input, Radio, Dropdown, MenuProps, Tooltip, Modal } from "antd";
 import {
@@ -95,6 +96,10 @@ function getCurrentMinute(): string {
 
 export default function HomePage() {
   const router = useRouter();
+  const pathname = usePathname();
+  const isQimenRoute = pathname?.startsWith("/qimen");
+  const isBaziRoute = pathname?.startsWith("/bazi");
+  const [sidebarTab, setSidebarTab] = useState<"ask" | "look">(isBaziRoute ? "look" : "ask");
   const [date, setDate] = useState(getCurrentDate());
   const [hour, setHour] = useState(getCurrentHour());
   const [minute, setMinute] = useState(getCurrentMinute());
@@ -140,6 +145,18 @@ export default function HomePage() {
   const [loadingMessageIndex, setLoadingMessageIndex] = useState<number>(0); // 加载提示语索引
   const [showFavoritesOnly, setShowFavoritesOnly] = useState<boolean>(false); // 是否只显示收藏的对话
   const [favoriteConversationIds, setFavoriteConversationIds] = useState<Set<number>>(new Set()); // 收藏的对话ID集合
+  const baziTimeline = [
+    { label: "定命主", step: 1 },
+    { label: "月令与季节", step: 3 },
+    { label: "基础盘面", step: 2 },
+    { label: "旺衰强弱", step: 4 },
+    { label: "寒暖燥湿", step: 5 },
+    { label: "格局成局", step: 6 },
+    { label: "用喜神忌神", step: 7 },
+    { label: "验盘", step: 8 },
+    { label: "十神解读", step: 9 },
+    { label: "大运", step: 10 },
+  ];
   
   // AI分析时的轮播提示语
   const loadingMessages = [
@@ -1132,7 +1149,7 @@ export default function HomePage() {
         <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* 日期选择框和小时选择框 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-date">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <DateSelector
                 key={`date-${restoreKey}`}
@@ -1179,7 +1196,7 @@ export default function HomePage() {
             </div>
 
             {/* 排盘按钮 */}
-            <div className="mt-6 flex justify-center">
+            <div className="mt-6 flex justify-center" id="qimen-paipan">
               <Button
                 type="primary"
                 size="large"
@@ -1260,7 +1277,7 @@ export default function HomePage() {
           )}
 
           {/* 看盘分析结果区域（左右布局） */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-history">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* 左侧：对话标题列表 */}
               <div className="lg:col-span-1 border-r border-gray-200 pr-6">
@@ -1290,7 +1307,7 @@ export default function HomePage() {
 - 你更希望得到：方向、时机、还是具体做法`
                       } 
                       placement="top"
-                      overlayInnerStyle={{ width: '400px', whiteSpace: 'pre-line' }}
+                      styles={{ body: { width: "400px", whiteSpace: "pre-line" } }}
                     >
                       <Button
                         size="small"
@@ -1587,7 +1604,7 @@ export default function HomePage() {
           </div>
 
           {/* 问事输入框和看盘按钮 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-question">
             <div className="w-full">
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
@@ -1660,7 +1677,7 @@ export default function HomePage() {
                     <Tooltip 
                       title={tooltipTitle} 
                       placement="top"
-                      overlayInnerStyle={{ width: '300px' }}
+                      styles={{ body: { width: "300px" } }}
                     >
                       <Button
                         type="primary"
@@ -1885,8 +1902,85 @@ export default function HomePage() {
               )}
             </div>
           )}
+          </div>
         </div>
-      </div>
+        <SidebarDrawer title="瞬间移动">
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+              <button
+                type="button"
+                onClick={() => setSidebarTab("ask")}
+                className={`rounded-md py-2 text-sm transition-colors ${
+                  sidebarTab === "ask"
+                    ? "bg-amber-600 text-white"
+                    : "text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                问问
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidebarTab("look")}
+                className={`rounded-md py-2 text-sm transition-colors ${
+                  sidebarTab === "look"
+                    ? "bg-amber-600 text-white"
+                    : "text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                看看
+              </button>
+            </div>
+            {sidebarTab === "ask" ? (
+              <div className="text-sm">
+                <a href="#qimen-date" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  起盘
+                </a>
+                <a href="#qimen-question" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  问事
+                </a>
+                <a href="#qimen-history" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                  <span className="flex w-4 flex-col items-center">
+                    <span className="h-2 w-2 rounded-full bg-amber-500" />
+                    <span className="relative mt-2 h-4 w-px bg-amber-200">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    </span>
+                  </span>
+                  历史
+                </a>
+              </div>
+            ) : (
+              <div className="text-sm">
+                {baziTimeline.map((item) => (
+                  <a
+                    key={item.step}
+                    href={`/bazi#bazi-step-${item.step}`}
+                    className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800"
+                  >
+                    <span className="flex w-4 flex-col items-center">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="relative mt-2 h-4 w-px bg-amber-200">
+                        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                      </span>
+                    </span>
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        </SidebarDrawer>
       </Layout>
     </ConfigProvider>
   );
