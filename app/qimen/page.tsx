@@ -1276,13 +1276,134 @@ export default function HomePage() {
             </div>
           )}
 
+          {/* 问事输入框和看盘按钮 */}
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-question">
+            <div className="w-full">
+              <div className="mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    问事
+                    {!isLoggedIn && (
+                      <span className="ml-2 text-xs text-amber-600 font-normal">
+                        （先登录 再问事）
+                      </span>
+                    )}
+                  </label>
+                  <span className="text-xs text-gray-500">
+                    {question.length}/200
+                  </span>
+                </div>
+                <Input
+                  ref={questionInputRef}
+                  value={question}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 200) {
+                      setQuestion(e.target.value);
+                    }
+                  }}
+                  placeholder="请输入要问的事情"
+                  size="large"
+                  className="w-full"
+                  style={{ height: '48px' }}
+                  maxLength={200}
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                 用你最舒服的方式写，别担心措辞，只需要说重点，简短也没关系，200 字以内我们先从这里开始。。
+                </p>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  问哪方面
+                </label>
+                <Radio.Group
+                  value={sceneCode}
+                  onChange={(e) => setSceneCode(e.target.value)}
+                  size="large"
+                  className="flex flex-wrap gap-2"
+                >
+                  <Radio value="flow.qmdj.kanpan.default">综合</Radio>
+                  <Radio value="flow.qmdj.kanpan.wealth">财运</Radio>
+                  <Radio value="flow.qmdj.kanpan.relationship">感情</Radio>
+                  <Radio value="flow.qmdj.kanpan.study">学业</Radio>
+                  <Radio value="flow.qmdj.kanpan.health">健康</Radio>
+                  <Radio value="flow.qmdj.kanpan.career">事业</Radio>
+                  <Radio value="flow.qmdj.kanpan.lawsuit">官司</Radio>
+                </Radio.Group>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-center">
+              {(() => {
+                const isButtonDisabled = !paipanResult || !question || question.trim().length === 0 || !isLoggedIn;
+                const tooltipTitle = isButtonDisabled && !isLoggedIn ? (
+                  <div>
+                    <div className="mb-2 text-left">我已经准备好为你看盘了，登录后即可开始，还能一键查看历史盘与收藏哦。</div>
+                    <div className="text-center">
+                      <Link href="/login" className="text-blue-400 hover:text-blue-300 underline">
+                        登录
+                      </Link>
+                    </div>
+                  </div>
+                ) : "";
+                
+                return (
+                  <div className="flex items-center gap-3">
+                    <Tooltip 
+                      title={tooltipTitle} 
+                      placement="top"
+                      styles={{ body: { width: "300px" } }}
+                    >
+                      <Button
+                        type="primary"
+                        size="large"
+                        onClick={() => {
+                          if (isButtonDisabled && isLoggedIn) {
+                            Modal.info({
+                              title: '使用流程',
+                              content: (
+                                <div className="space-y-2 mt-4">
+                                  <p>1. 选择日期和时间</p>
+                                  <p>2. 点击&ldquo;起局排盘&rdquo;按钮完成排盘</p>
+                                  <p>3. 在&ldquo;问事&rdquo;输入框中输入要问的事情</p>
+                                  <p>4. 点击&ldquo;看盘&rdquo;按钮进行分析</p>
+                                </div>
+                              ),
+                              okText: '我知道了',
+                              centered: true,
+                            });
+                          } else if (!isButtonDisabled) {
+                            handleKanpan();
+                          }
+                        }}
+                        loading={aiKanpanLoading}
+                        className={`bg-blue-600 hover:bg-blue-700 ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        style={isButtonDisabled ? { pointerEvents: 'auto' } : {}}
+                      >
+                        看盘
+                      </Button>
+                    </Tooltip>
+                    {!isLoggedIn && (
+                      <Button
+                        type="default"
+                        size="large"
+                        onClick={() => router.push("/login")}
+                        className="border-amber-600 text-amber-600 hover:bg-amber-50"
+                      >
+                        登录
+                      </Button>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+
           {/* 看盘分析结果区域（左右布局） */}
           <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-history">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* 左侧：对话标题列表 */}
               <div className="lg:col-span-1 border-r border-gray-200 pr-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-bold text-gray-900">对话历史</h2>
+                  <h2 className="text-sm font-medium text-gray-700">对话历史</h2>
                   <div className="flex items-center gap-2">
                     <Tooltip 
                       title={!isLoggedIn ? "请先登录才能查看收藏" : (showFavoritesOnly ? "显示所有对话" : "只显示收藏的对话")} 
@@ -1600,127 +1721,6 @@ export default function HomePage() {
                     )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* 问事输入框和看盘按钮 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-question">
-            <div className="w-full">
-              <div className="mb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    问事：
-                    {!isLoggedIn && (
-                      <span className="ml-2 text-xs text-amber-600 font-normal">
-                        （先登录 再问事）
-                      </span>
-                    )}
-                  </label>
-                  <span className="text-xs text-gray-500">
-                    {question.length}/200
-                  </span>
-                </div>
-                <Input
-                  ref={questionInputRef}
-                  value={question}
-                  onChange={(e) => {
-                    if (e.target.value.length <= 200) {
-                      setQuestion(e.target.value);
-                    }
-                  }}
-                  placeholder="请输入要问的事情"
-                  size="large"
-                  className="w-full"
-                  style={{ height: '48px' }}
-                  maxLength={200}
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                 用你最舒服的方式写，别担心措辞，只需要说重点，简短也没关系，200 字以内我们先从这里开始。。
-                </p>
-              </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  问哪方面：
-                </label>
-                <Radio.Group
-                  value={sceneCode}
-                  onChange={(e) => setSceneCode(e.target.value)}
-                  size="large"
-                  className="flex flex-wrap gap-2"
-                >
-                  <Radio value="flow.qmdj.kanpan.default">综合</Radio>
-                  <Radio value="flow.qmdj.kanpan.wealth">财运</Radio>
-                  <Radio value="flow.qmdj.kanpan.relationship">感情</Radio>
-                  <Radio value="flow.qmdj.kanpan.study">学业</Radio>
-                  <Radio value="flow.qmdj.kanpan.health">健康</Radio>
-                  <Radio value="flow.qmdj.kanpan.career">事业</Radio>
-                  <Radio value="flow.qmdj.kanpan.lawsuit">官司</Radio>
-                </Radio.Group>
-              </div>
-            </div>
-            <div className="mt-4 flex justify-center">
-              {(() => {
-                const isButtonDisabled = !paipanResult || !question || question.trim().length === 0 || !isLoggedIn;
-                const tooltipTitle = isButtonDisabled && !isLoggedIn ? (
-                  <div>
-                    <div className="mb-2 text-left">我已经准备好为你看盘了，登录后即可开始，还能一键查看历史盘与收藏哦。</div>
-                    <div className="text-center">
-                      <Link href="/login" className="text-blue-400 hover:text-blue-300 underline">
-                        登录
-                      </Link>
-                    </div>
-                  </div>
-                ) : "";
-                
-                return (
-                  <div className="flex items-center gap-3">
-                    <Tooltip 
-                      title={tooltipTitle} 
-                      placement="top"
-                      styles={{ body: { width: "300px" } }}
-                    >
-                      <Button
-                        type="primary"
-                        size="large"
-                        onClick={() => {
-                          if (isButtonDisabled && isLoggedIn) {
-                            Modal.info({
-                              title: '使用流程',
-                              content: (
-                                <div className="space-y-2 mt-4">
-                                  <p>1. 选择日期和时间</p>
-                                  <p>2. 点击&ldquo;起局排盘&rdquo;按钮完成排盘</p>
-                                  <p>3. 在&ldquo;问事&rdquo;输入框中输入要问的事情</p>
-                                  <p>4. 点击&ldquo;看盘&rdquo;按钮进行分析</p>
-                                </div>
-                              ),
-                              okText: '我知道了',
-                              centered: true,
-                            });
-                          } else if (!isButtonDisabled) {
-                            handleKanpan();
-                          }
-                        }}
-                        loading={aiKanpanLoading}
-                        className={`bg-blue-600 hover:bg-blue-700 ${isButtonDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        style={isButtonDisabled ? { pointerEvents: 'auto' } : {}}
-                      >
-                        看盘
-                      </Button>
-                    </Tooltip>
-                    {!isLoggedIn && (
-                      <Button
-                        type="default"
-                        size="large"
-                        onClick={() => router.push("/login")}
-                        className="border-amber-600 text-amber-600 hover:bg-amber-50"
-                      >
-                        登录
-                      </Button>
-                    )}
-                  </div>
-                );
-              })()}
             </div>
           </div>
 
