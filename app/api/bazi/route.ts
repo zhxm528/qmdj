@@ -135,10 +135,10 @@ async function generateYuelingDescription(step3Result: Step3Result): Promise<str
     };
 
     const systemMessage =
-      "你是八字命理助手。请根据输入的"月令与季节"JSON，生成一句到两句中文描述，格式自然、简洁。";
+      "你是八字命理助手。请根据输入的\"月令与季节\"JSON，生成一句到两句中文描述，格式自然、简洁。";
 
     const userMessage =
-      "以下是"月令与季节"板块 JSON，请生成描述：\n" +
+      "以下是\"月令与季节\"板块 JSON，请生成描述：\n" +
       JSON.stringify(step3Result, null, 2);
 
     const body = {
