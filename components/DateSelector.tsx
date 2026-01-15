@@ -79,7 +79,7 @@ export default function DateSelector({
       <label className="block text-sm font-medium text-gray-700 mb-2">
         日期 <span className="text-red-500">{required && "*"}</span>
       </label>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {/* 年份选择 */}
         <YearPicker value={year} onChange={setYear} required={required} />
 
@@ -163,4 +163,3 @@ function getDaysInMonth(year: number, month: number): number {
   if (!year || !month) return 31;
   return new Date(year, month, 0).getDate();
 }
-

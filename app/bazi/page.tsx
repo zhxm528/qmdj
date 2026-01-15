@@ -655,7 +655,14 @@ export default function BaziPage() {
       
       case 3: {
         // 月令与季节
-        // 月令信息、月令强弱/得令、所有五行旺相休囚死状态已通过表格和雷达图展示，不再显示重复的文字描述
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
+        }
+
+        // 回退：使用本地拼接文案
         return "月令与季节分析结果已通过下方表格和图表展示。";
       }
       
