@@ -117,8 +117,11 @@ export default function DateSelector({
           </button>
           
           {isDayDropdownOpen && year && month && (
-            <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto" style={{ minWidth: '600px' }}>
-              <div className="grid grid-cols-7 gap-2">
+            <div
+              className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
+              style={{ minWidth: "0", maxWidth: "90vw", width: "100%" }}
+            >
+              <div className="grid grid-cols-4 gap-2">
                 {Array.from(
                   { length: getDaysInMonth(parseInt(year), parseInt(month)) },
                   (_, i) => i + 1

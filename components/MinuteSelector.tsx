@@ -70,8 +70,11 @@ export default function MinuteSelector({
       </button>
       
       {isDropdownOpen && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto" style={{ minWidth: '400px' }}>
-          <div className="grid grid-cols-6 gap-2">
+        <div
+          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
+          style={{ minWidth: "0", maxWidth: "90vw", width: "100%" }}
+        >
+          <div className="grid grid-cols-4 gap-2">
             {Array.from({ length: 60 }, (_, i) => i).map((m) => {
               const minuteValue = m.toString().padStart(2, '0');
               return (

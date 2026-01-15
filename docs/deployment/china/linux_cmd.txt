@@ -1,5 +1,6 @@
 
 ## 跟新git并重启服务
+./deploy_auto.sh
 ```bash
 cd qmdj
 git pull --ff-only    //从git上拉取最新文件
@@ -132,6 +133,7 @@ DB_CONNECTION_TIMEOUT=2000
 TIMEZONE=Asia/Shanghai
 UTC_OFFSET=8
 INTERNAL_API_BASE_URL=http://127.0.0.1:3000
+process.env.ENV=prod
 ```
 
 
@@ -423,3 +425,32 @@ sudo certbot --nginx -d cosmodeus.com -d www.cosmodeus.com
 
 
 之后访问 https://cosmodeus.com 即可。
+
+
+------------------------------------
+cd /root
+nano deploy_qmdj.sh
+------------------------------------
+#!/usr/bin/env bash
+
+set -e
+
+PROJECT_DIR="/root/qmdj"
+PM2_NAME="qmdj"
+
+echo "===== 切换到项目目录：$PROJECT_DIR ====="
+cd "$PROJECT_DIR"
+
+echo "===== 1. 从 Git 拉取最新代码 ====="
+git pull --ff-only
+
+echo "===== 2. 编译项目：npm run build ====="
+npm run build
+
+echo "===== 3. 使用 pm2 重启进程：$PM2_NAME ====="
+pm2 restart "$PM2_NAME"
+
+echo "===== 部署完成！====="
+------------------------------------
+chmod +x deploy_qmdj.sh
+------------------------------------
