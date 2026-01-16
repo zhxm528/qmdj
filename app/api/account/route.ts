@@ -152,14 +152,14 @@ export async function GET(request: NextRequest) {
           );
           
           // 获取更新后的等级信息
-          const levelRows = await query<{
-            level_id: number;
-            level_code: string;
-            level_name: string;
-          }>(
-            `SELECT level_id, level_code, level_name FROM membership_level WHERE level_id = $1 LIMIT 1`,
-            [silverLevelId]
-          );
+            const levelRows = await query<{
+              level_id: number;
+              level_code: string;
+              level_name: string;
+            }>(
+              `SELECT level_id, level_code, level_name FROM membership_level WHERE level_id = $1 LIMIT 1`,
+              [goldLevelId]
+            );
           
           if (levelRows && levelRows.length > 0) {
             memberLevel = {
