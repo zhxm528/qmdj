@@ -6,19 +6,17 @@ import { useState, useEffect } from "react";
 export default function Layout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     // 尝试获取用户信息
     fetch("/api/user/me")
-      .then((res) => {
-        if (res.ok) return res.json();
-        return null;
-      })
+      .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        setUser(data);
+        const loggedIn = Boolean(data && data.loggedIn);
+        setUser(loggedIn ? data : null);
         setLoading(false);
-        // 登录后将关键信息写入后台日志
-        if (data && data.id) {
+        if (loggedIn && data?.id) {
           try {
             fetch("/api/user/log", {
               method: "POST",
@@ -45,6 +43,46 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Link href="/" className="text-2xl font-bold text-amber-600">
               缘来
               </Link>
+            </div>
+            <div className="md:hidden flex items-center">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded-md p-2 text-gray-700 hover:text-amber-600 hover:bg-amber-50"
+                aria-expanded={mobileNavOpen}
+                aria-label="Toggle navigation"
+                onClick={() => setMobileNavOpen((open) => !open)}
+              >
+                {mobileNavOpen ? (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    aria-hidden="true"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M6 6l12 12" />
+                    <path d="M18 6l-12 12" />
+                  </svg>
+                ) : (
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-6 w-6"
+                    aria-hidden="true"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M4 7h16" />
+                    <path d="M4 12h16" />
+                    <path d="M4 17h16" />
+                  </svg>
+                )}
+              </button>
             </div>
             <div className="hidden md:flex items-center space-x-8">
               <Link href="/qimen" className="text-gray-700 hover:text-amber-600">
@@ -82,13 +120,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             <div className="flex items-center space-x-4">
               {!loading && user ? (
                 <>
-                  {/* 升级按钮：登录后显示在用户名左侧，跳转到价格页 */}
-                  <Link
-                    href="/pricing"
-                    className="px-3 py-1.5 text-sm border border-amber-600 text-amber-600 rounded-full hover:bg-amber-50 transition-colors"
-                  >
-                    升级
-                  </Link>
+                  {/* 升级按钮：登录后且角色为qmdj时显示在用户名左侧，跳转到价格页 */}
+                  {user.role === 'qmdj' && (
+                    <Link
+                      href="/pricing"
+                      className="px-3 py-1.5 text-sm border border-amber-600 text-amber-600 rounded-full hover:bg-amber-50 transition-colors"
+                    >
+                      升级
+                    </Link>
+                  )}
                   <Link href="/account" className="text-gray-700 hover:text-amber-600">
                     {user?.name || "账户"}
                   </Link>
@@ -104,12 +144,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               ) : (
                 <>
                   <Link
-                    href="/pricing"
-                    className="text-gray-700 hover:text-amber-600"
-                  >
-                    价格
-                  </Link>
-                  <Link
                     href="/login"
                     className="text-gray-700 hover:text-amber-600"
                   >
@@ -123,6 +157,109 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   </Link>
                 </>
               )}
+            </div>
+          </div>
+          <div
+            className={`md:hidden border-t border-amber-100 overflow-hidden transition-all duration-200 ease-out ${
+              mobileNavOpen ? "max-h-96 opacity-100 py-3" : "max-h-0 opacity-0 py-0"
+            }`}
+            aria-hidden={!mobileNavOpen}
+          >
+            <div className="space-y-2">
+              <Link
+                href="/qimen"
+                className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                问问
+              </Link>
+              <Link
+                href="/bazi"
+                className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                看看
+              </Link>
+              <Link
+                href="/products"
+                className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                onClick={() => setMobileNavOpen(false)}
+              >
+                更多
+              </Link>
+              {!loading && user && user.role === "qmdj" && (
+                <>
+                  <Link
+                    href="/community"
+                    className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    交流
+                  </Link>
+                  <Link
+                    href="/game"
+                    className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    游戏
+                  </Link>
+                  <Link
+                    href="/admin"
+                    className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                    onClick={() => setMobileNavOpen(false)}
+                  >
+                    管理
+                  </Link>
+                </>
+              )}
+              <div className="border-t border-amber-100 pt-2">
+                {!loading && user ? (
+                  <>
+                    {user.role === 'qmdj' && (
+                      <Link
+                        href="/pricing"
+                        className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                        onClick={() => setMobileNavOpen(false)}
+                      >
+                        升级
+                      </Link>
+                    )}
+                    <Link
+                      href="/account"
+                      className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      {user?.name || "账户"}
+                    </Link>
+                    <form action="/api/auth/logout" method="POST">
+                      <button
+                        type="submit"
+                        className="w-full text-left px-2 py-2 text-gray-700 hover:text-amber-600"
+                        onClick={() => setMobileNavOpen(false)}
+                      >
+                        退出
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      href="/login"
+                      className="block px-2 py-2 text-gray-700 hover:text-amber-600"
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      登录
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="block px-2 py-2 text-amber-600 hover:text-amber-700"
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      注册
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </nav>
@@ -149,11 +286,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                     功能展示
                   </Link>
                 </li>
-                <li>
-                  <Link href="/pricing" className="hover:text-white">
-                    价格方案
-                  </Link>
-                </li>
+                {!loading && user && user.role === 'qmdj' && (
+                  <li>
+                    <Link href="/pricing" className="hover:text-white">
+                      价格方案
+                    </Link>
+                  </li>
+                )}
               </ul>
             </div>
             <div>

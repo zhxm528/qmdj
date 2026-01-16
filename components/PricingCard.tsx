@@ -29,7 +29,10 @@ export default function PricingCard({ plan }: PricingCardProps) {
       // 立即开通：先检查登录状态
       try {
         const response = await fetch("/api/user/me");
-        if (!response.ok) {
+        const userData = response.ok
+          ? await response.json().catch(() => null)
+          : null;
+        if (!userData?.loggedIn) {
           // 未登录，跳转到注册页面
           router.push("/register");
           return;
@@ -51,7 +54,10 @@ export default function PricingCard({ plan }: PricingCardProps) {
     try {
       // 检查登录状态
       const response = await fetch("/api/user/me");
-      if (!response.ok) {
+      const userData = response.ok
+        ? await response.json().catch(() => null)
+        : null;
+      if (!userData?.loggedIn) {
         // 未登录，跳转到登录页
         router.push("/login");
         return;
@@ -173,4 +179,3 @@ export default function PricingCard({ plan }: PricingCardProps) {
     </div>
   );
 }
-

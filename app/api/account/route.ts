@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
             registeredDate = u.created_at ? new Date(u.created_at) : new Date();
           }
           
-          // 计算注册日期后一个月
+          // 计算注册日期后36个月
           const expiredDate = new Date(registeredDate);
-          expiredDate.setMonth(expiredDate.getMonth() + 1);
+          expiredDate.setMonth(expiredDate.getMonth() + 36);
           
           // 更新会员卡过期时间
           await query(
@@ -135,20 +135,20 @@ export async function GET(request: NextRequest) {
         }
       }
       
-      // 如果会员没有等级，设置默认的"白银会员"（银卡）等级
+      // 如果会员没有等级，设置默认的 GOLD 等级
       if (!member.level_id) {
-        // 获取"银卡"（SILVER）的level_id
-        const silverLevelRows = await query<{ level_id: number }>(
-          `SELECT level_id FROM membership_level WHERE level_code = 'SILVER' LIMIT 1`
+        // 获取 GOLD 等级的 level_id
+        const goldLevelRows = await query<{ level_id: number }>(
+          `SELECT level_id FROM membership_level WHERE level_code = 'GOLD' LIMIT 1`
         );
         
-        if (silverLevelRows && silverLevelRows.length > 0) {
-          const silverLevelId = silverLevelRows[0].level_id;
+        if (goldLevelRows && goldLevelRows.length > 0) {
+          const goldLevelId = goldLevelRows[0].level_id;
           
           // 更新会员等级
           await query(
             `UPDATE member SET level_id = $1, updated_at = NOW() WHERE member_id = $2`,
-            [silverLevelId, member.member_id]
+            [goldLevelId, member.member_id]
           );
           
           // 获取更新后的等级信息

@@ -51,6 +51,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 登录时检查会员卡有效期，过期超过24小时则降级为SILVER
+    try {
+      const memberRows = await query<{ member_id: number; level_id: number | null }>(
+        `SELECT member_id, level_id FROM member WHERE email = $1 LIMIT 1`,
+        [user.email.toLowerCase()]
+      );
+      if (memberRows && memberRows.length > 0) {
+        const member = memberRows[0];
+        const cardRows = await query<{ expired_at: string | null }>(
+          `SELECT expired_at FROM member_card WHERE member_id = $1 AND is_primary = TRUE LIMIT 1`,
+          [member.member_id]
+        );
+        const expiredAtStr = cardRows && cardRows.length > 0 ? cardRows[0].expired_at : null;
+        if (expiredAtStr) {
+          const expiredAt = new Date(expiredAtStr);
+          if (!Number.isNaN(expiredAt.getTime())) {
+            const now = new Date();
+            const graceMs = 24 * 60 * 60 * 1000;
+            if (now.getTime() > expiredAt.getTime() + graceMs) {
+              const silverRows = await query<{ level_id: number }>(
+                `SELECT level_id FROM membership_level WHERE level_code = 'SILVER' LIMIT 1`
+              );
+              if (silverRows && silverRows.length > 0) {
+                const silverLevelId = silverRows[0].level_id;
+                if (member.level_id !== silverLevelId) {
+                  await query(
+                    `UPDATE member SET level_id = $1, updated_at = NOW() WHERE member_id = $2`,
+                    [silverLevelId, member.member_id]
+                  );
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (levelError) {
+      console.error("[auth/login] 会员等级检查失败:", levelError);
+    }
+
     // 生成 session（此处简单使用邮箱；与 /api/user/me 中的解析一致）
     const cookieStore = await cookies();
     // 会话级cookie：不设置 maxAge/expires，浏览器会话结束失效

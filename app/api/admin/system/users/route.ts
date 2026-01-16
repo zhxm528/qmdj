@@ -84,37 +84,37 @@ export async function GET(request: NextRequest) {
     let paramIndex = 1;
 
     if (params.name) {
-      conditions.push(`name ILIKE $${paramIndex}`);
+      conditions.push(`u.name ILIKE $${paramIndex}`);
       values.push(`%${params.name}%`);
       paramIndex++;
     }
 
     if (params.email) {
-      conditions.push(`email ILIKE $${paramIndex}`);
+      conditions.push(`u.email ILIKE $${paramIndex}`);
       values.push(`%${params.email}%`);
       paramIndex++;
     }
 
     if (params.role) {
-      conditions.push(`role = $${paramIndex}`);
+      conditions.push(`u.role = $${paramIndex}`);
       values.push(params.role);
       paramIndex++;
     }
 
     if (params.status) {
-      conditions.push(`status = $${paramIndex}`);
+      conditions.push(`u.status = $${paramIndex}`);
       values.push(params.status);
       paramIndex++;
     }
 
     if (params.isEmailVerified !== undefined) {
-      conditions.push(`is_email_verified = $${paramIndex}`);
+      conditions.push(`u.is_email_verified = $${paramIndex}`);
       values.push(params.isEmailVerified);
       paramIndex++;
     }
 
     if (params.isPaid !== undefined) {
-      conditions.push(`is_paid = $${paramIndex}`);
+      conditions.push(`u.is_paid = $${paramIndex}`);
       values.push(params.isPaid);
       paramIndex++;
     }
@@ -124,7 +124,7 @@ export async function GET(request: NextRequest) {
 
     // 计算总数
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM users ${whereClause}`,
+      `SELECT COUNT(*) as total FROM users u ${whereClause}`,
       values
     );
     const total = parseInt(countResult[0]?.total || "0", 10);
@@ -135,12 +135,17 @@ export async function GET(request: NextRequest) {
 
     let dataQuery = `
       SELECT 
-        id, name, email, role, avatar, phone, address,
-        created_at, updated_at, status, is_email_verified,
-        membership_level, membership_no, is_paid, last_paid_at
-      FROM users 
+        u.id, u.name, u.email, u.role, u.avatar, u.phone, u.address,
+        u.created_at, u.updated_at, u.status, u.is_email_verified,
+        u.membership_level, u.membership_no, u.is_paid, u.last_paid_at,
+        ml.level_name,
+        mc.expired_at
+      FROM users u
+      LEFT JOIN member m ON m.email = u.email
+      LEFT JOIN membership_level ml ON ml.level_id = m.level_id
+      LEFT JOIN member_card mc ON mc.member_id = m.member_id AND mc.is_primary = TRUE
       ${whereClause}
-      ORDER BY created_at DESC
+      ORDER BY u.created_at DESC
     `;
 
     if (limit !== null) {

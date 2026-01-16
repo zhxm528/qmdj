@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 import {
   ConfigProvider,
   Tabs,
@@ -361,14 +362,12 @@ export default function PromptContextManagement() {
 
   return (
     <ConfigProvider locale={zhCN}>
-      <Layout>
+      <AdminLayout>
         <div className="min-h-screen bg-gray-50 py-8 px-4">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <Card>
               <div className="mb-4">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Prompt 上下文管理
-                </h1>
+                <AdminBreadcrumb title="Prompt 上下文管理" />
                 <p className="text-gray-600 mt-2">
                   管理提示词模板、版本、变量等相关数据
                 </p>
@@ -475,8 +474,12 @@ export default function PromptContextManagement() {
             </Modal>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     </ConfigProvider>
   );
 }
+
+
+
+
 

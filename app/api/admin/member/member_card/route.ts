@@ -422,8 +422,8 @@ export async function PATCH(request: NextRequest) {
     // 构造目标时区当天的 00:00:00（不转换为 UTC，直接使用本地时间）
     const issuedAt = new Date(year, month - 1, day, 0, 0, 0, 0);
     
-    // 有效日期：发卡日期 + 31 天，时间设为 23:59:59
-    const expiredAt = new Date(year, month - 1, day + 31, 23, 59, 59, 999);
+    // 有效日期：发卡日期 + 3650 天，时间设为 23:59:59
+    const expiredAt = new Date(year, month - 1, day + 3650, 23, 59, 59, 999);
 
     // 格式化日期为 PostgreSQL 可接受的格式 (YYYY-MM-DD HH:mm:ss)
     const formatDateTime = (date: Date): string => {
@@ -460,7 +460,7 @@ export async function PATCH(request: NextRequest) {
     });
     console.log("  服务器本地当前日期:", `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
     console.log("  发卡日期 (服务器本地当天 00:00:00):", issuedAtStr);
-    console.log("  有效日期 (发卡日期 + 31 天 23:59:59):", expiredAtStr);
+    console.log("  有效日期 (发卡日期 + 3650 天 23:59:59):", expiredAtStr);
     console.log("  会员ID:", memberId);
     console.log("  会员等级ID:", level_id);
 

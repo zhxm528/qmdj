@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import Layout from "@/components/Layout";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 import {
   ConfigProvider,
   Form,
@@ -31,6 +32,8 @@ interface User {
   is_paid: boolean;
   created_at: string;
   membership_level?: string;
+  level_name?: string | null;
+  expired_at?: string | null;
 }
 
 interface QueryParams {
@@ -205,6 +208,33 @@ export default function UsersManagement() {
     }
   };
 
+  // 处理发卡操作
+  const handleIssueCard = async (userId: number, email: string, name: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/admin/system/users/issue_card", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, email, name }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        message.success(result.message || "发卡操作成功");
+        // 刷新用户列表
+        loadUsers(stableQueryParams, currentPage, pageSize);
+      } else {
+        message.error(result.error || "发卡操作失败");
+      }
+    } catch (error) {
+      console.error("发卡操作失败:", error);
+      message.error("发卡操作失败，请稍后重试");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 表格列定义
   const columns: ColumnsType<User> = [
     {
@@ -266,6 +296,33 @@ export default function UsersManagement() {
       ),
     },
     {
+      title: "会员等级",
+      dataIndex: "level_name",
+      key: "level_name",
+      width: 120,
+      render: (levelName: string | null | undefined) =>
+        levelName ? <Tag color="blue">{levelName}</Tag> : <span className="text-gray-400">-</span>,
+    },
+    {
+      title: "会员有效期",
+      dataIndex: "expired_at",
+      key: "expired_at",
+      width: 180,
+      render: (expiredAt: string | null | undefined) => {
+        if (!expiredAt) {
+          return <span className="text-gray-400">-</span>;
+        }
+        const expiredDate = new Date(expiredAt);
+        const now = new Date();
+        const isExpired = expiredDate < now;
+        return (
+          <span className={isExpired ? "text-red-500" : ""}>
+            {expiredDate.toLocaleString("zh-CN")}
+          </span>
+        );
+      },
+    },
+    {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
@@ -276,27 +333,39 @@ export default function UsersManagement() {
     {
       title: "操作",
       key: "action",
-      width: 120,
+      width: 200,
       fixed: "right",
       render: (_: any, record: User) => (
-        <Button
-          type="primary"
-          size="small"
-          onClick={() => handleResendEmail(record.id)}
-          disabled={loading}
-        >
-          注册邮件
-        </Button>
+        <Space>
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => handleResendEmail(record.id)}
+            disabled={loading}
+          >
+            注册邮件
+          </Button>
+          <Button
+            type="primary"
+            size="small"
+            onClick={() => handleIssueCard(record.id, record.email, record.name)}
+            disabled={loading}
+          >
+            发会员卡
+          </Button>
+        </Space>
       ),
     },
   ];
 
   return (
     <ConfigProvider locale={zhCN}>
-      <Layout>
+      <AdminLayout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-8 px-4">
-          <div className="max-w-7xl mx-auto">
-            <h1 className="text-4xl font-bold text-gray-900 mb-6">用户管理</h1>
+          <div className="w-full">
+            <div className="mb-6">
+              <AdminBreadcrumb title="用户管理" />
+            </div>
 
             {/* 查询条件 */}
             <Card
@@ -437,7 +506,11 @@ export default function UsersManagement() {
             </Card>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     </ConfigProvider>
   );
 }
+
+
+
+

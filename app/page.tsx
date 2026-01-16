@@ -379,7 +379,10 @@ export default function HomePage() {
       try {
         // 检查用户是否登录，如果登录了则保存排盘结果
         const userCheckResponse = await fetch("/api/user/me");
-        if (userCheckResponse.ok) {
+        const userCheckData = userCheckResponse.ok
+          ? await userCheckResponse.json().catch(() => null)
+          : null;
+        if (userCheckData?.loggedIn) {
           const saveResponse = await fetch("/api/qimen_pan", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -443,7 +446,10 @@ export default function HomePage() {
     // 检查用户是否登录
     try {
       const userCheckResponse = await fetch("/api/user/me");
-      if (!userCheckResponse.ok) {
+      const userCheckData = userCheckResponse.ok
+        ? await userCheckResponse.json().catch(() => null)
+        : null;
+      if (!userCheckData?.loggedIn) {
         router.push("/login");
         return;
       }
@@ -587,7 +593,10 @@ export default function HomePage() {
   };
 
   // 加载对话列表
-  const loadConversations = async () => {
+  const loadConversations = async (assumeLoggedIn = false) => {
+    if (!isLoggedIn && !assumeLoggedIn) {
+      return;
+    }
     try {
       const url = showFavoritesOnly 
         ? "/api/conversations?project_code=qmdj&favorites_only=true"
@@ -611,7 +620,10 @@ export default function HomePage() {
   };
 
   // 加载收藏状态
-  const loadFavoriteStatus = async () => {
+  const loadFavoriteStatus = async (assumeLoggedIn = false) => {
+    if (!isLoggedIn && !assumeLoggedIn) {
+      return;
+    }
     try {
       const response = await fetch("/api/conversations/favorites");
       if (response.ok) {
@@ -1068,25 +1080,30 @@ export default function HomePage() {
   const checkLoginStatus = async () => {
     try {
       const response = await fetch("/api/user/me");
-      if (response.ok) {
-        const userData = await response.json();
-        setIsLoggedIn(true);
-        setUserRole(userData.role || null);
-      } else {
-        setIsLoggedIn(false);
-        setUserRole(null);
-      }
+      const userData = response.ok
+        ? await response.json().catch(() => null)
+        : null;
+      const loggedIn = Boolean(userData && userData.loggedIn);
+      setIsLoggedIn(loggedIn);
+      setUserRole(loggedIn ? userData.role || null : null);
+      return loggedIn;
     } catch (error) {
       setIsLoggedIn(false);
       setUserRole(null);
+      return false;
     }
   };
 
   // 组件加载时获取对话列表和检查登录状态
   useEffect(() => {
-    loadConversations();
-    checkLoginStatus();
-    loadFavoriteStatus();
+    const init = async () => {
+      const loggedIn = await checkLoginStatus();
+      if (loggedIn) {
+        await loadConversations(true);
+        await loadFavoriteStatus(true);
+      }
+    };
+    init();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1277,4 +1294,3 @@ export default function HomePage() {
     </ConfigProvider>
   );
 }
-

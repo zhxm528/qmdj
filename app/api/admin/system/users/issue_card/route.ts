@@ -1,16 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createUser, findUserByEmail } from "@/lib/user";
-import { createEmailVerification, invalidateOldVerifications } from "@/lib/emailVerification";
-import { sendVerificationEmail } from "@/lib/mailer";
+import { cookies } from "next/headers";
 import { transaction, query } from "@/lib/db";
 
-// 使用 require 导入 bcryptjs（在 Next.js 中更可靠）
-const bcrypt = require("bcryptjs");
+// 获取当前用户ID（管理员权限检查）
+async function getCurrentUserId(): Promise<number | null> {
+  try {
+    const cookieStore = await cookies();
+    const session = cookieStore.get("session");
+    if (!session?.value) {
+      return null;
+    }
 
-// 验证邮箱格式
-function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+    const token = session.value.trim();
+    let userRows = await query(
+      `SELECT id, role FROM users WHERE email = $1 OR id = $2 LIMIT 1`,
+      [token.toLowerCase(), /^\d+$/.test(token) ? parseInt(token, 10) : -1]
+    );
+
+    if (userRows && userRows.length > 0) {
+      const user = userRows[0] as { id: number; role: string };
+      if (user.role === "qmdj") {
+        return user.id;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.error("[issue_card] 获取用户ID失败:", error);
+    return null;
+  }
 }
 
 /**
@@ -31,12 +48,13 @@ function generateCardNo(): string {
 }
 
 /**
- * 为新注册用户执行发卡操作
+ * 为用户执行发卡操作
  * 1. 检查是否存在对应的 member（通过 email）
- * 2. 如果不存在，创建 member、member_account 和 member_card
- * 3. 执行发卡操作：设置 issued_at 为当天 00:00:00，expired_at 为发卡日期 + 3650 天 23:59:59
+ * 2. 如果不存在，创建 member、member_account 和 member_card（设置初始等级为 GOLD）
+ * 3. 如果已存在，确保有主卡
+ * 4. 执行发卡操作：设置 issued_at 为当天 00:00:00，expired_at 为发卡日期 + 3650 天 23:59:59
  */
-async function issueCardForNewUser(email: string, userName: string): Promise<void> {
+async function issueCardForUser(email: string, userName: string): Promise<void> {
   await transaction(async (client) => {
     // 1. 检查是否存在对应的 member
     const memberCheck = await client.query(
@@ -85,7 +103,7 @@ async function issueCardForNewUser(email: string, userName: string): Promise<voi
       }
     } else {
       // 2. 创建 member
-      // 获取 GOLD 等级（站点注册流程使用 GOLD 等级）
+      // 获取 GOLD 等级
       const levelResult = await client.query(
         `SELECT level_id, level_name FROM membership_level WHERE level_code = 'GOLD' LIMIT 1`
       );
@@ -170,108 +188,63 @@ async function issueCardForNewUser(email: string, userName: string): Promise<voi
       [issuedAtStr, expiredAtStr, cardId]
     );
 
-    console.log(`[register] 发卡操作完成: member_id=${memberId}, card_id=${cardId}, issued_at=${issuedAtStr}, expired_at=${expiredAtStr}`);
+    console.log(`[issue_card] 发卡操作完成: member_id=${memberId}, card_id=${cardId}, issued_at=${issuedAtStr}, expired_at=${expiredAtStr}`);
   });
 }
 
+/**
+ * POST /api/admin/system/users/issue_card
+ * 为用户执行发卡操作
+ */
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    // 检查管理员权限
+    const currentUserId = await getCurrentUserId();
+    if (!currentUserId) {
+      return NextResponse.json({ error: "未授权访问" }, { status: 401 });
+    }
 
-    // 验证必填项
-    if (!email || !password) {
+    const body = await request.json();
+    const { userId, email, name } = body;
+
+    if (!userId || !email) {
       return NextResponse.json(
-        { error: "邮箱和密码为必填项" },
+        { success: false, error: "缺少必要参数：userId 和 email" },
         { status: 400 }
       );
     }
 
-    // 验证邮箱格式
-    if (!isValidEmail(email)) {
-      return NextResponse.json(
-        { error: "邮箱格式不正确" },
-        { status: 400 }
-      );
-    }
-
-    // 验证密码长度
-    if (password.length < 6) {
-      return NextResponse.json(
-        { error: "密码长度至少为6位" },
-        { status: 400 }
-      );
-    }
-
-    // 检查邮箱是否已存在
-    const normalizedEmail = email.toLowerCase().trim();
-    const existingUser = await findUserByEmail(normalizedEmail);
-
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "该邮箱已被注册" },
-        { status: 409 }
-      );
-    }
-
-    // 加密密码
-    const saltRounds = 10;
-    const hashedPassword = bcrypt.hashSync(password, saltRounds);
-
-    // 创建用户（状态为 pending，邮箱未验证）
-    const userName = normalizedEmail.split("@")[0]; // 使用邮箱前缀作为默认用户名
-    const user = await createUser(userName, normalizedEmail, hashedPassword);
-
-    // 使旧的验证记录失效（如果存在）
-    await invalidateOldVerifications(user.id);
-
-    // 创建邮箱验证记录
-    const verification = await createEmailVerification(
-      user.id,
-      normalizedEmail,
-      24 // 24小时有效期
+    // 获取用户信息
+    const userRows = await query<{ id: number; email: string; name: string | null }>(
+      `SELECT id, email, name FROM users WHERE id = $1 LIMIT 1`,
+      [userId]
     );
 
-    // 发送验证邮件
-    try {
-      await sendVerificationEmail(normalizedEmail, userName, verification.token);
-    } catch (mailError) {
-      console.error("发送验证邮件失败:", mailError);
-      // 邮件发送失败不影响注册流程，但需要记录
-    }
-
-    // 执行发卡操作：检查并创建会员记录，然后执行发卡
-    try {
-      await issueCardForNewUser(normalizedEmail, userName);
-    } catch (cardError) {
-      console.error("发卡操作失败:", cardError);
-      // 发卡失败不影响注册流程，但需要记录
-    }
-
-    return NextResponse.json({
-      message: "注册成功，请查收邮箱完成验证",
-      user: {
-        id: user.id,
-        email: user.email,
-        createdAt: user.created_at,
-      },
-      emailSent: true,
-    });
-  } catch (error: any) {
-    console.error("Register error:", error);
-    
-    // 处理数据库错误
-    if (error.code === "42P01") {
-      // 表不存在
+    if (!userRows || userRows.length === 0) {
       return NextResponse.json(
-        { error: "数据库表不存在，请先创建 users 表" },
-        { status: 500 }
+        { success: false, error: "用户不存在" },
+        { status: 404 }
       );
     }
 
+    const user = userRows[0] as { id: number; email: string; name: string | null };
+    const userName = name || user.name || user.email.split("@")[0];
+
+    // 执行发卡操作
+    await issueCardForUser(user.email, userName);
+
+    return NextResponse.json({
+      success: true,
+      message: "发卡操作成功",
+    });
+  } catch (error: any) {
+    console.error("[issue_card] 发卡操作失败:", error);
     return NextResponse.json(
-      { error: "注册失败，请稍后重试" },
+      {
+        success: false,
+        error: error.message || "发卡操作失败",
+      },
       { status: 500 }
     );
   }
 }
-

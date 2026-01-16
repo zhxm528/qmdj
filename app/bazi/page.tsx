@@ -248,16 +248,13 @@ export default function BaziPage() {
     const fetchUserInfo = async () => {
       try {
         const response = await fetch("/api/user/me");
-        if (response.ok) {
-          const userData = await response.json();
-          setUserRole(userData.role || null);
-          setUserEmail(userData.email || null);
-          setIsLoggedIn(!!userData.email);
-        } else {
-          setIsLoggedIn(false);
-          setUserEmail(null);
-          setUserRole(null);
-        }
+        const userData = response.ok
+          ? await response.json().catch(() => null)
+          : null;
+        const loggedIn = Boolean(userData && userData.loggedIn);
+        setIsLoggedIn(loggedIn);
+        setUserRole(loggedIn ? userData.role || null : null);
+        setUserEmail(loggedIn ? userData.email || null : null);
       } catch (error) {
         // 用户未登录或获取失败
         setIsLoggedIn(false);
@@ -484,8 +481,11 @@ export default function BaziPage() {
 
         // 保存到数据库（如果用户已登录）
         try {
-          const userCheckResponse = await fetch("/api/user/me");
-          if (userCheckResponse.ok) {
+            const userCheckResponse = await fetch("/api/user/me");
+            const userCheckData = userCheckResponse.ok
+              ? await userCheckResponse.json().catch(() => null)
+              : null;
+            if (userCheckData?.loggedIn) {
             // 构建JSON数据
             const baziJson = buildBaziJson(data.steps, data.fourPillars, date, hour, minute, gender);
             

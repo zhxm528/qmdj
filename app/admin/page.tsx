@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import Layout from "@/components/Layout";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 
 interface MenuItem {
   title: string;
@@ -137,10 +138,12 @@ export default function Admin() {
   ];
 
   return (
-    <Layout>
+    <AdminLayout>
       <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-        <div className="max-w-7xl mx-auto">
-         
+        <div className="w-full">
+          <div className="mb-6">
+            <AdminBreadcrumb title="管理后台" />
+          </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {panels.map((panel) => (
@@ -177,7 +180,11 @@ export default function Admin() {
           </div>
         </div>
       </div>
-    </Layout>
+    </AdminLayout>
   );
 }
+
+
+
+
 

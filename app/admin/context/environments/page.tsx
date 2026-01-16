@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Layout from "@/components/Layout";
+import AdminLayout from "@/components/admin/AdminLayout";
+import AdminBreadcrumb from "@/components/admin/AdminBreadcrumb";
 import {
   ConfigProvider,
   Table,
@@ -242,11 +243,11 @@ export default function EnvironmentsPage() {
 
   return (
     <ConfigProvider locale={zhCN}>
-      <Layout>
+      <AdminLayout>
         <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-          <div className="max-w-7xl mx-auto bg-white rounded-lg shadow-md p-8">
+          <div className="w-full bg-white rounded-lg shadow-md p-8">
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold text-gray-900">环境</h1>
+              <AdminBreadcrumb title="环境" />
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
@@ -366,8 +367,12 @@ export default function EnvironmentsPage() {
             </Modal>
           </div>
         </div>
-      </Layout>
+      </AdminLayout>
     </ConfigProvider>
   );
 }
+
+
+
+
 

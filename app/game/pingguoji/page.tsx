@@ -70,8 +70,10 @@ export default function PingguojiPage() {
     const fetchUser = async () => {
       try {
         const response = await fetch("/api/user/me");
-        if (response.ok) {
-          const userData = await response.json();
+        const userData = response.ok
+          ? await response.json().catch(() => null)
+          : null;
+        if (userData?.loggedIn) {
           setUser(userData);
           // 从用户数据获取余额（如果数据库有coins字段）
           // 暂时使用默认值1000

@@ -12,16 +12,13 @@ export async function GET(request: NextRequest) {
     const session = cookieStore.get("session");
 
     if (!session) {
-      return NextResponse.json(
-        { error: "未登录" },
-        { status: 401 }
-      );
+      return NextResponse.json({ loggedIn: false });
     }
 
     // 解析 session（简单策略）：优先当作 email 查询；若失败再尝试作为 ID
     const token = session.value?.trim();
     if (!token) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
+      return NextResponse.json({ loggedIn: false });
     }
 
     let userRows:
@@ -71,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (!userRows || userRows.length === 0) {
-      return NextResponse.json({ error: "用户不存在" }, { status: 404 });
+      return NextResponse.json({ loggedIn: false });
     }
 
     const u = userRows[0];
@@ -86,6 +83,7 @@ export async function GET(request: NextRequest) {
       });
     } catch {}
     return NextResponse.json({
+      loggedIn: true,
       id: u.id,
       email: u.email,
       name: u.name,
