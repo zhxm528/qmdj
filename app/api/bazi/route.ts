@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { query, transaction } from "@/lib/db";
 import { getFourPillars } from "@/lib/ganzhi";
-import { deepseekConfig } from "@/lib/config";
-import { PromptService } from "@/app/api/prompt_context/route";
 import { step1, Step1Result } from "./step1";
 import { step2, Step2Result } from "./step2";
 import { step3, Step3Result } from "./step3";
@@ -123,161 +121,6 @@ async function getCachedBaziResult(chartId: string): Promise<any | null> {
   return typeof row.result_json === "string" ? JSON.parse(row.result_json) : row.result_json;
 }
 
-/**
- * 使用 DeepSeek LLM 为「月令与季节」生成自然语言描述
- */
-async function generateYuelingDescription(step3Result: Step3Result): Promise<string | null> {
-  try {
-    const apiUrl = `${deepseekConfig.baseURL}/v1/chat/completions`;
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${deepseekConfig.apiKey}`,
-    };
-
-    const systemMessage =
-      "你是八字命理助手。请根据输入的\"月令与季节\"JSON，生成一句到两句中文描述，格式自然、简洁。";
-
-    const userMessage =
-      "以下是\"月令与季节\"板块 JSON，请生成描述：\n" +
-      JSON.stringify(step3Result, null, 2);
-
-    const body = {
-      model: deepseekConfig.model || "deepseek-chat",
-      messages: [
-        { role: "system" as const, content: systemMessage },
-        { role: "user" as const, content: userMessage },
-      ],
-      temperature: 0.4,
-      max_tokens: 200,
-    };
-
-    console.log("\n[bazi][step3] DeepSeek API 调用入参:");
-    console.log("URL:", apiUrl);
-    console.log("Body:", JSON.stringify(body, null, 2));
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        "[bazi][step3] DeepSeek API 调用失败:",
-        response.status,
-        errorText
-      );
-      return null;
-    }
-
-    const data = await response.json();
-    console.log(
-      "[bazi][step3] DeepSeek API 原始返回:",
-      JSON.stringify(data, null, 2)
-    );
-
-    let text: any = data?.choices?.[0]?.message?.content;
-    if (Array.isArray(text)) {
-      // 兼容 content 为数组的情况
-      text = text.map((chunk: any) => chunk?.text || "").join("");
-    }
-
-    if (!text || typeof text !== "string") {
-      return null;
-    }
-
-    text = text.trim();
-    if (!text) return null;
-
-    return text;
-  } catch (error: any) {
-    console.error("[bazi][step3] 调用 DeepSeek 生成月令与季节描述失败:", error);
-    return null;
-  }
-}
-
-/**
- * 使用 DeepSeek LLM 为「定命主【我】」生成自然语言描述
- * 规范见：md/bazi/deepseek_llm.md
- */
-async function generateDayMasterDescription(step1Result: Step1Result): Promise<string | null> {
-  try {
-    const apiUrl = `${deepseekConfig.baseURL}/v1/chat/completions`;
-    const headers = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${deepseekConfig.apiKey}`,
-    };
-
-    const userMessage =
-      "以下是“定命主”板块 JSON，请生成描述：\n" +
-      JSON.stringify(step1Result, null, 2);
-
-    const envCode = (process.env.ENV as "dev" | "staging" | "prod") || "dev";
-    const service = new PromptService();
-    const flowMessages = await service.renderFlowToMessages({
-      envCode,
-      projectCode: "bazi",
-      flow: "flow.bazi.kanpan.dingmingzhu",
-      variables: {},
-    });
-    const systemMessages = flowMessages.filter((message) => message.role === "system");
-
-    const body = {
-      model: deepseekConfig.model || "deepseek-chat",
-      messages: [
-        ...systemMessages,
-        { role: "user" as const, content: userMessage },
-      ],
-      temperature: 0.4,
-      max_tokens: 200,
-    };
-
-    console.log("\n[bazi][step1] DeepSeek API 调用入参:");
-    console.log("URL:", apiUrl);
-    console.log("Body:", JSON.stringify(body, null, 2));
-
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        "[bazi][step1] DeepSeek API 调用失败:",
-        response.status,
-        errorText
-      );
-      return null;
-    }
-
-    const data = await response.json();
-    console.log(
-      "[bazi][step1] DeepSeek API 原始返回:",
-      JSON.stringify(data, null, 2)
-    );
-
-    let text: any = data?.choices?.[0]?.message?.content;
-    if (Array.isArray(text)) {
-      // 兼容 content 为数组的情况
-      text = text.map((chunk: any) => chunk?.text || "").join("");
-    }
-
-    if (!text || typeof text !== "string") {
-      return null;
-    }
-
-    text = text.trim();
-    if (!text) return null;
-
-    return text;
-  } catch (error: any) {
-    console.error("[bazi][step1] 调用 DeepSeek 生成定命主描述失败:", error);
-    return null;
-  }
-}
 
 async function saveCachedBaziResult(chartId: string, resultJson: any): Promise<void> {
   try {
@@ -404,16 +247,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
 
     // 执行13个步骤
     const step1Result = step1(fourPillars);
-    // 先尝试调用 LLM 为「定命主【我】」生成自然语言描述
-    try {
-      const llmText = await generateDayMasterDescription(step1Result);
-      if (llmText) {
-        (step1Result as any).llm_text = llmText;
-      }
-    } catch (e) {
-      // LLM 失败时忽略错误，回退为本地拼接文案
-      console.error("[bazi][step1] 生成 LLM 描述时发生异常:", e);
-    }
+    // LLM 调用逻辑已独立到 /api/bazi/mingzhu-llm，只在用户点击"解盘"按钮时调用
     const dayMaster = step1Result.day_master.stem;
     const dayMasterElement = step1Result.day_master.element;
 
@@ -474,16 +308,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     }
     
     const step3Result = await step3(fourPillars, dayMasterElement, chartId);
-    // 先尝试调用 LLM 为「月令与季节」生成自然语言描述
-    try {
-      const llmText = await generateYuelingDescription(step3Result);
-      if (llmText) {
-        (step3Result as any).llm_text = llmText;
-      }
-    } catch (e) {
-      // LLM 失败时忽略错误，回退为本地拼接文案
-      console.error("[bazi][step3] 生成 LLM 描述时发生异常:", e);
-    }
+    // LLM 调用逻辑已独立到 /api/bazi/yueling-llm，只在用户点击"解盘"按钮时调用
     const ruleSet = "default"; // 得令计算规则集ID
     const step4Result = await step4(fourPillars, dayMaster, dayMasterElement, step2Result, step3Result, chartId, ruleSet);
     const step5Result = await step5(fourPillars, step3Result, chartId, ruleSet);
@@ -507,92 +332,92 @@ export async function POST(req: NextRequest): Promise<NextResponse<BaziResponse>
     const steps = [
       {
         step: 1,
-        name: "定命主【我】",
-        annotations: "以日干为核心",
+        name: "定命主",
+        annotations: "核心日干",
         result: step1Result,
         confidence: 0.95,
       },
       {
         step: 2,
         name: "基础盘面",
-        annotations: "十神、藏干、合冲刑害破、干合干克",
+        annotations: "命局互动",
         result: step2Result,
         confidence: 0.6,
       },
       {
         step: 3,
-        name: "月令与季节",
-        annotations: "月支月令为第一权重",
+        name: "月令季节",
+        annotations: "季令主气",
         result: step3Result,
         confidence: 0.7,
       },
       {
         step: 4,
-        name: "旺衰：日主强弱与身态",
-        annotations: "得令/通根/得助/生克泄耗综合",
+        name: "旺衰强弱",
+        annotations: "力量评估",
         result: step4Result,
         confidence: 0.45,
       },
       {
         step: 5,
-        name: "寒暖燥湿与调候",
-        annotations: "季节偏性与五行分布修正取用",
+        name: "寒暖燥湿",
+        annotations: "调候平衡",
         result: step5Result,
         confidence: 0.35,
       },
       {
         step: 6,
-        name: "格局/成局",
-        annotations: "格局清纯、成局、破格与否",
+        name: "格局成局",
+        annotations: "结构纯度",
         result: step6Result,
         confidence: 0.3,
       },
       {
         step: 7,
-        name: "用神、喜神、忌神",
-        annotations: "强弱+格局+调候+合冲影响综合定性",
+        name: "用-喜-忌",
+        annotations: "趋避策略",
         result: step7Result,
         confidence: 0.25,
       },
       {
         step: 8,
-        name: "验盘：病药是否自洽",
-        annotations: "用神能否解决主要矛盾、是否被合冲绑架等",
+        name: "验盘",
+        annotations: "处方复核",
         result: step8Result,
         confidence: 0.3,
       },
       {
         step: 9,
-        name: "十神解读",
-        annotations: "十神强弱+位置+透藏→性格/事业/财/关系等",
+        name: "十神画像",
+        annotations: "领域解读",
         result: step9Result,
         confidence: 0.25,
       },
       {
         step: 10,
-        name: "排大运【10年一运】",
-        annotations: "看扶格/破格、引动喜忌、阶段主旋律",
+        name: "大运",
+        annotations: "十年一运",
         result: step10Result,
         confidence: 0.2,
       },
       {
         step: 11,
         name: "叠流年",
-        annotations: "大运框架下看流年合冲刑害与主题触发",
+        annotations: "年度趋势",
         result: step11Result,
         confidence: 0.2,
       },
       {
         step: 12,
         name: "流月/流日",
-        annotations: "择时/复盘用；粒度越细噪声越大",
+        annotations: "月度趋势",
         result: step12Result,
         confidence: 0.9,
       },
       {
         step: 13,
         name: "建议",
-        annotations: "主结构、病药、节奏、策略与行动建议",
+        annotations: "AI咨询",
         result: step13Result,
         confidence: 0.25,
       },

@@ -2,8 +2,11 @@
 
 ## 目标
 在八字盘中生成“定命主”板块的自然语言描述。
-`app/bazi/page.tsx` 中 `let text` 变量应来自 LLM 返回内容。
+`app/bazi/page.tsx` 中对应 case 的 `let text` 变量应来自 LLM 返回内容。
 
+---
+
+## 定命主
 ## 输入
 使用“定命主【我】”板块的 JSON 作为 LLM 输入，该 JSON 来自 `app/api/bazi/step1.ts` 的 `Step1Result`。
 
@@ -59,7 +62,7 @@ User（包含 JSON）：
 PromptService 入参规范：
 - envCode：通常取 process.env.ENV（dev/staging/prod）
 - projectCode：bazi
-- flow：flow code（如 flow.bazi.default）
+- flow：flow code（如 flow.bazi.kanpan.mingzhu）
 
 ## API 调用
 使用 DeepSeek Chat Completions 接口：
@@ -86,7 +89,14 @@ LLM 输出为纯文本（不含 JSON、不含 markdown），例如：
 日主为庚（金，阳），日柱为庚寅。
 ```
 
-该文本直接赋值给 `app/bazi/page.tsx` 中的 `let text` 变量并显示。
+该文本直接赋值给 `app/bazi/page.tsx` 中 `case 1` 的 `let text` 变量并显示。
+
+## 交互与触发时机
+- 在“定命主”板块中增加按钮“解盘”。
+- 默认展示板块时，不调用 LLM 接口，仅展示本地文案或既有结果。
+- 点击“解盘”按钮后，调用后台独立程序执行 LLM 请求。
+- LLM 调用逻辑需从原流程中独立到该后台程序中。
+- 后台程序返回的 LLM 文本再显示在页面上（赋值 `let text`）。
 
 ## 失败处理
 - LLM 请求失败时，回退为本地拼接文案（保持原有逻辑）。

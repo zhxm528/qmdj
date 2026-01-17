@@ -12,18 +12,32 @@ export const deepseekConfig = {
   model: "deepseek-chat",
 };
 
-// 数据库配置
-export const dbConfig = {
-  host: process.env.DB_HOST || "45.76.154.72",
-  port: parseInt(process.env.DB_PORT || "5432", 10),
-  database: process.env.DB_NAME || "qmdj",
-  user: process.env.DB_USER || "mz",
-  password: process.env.DB_PASSWORD || "12qw!@QW",
-  // 连接池配置
-  max: parseInt(process.env.DB_POOL_MAX || "20", 10), // 最大连接数
-  idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT || "30000", 10), // 空闲连接超时时间（毫秒）
-  connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT || "10000", 10), // 连接超时时间（毫秒）
+const isProd = process.env.NODE_ENV === "production";
+
+const devDbConfig = {
+  host: "127.0.0.1",
+  port: 5432,
+  database: "qmdj",
+  user: "myuser",
+  password: "mypassword",
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 };
+
+const prodDbConfig = {
+  host: "45.76.154.72",
+  port: 5432,
+  database: "qmdj",
+  user: "mz",
+  password: "12qw!@QW",
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
+};
+
+// 数据库配置
+export const dbConfig = isProd ? prodDbConfig : devDbConfig;
 
 // 邮件配置
 export const mailConfig = {

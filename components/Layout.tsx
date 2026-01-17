@@ -7,6 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const logoText = process.env.NODE_ENV === "production" ? "缘来" : "测试环境";
 
   useEffect(() => {
     // 尝试获取用户信息
@@ -41,7 +42,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
               <Link href="/" className="text-2xl font-bold text-amber-600">
-              缘来
+              {logoText}
               </Link>
             </div>
             <div className="md:hidden flex items-center">

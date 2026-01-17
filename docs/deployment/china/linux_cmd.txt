@@ -133,7 +133,7 @@ DB_CONNECTION_TIMEOUT=2000
 TIMEZONE=Asia/Shanghai
 UTC_OFFSET=8
 INTERNAL_API_BASE_URL=http://127.0.0.1:3000
-process.env.ENV=prod
+process.env.ENV=production
 ```
 
 
@@ -309,6 +309,11 @@ pg_dump -h 47.120.18.202 -p 5432 -U mz -d qmdj | psql -h 45.76.154.72 -p 5432 -U
 ```
 
 
+### 打开本地cmd，执行bash里面的命令
+```bash
+docker run --rm -i -e PGPASSWORD=12qw!@QW postgres:16 pg_dump -h 45.76.154.72 -p 5432 -U mz -d qmdj --no-owner --no-privileges | docker exec -i my_postgres bash -lc "PGPASSWORD=mypassword psql -U myuser -d qmdj"
+```
+
 
 
 ### 使用 PM2 守护进程（让服务挂后台）
@@ -429,7 +434,7 @@ sudo certbot --nginx -d cosmodeus.com -d www.cosmodeus.com
 
 ------------------------------------
 cd /root
-nano deploy_qmdj.sh
+nano deploy_auto.sh
 ------------------------------------
 #!/usr/bin/env bash
 
@@ -454,3 +459,42 @@ echo "===== 部署完成！====="
 ------------------------------------
 chmod +x deploy_qmdj.sh
 ------------------------------------
+
+
+------------------------------------
+cd /root
+nano sync_db_qmdj_to_local.sh
+------------------------------------
+#!/usr/bin/env bash
+
+# 出错就退出，管道任一环出错整个脚本失败
+set -euo pipefail
+
+# 可改的参数
+REMOTE_HOST="45.76.154.72"
+LOCAL_HOST="127.0.0.1"
+PORT="5432"
+ORG_DB_NAME="qmdj"
+ORG_DB_USER="mz"
+TO_DB_NAME="mydatabase"
+TO_DB_USER="myuser"
+
+echo "===== 从远程数据库 $REMOTE_HOST:$PORT/$ORG_DB_NAME 导出 ====="
+echo "===== 并导入到本地 $LOCAL_HOST:$PORT/$TO_DB_NAME ====="
+
+pg_dump -h "$REMOTE_HOST" -p "$PORT" -U "$ORG_DB_USER" -d "$ORG_DB_NAME" | \
+psql   -h "$LOCAL_HOST" -p "$PORT" -U "$TO_DB_USER" -d "$TO_DB_NAME"
+
+echo "===== 同步完成 ====="
+
+------------------------------------
+chmod +x sync_db_qmdj_to_local.sh
+------------------------------------
+
+pg_dump -h 45.76.154.72 -p 5432 -U mz -d qmdj | psql -h 127.0.0.1 -p 5432 -U myuser -d mydatabase
+
+
+nano ~/.pgpass
+
+45.76.154.72:5432:qmdj:mz:12qw!@QW
+127.0.0.1:5432:mydatabase:myuser:mypassword

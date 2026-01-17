@@ -6,6 +6,9 @@ import zhCN from "antd/locale/zh_CN";
 import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 import Layout from "@/components/Layout";
 import DateSelector from "@/components/DateSelector";
 import HourSelector from "@/components/HourSelector";
@@ -221,6 +224,10 @@ export default function BaziPage() {
   const [rootqiData, setRootqiData] = useState<any | null>(null);
   const [dezhuData, setDezhuData] = useState<any | null>(null);
   const [keXieData, setKeXieData] = useState<any | null>(null);
+  const [yuelingLLMLoading, setYuelingLLMLoading] = useState<boolean>(false);
+  const [mingzhuLLMLoading, setMingzhuLLMLoading] = useState<boolean>(false);
+  const [baseinfoLLMLoading, setBaseinfoLLMLoading] = useState<boolean>(false);
+  const [wangshuaiLLMLoading, setWangshuaiLLMLoading] = useState<boolean>(false);
   const visibleSteps = baziSteps.filter((step) => ![11, 12, 13].includes(step.step));
   const baziTimeline = [
     { label: "定命主", step: 1 },
@@ -522,6 +529,221 @@ export default function BaziPage() {
     }
   };
 
+  // 调用定命主 LLM 生成 API
+  const handleMingzhuLLM = async () => {
+    const step1 = baziSteps.find((s) => s.step === 1);
+    if (!step1 || !step1.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setMingzhuLLMLoading(true);
+
+      const response = await fetch("/api/bazi/mingzhu-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step1Result: step1.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step1 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 1) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用定命主 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setMingzhuLLMLoading(false);
+    }
+  };
+
+  // 调用基础盘面信息 LLM 生成 API
+  const handleBaseinfoLLM = async () => {
+    const step2 = baziSteps.find((s) => s.step === 2);
+    if (!step2 || !step2.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setBaseinfoLLMLoading(true);
+
+      const response = await fetch("/api/bazi/baseinfo-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step2Result: step2.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step2 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 2) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用基础盘面信息 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setBaseinfoLLMLoading(false);
+    }
+  };
+
+  // 调用旺衰：日主强弱与身态 LLM 生成 API
+  const handleWangshuaiLLM = async () => {
+    const step4 = baziSteps.find((s) => s.step === 4);
+    if (!step4 || !step4.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setWangshuaiLLMLoading(true);
+
+      const response = await fetch("/api/bazi/wangshuai-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step4Result: step4.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step4 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 4) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用旺衰 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setWangshuaiLLMLoading(false);
+    }
+  };
+
+  // 调用月令与季节 LLM 生成 API
+  const handleYuelingLLM = async () => {
+    const step3 = baziSteps.find((s) => s.step === 3);
+    if (!step3 || !step3.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setYuelingLLMLoading(true);
+
+      const response = await fetch("/api/bazi/yueling-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step3Result: step3.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step3 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 3) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用月令与季节 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setYuelingLLMLoading(false);
+    }
+  };
+
+  // 默认提示文案
+  const defaultUpgradeMessage = "升级到更深度的专属方案后，你可以请智能老师为你细致解盘，把困惑说清、把心安下来。";
+
   // 将步骤结果转换为自然语言描述
   const formatStepResult = (step: BaziStep): string => {
     const { step: stepNum, result } = step;
@@ -529,7 +751,6 @@ export default function BaziPage() {
     switch (stepNum) {
       case 1: {
         // 定日主（命主）
-        const { day_master, day_pillar } = result;
         const llmText: string | undefined = (result as any).llm_text;
 
         // 优先使用 LLM 返回的自然语言描述
@@ -537,155 +758,21 @@ export default function BaziPage() {
           return llmText.trim();
         }
 
-        // 回退：使用本地拼接文案
-        let text = `日主为${day_master.stem}（${day_master.element}，${day_master.yin_yang}），日柱为${day_pillar.stem}${day_pillar.branch}。\n`;
-        return text;
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       
       case 2: {
         // 基础盘面信息
-        let text = "【基础盘面结构总表】\n\n";
-        
-        // 如果有完整的结构表，显示详细信息
-        if (result.structure_table) {
-          const st = result.structure_table;
-          
-          // 日主信息
-          text += `日主：${st.day_master.stem}（${st.day_master.element}，${st.day_master.yinyang}）\n\n`;
-          
-          // 四柱详细信息
-          text += "【四柱结构】\n";
-          st.pillars.forEach((p: { pillar: "year" | "month" | "day" | "hour"; stem: { char: string; element: string; yinyang: string; tenshen: string }; branch: { char: string; hidden: Array<{ char: string; role: "主气" | "中气" | "余气"; element: string; yinyang: string; tenshen: string; is_root: boolean; reveal_to: string[] }> } }) => {
-            const pillarNames: Record<string, string> = { year: "年柱", month: "月柱", day: "日柱", hour: "时柱" };
-            text += `${pillarNames[p.pillar]}：天干 ${p.stem.char}（${p.stem.element}，${p.stem.yinyang}，${p.stem.tenshen}）\n`;
-            text += `  地支 ${p.branch.char}：\n`;
-            if (p.branch.hidden.length > 0) {
-              p.branch.hidden.forEach((h: { char: string; role: "主气" | "中气" | "余气"; element: string; yinyang: string; tenshen: string; is_root: boolean; reveal_to: string[] }) => {
-                text += `    - ${h.char}（${h.role}，${h.element}，${h.yinyang}，${h.tenshen}）`;
-                if (h.is_root) {
-                  text += ` [通根：${h.role === "主气" ? "本气根" : h.role === "中气" ? "中气根" : "余气根"}]`;
-                }
-                if (h.reveal_to.length > 0) {
-                  text += ` [透到：${h.reveal_to.join("、")}]`;
-                }
-                text += "\n";
-              });
-            } else {
-              text += "    （无藏干）\n";
-            }
-            text += "\n";
-          });
-          
-          // 通根表
-          text += "【通根表】\n";
-          text += `本气根：${st.roots.summary.benqi}个，中气根：${st.roots.summary.zhongqi}个，余气根：${st.roots.summary.yuqi}个\n`;
-          if (st.roots.details.length > 0) {
-            text += "详细：\n";
-            st.roots.details.forEach((r: { location: string; branch: string; hidden: string; strength: "本气根" | "中气根" | "余气根" }) => {
-              const locationNames: Record<string, string> = {
-                year_branch: "年支", month_branch: "月支", day_branch: "日支", hour_branch: "时支"
-              };
-              text += `  - ${locationNames[r.location] || r.location} ${r.branch} 藏干 ${r.hidden}（${r.strength}）\n`;
-            });
-          } else {
-            text += "日主无根\n";
-          }
-          text += "\n";
-          
-          // 透干表
-          text += "【透干表】\n";
-          if (st.reveals.length > 0) {
-            st.reveals.forEach((r: { from_branch: string; hidden: string; to_stems: string[] }) => {
-              const revealNames: Record<string, string> = {
-                year_stem: "年干", month_stem: "月干", hour_stem: "时干"
-              };
-              const toStemsNames = r.to_stems.map((s: string) => revealNames[s] || s).join("、");
-              text += `  - ${r.from_branch} 藏干 ${r.hidden} 透到 ${toStemsNames}\n`;
-            });
-          } else {
-            text += "无透干\n";
-          }
-          text += "\n";
-          
-          // 关系网表
-          text += "【关系网表】\n";
-          
-          // 天干关系
-          if (st.relations.stems.length > 0) {
-            text += "天干关系：\n";
-            st.relations.stems.forEach((rel: { type: "合" | "克" | "生"; a: string; b: string }) => {
-              text += `  - ${rel.type}：${rel.a} ↔ ${rel.b}\n`;
-            });
-          }
-          
-          // 地支关系
-          if (st.relations.branches.length > 0) {
-            text += "地支关系：\n";
-            st.relations.branches.forEach((rel: { type: "冲" | "六合" | "害" | "破" | "刑" | "自刑"; a: string; b?: string }) => {
-              if (rel.b) {
-                text += `  - ${rel.type}：${rel.a} ↔ ${rel.b}\n`;
-              } else {
-                text += `  - ${rel.type}：${rel.a}\n`;
-              }
-            });
-          }
-          
-          // 特殊结构
-          if (st.relations.structures.length > 0) {
-            text += "特殊结构：\n";
-            st.relations.structures.forEach((s: { type: "三合局" | "三会局" | "半合" | "方局" | "会方" | "六合局" | "其他"; members: string[]; element: string; is_complete: boolean }) => {
-              text += `  - ${s.type}（${s.members.join("、")}）→ ${s.element} ${s.is_complete ? "（完整）" : "（不完整）"}\n`;
-            });
-          }
-          
-          if (st.relations.stems.length === 0 && st.relations.branches.length === 0 && st.relations.structures.length === 0) {
-            text += "无特殊关系\n";
-          }
-        } else {
-          // 兼容旧格式
-          text += "【十神表】\n";
-          if (result.ten_gods) {
-            text += `年干：${result.ten_gods.year_stem || "-"}\n`;
-            text += `月干：${result.ten_gods.month_stem || "-"}\n`;
-            text += `日干：日主\n`;
-            text += `时干：${result.ten_gods.hour_stem || "-"}\n\n`;
-          }
-          
-          text += "【地支藏干】\n";
-          if (result.hidden_stems) {
-            text += `年支：${result.hidden_stems.year_branch.join("、") || "无"}\n`;
-            text += `月支：${result.hidden_stems.month_branch.join("、") || "无"}\n`;
-            text += `日支：${result.hidden_stems.day_branch.join("、") || "无"}\n`;
-            text += `时支：${result.hidden_stems.hour_branch.join("、") || "无"}\n\n`;
-          }
-          
-          text += "【关系分析】\n";
-          if (result.relations) {
-            if (result.relations.stem_combos.length > 0) {
-              text += `天干合：${result.relations.stem_combos.join("、")}\n`;
-            }
-            if (result.relations.stem_clashes.length > 0) {
-              text += `天干冲：${result.relations.stem_clashes.join("、")}\n`;
-            }
-            if (result.relations.branch_combos.length > 0) {
-              text += `地支合：${result.relations.branch_combos.join("、")}\n`;
-            }
-            if (result.relations.branch_clashes.length > 0) {
-              text += `地支冲：${result.relations.branch_clashes.join("、")}\n`;
-            }
-            if (result.relations.branch_harms.length > 0) {
-              text += `地支害：${result.relations.branch_harms.join("、")}\n`;
-            }
-            if (result.relations.branch_punishments.length > 0) {
-              text += `地支刑：${result.relations.branch_punishments.join("、")}\n`;
-            }
-            if (result.relations.branch_breaks.length > 0) {
-              text += `地支破：${result.relations.branch_breaks.join("、")}\n`;
-            }
-          }
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
         }
-        
-        return text;
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       
       case 3: {
@@ -697,89 +784,88 @@ export default function BaziPage() {
           return llmText.trim();
         }
 
-        // 回退：使用本地拼接文案
-        return "月令与季节分析结果已通过下方表格和图表展示。";
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       
-      case 4:
-        // 旺衰：日主强弱与身态 - 已有通根表和透干表展示，不显示占位文字
-        return "";
-      case 5:
-        return "季节偏性与五行分布修正取用";
+      case 4: {
+        // 旺衰：日主强弱与身态
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
+        }
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
+      }
+      case 5: {
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
+        }
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
+      }
       case 6: {
-        const structure = result?.structure;
-        if (!structure) {
-          return "格局/成局结果为空。";
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
         }
 
-        const summary = structure.summary || {};
-        const candidatesText = Array.isArray(structure.candidates)
-          ? structure.candidates
-              .map((c: any) => `${c.pattern_code}(${typeof c.score === "number" ? c.score.toFixed(1) : c.score})`)
-              .join("，")
-          : "";
-        const formationsText = Array.isArray(structure.formed_combinations)
-          ? structure.formed_combinations.join("，")
-          : "";
-
-        let text = `主格局：${structure.primary_pattern || "-"}\n`;
-        text += `清纯/破格：${structure.purity || "-"}\n`;
-        if (summary.purity_score !== undefined) {
-          text += `清纯分：${summary.purity_score}\n`;
-        }
-        if (summary.break_level) {
-          text += `破格等级：${getBreakLevelChinese(summary.break_level)}\n`;
-        }
-        if (candidatesText) {
-          text += `候选：${candidatesText}\n`;
-        }
-        if (formationsText) {
-          text += `成局：${formationsText}\n`;
-        }
-        if (Array.isArray(structure.breakers) && structure.breakers.length > 0) {
-          text += `破格点：${structure.breakers.join("，")}\n`;
-        }
-        return text;
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       case 7: {
-        const useful = result?.useful_gods;
-        if (!useful) {
-          return "用神/喜神/忌神结果为空。";
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
         }
-        const xi = useful.xi_shen?.map((x: any) => x.element).join("，") || "-";
-        const ji = useful.ji_shen?.map((j: any) => j.element).join("，") || "-";
-        return (
-          `用神：${useful.yong_shen?.element || "-"}（${useful.yong_shen?.ten_god || "-"}）\n` +
-          `喜神：${xi}\n` +
-          `忌神：${ji}`
-        );
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       case 8: {
-        const check = result?.consistency_check;
-        if (!check) {
-          return "验盘结果为空。";
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
         }
-        const tags = check.disease_tags?.length ? check.disease_tags.map((tag: string) => getDiseaseTagChinese(tag)).join("，") : "-";
-        const issues = check.issues?.length ? check.issues.length : 0;
-        return (
-          `自洽评分：${check.consistency_score}\n` +
-          `病标签：${tags}\n` +
-          `问题数：${issues}`
-        );
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
       case 9: {
-        const profile = result?.tenshen_profile_static;
-        if (!profile) {
-          return "十神专题画像结果为空。";
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
         }
-        const top = profile.top_tenshen?.length ? profile.top_tenshen.join("，") : "-";
-        return (
-          `主导十神：${top}\n` +
-          `置信度：${profile.confidence}\n` +
-          `证据条数：${profile.evidence_count}`
-        );
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
       }
-      case 10:
+      case 10: {
+        const llmText: string | undefined = (result as any).llm_text;
+
+        // 优先使用 LLM 返回的自然语言描述
+        if (llmText && typeof llmText === "string" && llmText.trim().length > 0) {
+          return llmText.trim();
+        }
+
+        // 回退：使用默认提示文案
+        return defaultUpgradeMessage;
+      }
       case 11:
       case 12:
       case 13:
@@ -1296,17 +1382,78 @@ export default function BaziPage() {
                     return a.step - b.step;
                   }).map((step) => {
                     const naturalText = formatStepResult(step);
+                    const llmMarkdown = (step.result as any)?.llm_text;
+                    const useMarkdown =
+                      typeof llmMarkdown === "string" && llmMarkdown.trim().length > 0;
                     return (
                       <Panel
                         header={
                           <div className="flex justify-between items-center w-full">
-                            <span className="font-semibold">
-                              {step.name}
-                            </span>
-                            {step.annotations && (
-                              <span className="text-sm text-gray-500 font-normal italic ml-4">
-                                {step.annotations}
+                            <div className="flex items-center">
+                              <span className="font-semibold">
+                                {step.name}
                               </span>
+                              {step.annotations && (
+                                <span className="text-sm text-gray-500 font-normal italic ml-4">
+                                  {step.annotations}
+                                </span>
+                              )}
+                            </div>
+                            {step.step === 1 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={mingzhuLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMingzhuLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 2 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={baseinfoLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBaseinfoLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 3 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={yuelingLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleYuelingLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 4 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={wangshuaiLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleWangshuaiLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
                             )}
                           </div>
                         }
@@ -1314,13 +1461,19 @@ export default function BaziPage() {
                       >
                         <div className="space-y-4">
                           <div id={`bazi-step-${step.step}`} className="scroll-mt-24" />
-                          {step.step !== 2 && (
-                            <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            {useMarkdown ? (
+                              <div className="text-sm text-gray-800 leading-relaxed">
+                                <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
+                                  {llmMarkdown}
+                                </ReactMarkdown>
+                              </div>
+                            ) : (
                               <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
                                 {naturalText}
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                           {/* 步骤1显示五行分布、天干五行阴阳表和五行统计雷达图（左侧两个表格垂直堆叠，右侧雷达图） */}
                           {step.step === 1 && step.result.five_elements && fourPillars && ganMetaData && step.result.five_elements?.optional_summary?.count_by_element && (
                             <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-4 items-stretch">
