@@ -1309,7 +1309,7 @@ export default function HomePage() {
                   <label className="block text-sm font-medium text-[var(--color-text)]">
                     问事
                     {!isLoggedIn && (
-                      <span className="ml-2 text-xs text-amber-600 font-normal">
+                      <span className="ml-2 text-xs text-[var(--color-link)] font-normal">
                         （先登录 再问事）
                       </span>
                     )}

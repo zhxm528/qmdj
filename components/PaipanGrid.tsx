@@ -47,25 +47,25 @@ export default function PaipanGrid({ data }: PaipanGridProps) {
     return (
       <div
         key={cell.id}
-        className="border-2 border-gray-300 bg-white"
+        className="border-2 border-[var(--color-border)] bg-[var(--color-card-bg)]"
         style={{ minWidth: "200px", minHeight: "200px" }}
       >
         {/* 12格布局：4行×3列 */}
         <div className="grid grid-cols-3 grid-rows-4 h-full w-full">
           {/* 1-1格：九宫对应的数字 */}
-          <div className="border border-gray-200 p-1 text-center text-sm font-bold bg-gray-50">
+          <div className="border border-[var(--color-border)] p-1 text-center text-sm font-bold bg-[var(--color-surface)]">
             {cell.id}
           </div>
           {/* 1-2格：天八神 */}
-          <div className="border border-gray-200 p-1 text-center text-xs">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs">
             {cell.tianShen || ""}
           </div>
           {/* 1-3格：驿马或空亡 */}
-          <div className="border border-gray-200 p-1 text-center text-xs">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs">
             {cell.yiMa ? "驿马" : cell.kongWang ? "空亡" : ""}
           </div>
           {/* 2-1格：天芮星同宫的天禽星 */}
-          <div className="border border-gray-200 p-1 text-center text-xs">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs">
             {cell.star?.includes("天芮") || cell.star?.includes("天禽")
               ? cell.star
               : ""}
@@ -75,17 +75,17 @@ export default function PaipanGrid({ data }: PaipanGridProps) {
             {cell.star || ""}
           </div>
           {/* 2-3格：天盘干 */}
-          <div className="border border-gray-200 p-1 text-center text-xs font-semibold text-blue-600">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs font-semibold text-[var(--color-link)]">
             {cell.tianGan || ""}
           </div>
           {/* 3-1格：填空 */}
           <div className="border border-gray-200 p-1"></div>
           {/* 3-2格：八门 */}
-          <div className="border border-gray-200 p-1 text-center text-xs font-semibold text-green-600">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs font-semibold text-[var(--color-success)]">
             {cell.door || ""}
           </div>
           {/* 3-3格：地盘干 */}
-          <div className="border border-gray-200 p-1 text-center text-xs font-semibold text-red-600">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs font-semibold text-[var(--color-danger)]">
             {cell.diGan || ""}
           </div>
           {/* 4-1格：九宫对应的八卦 */}
@@ -93,7 +93,7 @@ export default function PaipanGrid({ data }: PaipanGridProps) {
             {bagua}
           </div>
           {/* 4-2格：地八神 */}
-          <div className="border border-gray-200 p-1 text-center text-xs">
+          <div className="border border-[var(--color-border)] p-1 text-center text-xs">
             {cell.diShen || ""}
           </div>
           {/* 4-3格：填空 */}
@@ -104,10 +104,10 @@ export default function PaipanGrid({ data }: PaipanGridProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">排盘结果</h2>
+    <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6">
+      <h2 className="text-2xl font-bold text-[var(--color-text-strong)] mb-6 text-center">排盘结果</h2>
       {meta && (
-        <div className="mb-4 text-center text-sm text-gray-600">
+        <div className="mb-4 text-center text-sm text-[var(--color-text)]">
           {meta.season && <span className="mr-2">{meta.season}</span>}
           {meta.dunType && <span className="mr-2">{meta.dunType}</span>}
           {meta.ju && <span>{meta.ju}局</span>}

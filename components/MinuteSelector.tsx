@@ -50,13 +50,13 @@ export default function MinuteSelector({
       <button
         type="button"
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white text-left flex items-center justify-between"
+        className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] bg-[var(--color-card-bg)] text-left flex items-center justify-between"
       >
-        <span className={!minute ? "text-gray-500" : ""}>
+        <span className={!minute ? "text-[var(--color-muted)]" : "text-[var(--color-text)]"}>
           {minute !== "" ? `${parseInt(minute)}分` : "分"}
         </span>
         <svg
-          className="h-5 w-5 text-gray-400"
+          className="h-5 w-5 text-[var(--color-muted)]"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -71,7 +71,7 @@ export default function MinuteSelector({
       
       {isDropdownOpen && (
         <div
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 mt-1 bg-[var(--color-card-bg)] border border-[var(--color-border)] rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
           style={{ minWidth: "0", maxWidth: "90vw", width: "100%" }}
         >
           <div className="grid grid-cols-4 gap-2">
@@ -87,11 +87,11 @@ export default function MinuteSelector({
                   }}
                   className={`text-center py-2 px-2 rounded transition-colors whitespace-nowrap ${
                     minute === minuteValue
-                      ? "bg-amber-500 text-white"
-                      : "hover:bg-amber-50"
+                      ? "bg-[var(--color-primary)] text-white"
+                      : "hover:bg-[var(--color-hover)] text-[var(--color-text)]"
                   }`}
                 >
-                  <div className={`text-sm font-medium ${minute === minuteValue ? 'text-white' : ''} whitespace-nowrap`}>{m}分</div>
+                  <div className={`text-sm font-medium ${minute === minuteValue ? 'text-white' : 'text-[var(--color-text)]'} whitespace-nowrap`}>{m}分</div>
                 </button>
               );
             })}

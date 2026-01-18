@@ -47,7 +47,7 @@ export default function TermTimeline({ currentStep = 0 }: TermTimelineProps) {
             style={{ 
               fontSize: '14px', 
               fontWeight: 'bold',
-              color: isCurrent ? '#1890ff' : '#8c8c8c',
+              color: isCurrent ? 'var(--color-link)' : 'var(--color-muted)',
               marginBottom: '8px',
               lineHeight: '1',
               height: '20px',
@@ -61,7 +61,7 @@ export default function TermTimeline({ currentStep = 0 }: TermTimelineProps) {
           </span>
           <Link 
             href={step.href}
-            className={isCurrent ? "text-blue-600 hover:text-blue-800 font-medium" : "text-gray-600 hover:text-blue-600 font-medium"}
+            className={isCurrent ? "text-[var(--color-link)] hover:text-[var(--color-link-hover)] font-medium" : "text-[var(--color-text)] hover:text-[var(--color-link)] font-medium"}
           >
             {step.title}
           </Link>
@@ -73,7 +73,7 @@ export default function TermTimeline({ currentStep = 0 }: TermTimelineProps) {
 
   return (
     <>
-      <div className="mb-8 pb-6 border-b border-gray-200">
+      <div className="mb-8 pb-6 border-b border-[var(--color-border)]">
         <Steps
           current={currentStep}
           progressDot={(dot, { index, status }) => {

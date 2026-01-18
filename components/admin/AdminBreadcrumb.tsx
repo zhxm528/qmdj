@@ -50,18 +50,18 @@ export default function AdminBreadcrumb({
 
   return (
     <div className={`min-w-0 ${className}`}>
-      <nav className="text-xs text-gray-500">
+      <nav className="text-xs text-[var(--color-muted)]">
         <ol className="flex flex-wrap items-center gap-2">
           {trail.map((item, index) => (
             <li key={`${item.label}-${index}`} className="flex items-center gap-2">
               {item.href && index !== trail.length - 1 ? (
-                <Link href={item.href} className="hover:text-amber-600">
+                <Link href={item.href} className="hover:text-[var(--color-link)]">
                   {item.label}
                 </Link>
               ) : (
                 <span>{item.label}</span>
               )}
-              {index < trail.length - 1 && <span className="text-gray-300">/</span>}
+              {index < trail.length - 1 && <span className="text-[var(--color-muted)]">/</span>}
             </li>
           ))}
         </ol>

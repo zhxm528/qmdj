@@ -93,7 +93,7 @@ export default function MonthPicker({
       <button
         type="button"
         disabled
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-gray-100 text-left text-gray-400 cursor-not-allowed"
+        className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] appearance-none bg-[var(--color-elevated)] text-left text-[var(--color-muted)] cursor-not-allowed"
         aria-label="请先选择年份"
       >
         <span>月</span>
@@ -108,10 +108,10 @@ export default function MonthPicker({
         type="button"
         onClick={() => !disabled && setIsOpen(!isOpen)}
         disabled={disabled}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 appearance-none bg-white text-left hover:border-amber-500 transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed disabled:hover:border-gray-300"
+        className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] appearance-none bg-[var(--color-card-bg)] text-left hover:border-[var(--color-primary)] transition-colors disabled:bg-[var(--color-elevated)] disabled:cursor-not-allowed disabled:hover:border-[var(--color-border)]"
         aria-label="选择月份"
       >
-        <span className={value ? "text-gray-900" : "text-gray-400"}>
+        <span className={value ? "text-[var(--color-text-strong)]" : "text-[var(--color-muted)]"}>
           {value
             ? `${parseInt(value)}月${getMonthGanzhi(parseInt(value)) ? ` (${getMonthGanzhi(parseInt(value))})` : ""}`
             : "月"}
@@ -120,16 +120,16 @@ export default function MonthPicker({
 
       {/* 下拉面板 */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-xl z-50 w-full min-w-[280px] md:min-w-[320px] md:max-w-[400px]">
+        <div className="absolute top-full left-0 mt-2 bg-[var(--color-card-bg)] border border-[var(--color-border)] rounded-lg shadow-xl z-50 w-full min-w-[280px] md:min-w-[320px] md:max-w-[400px]">
           {/* 标题栏 */}
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 rounded-t-lg">
-            <h3 className="text-sm font-medium text-gray-700 text-center">
+          <div className="px-4 py-3 border-b border-[var(--color-border)] bg-[var(--color-surface)] rounded-t-lg">
+            <h3 className="text-sm font-medium text-[var(--color-text)] text-center">
               选择月份
             </h3>
           </div>
 
           {/* 4x3 月份网格 */}
-          <div className="grid grid-cols-4 gap-1.5 p-3 bg-white">
+          <div className="grid grid-cols-4 gap-1.5 p-3 bg-[var(--color-card-bg)]">
             {monthOptions.map((month) => {
               const isSelected = value === month.value.toString().padStart(2, "0");
               const lunar = monthLunarInfo[month.value];
@@ -144,19 +144,19 @@ export default function MonthPicker({
                   }}
                   className={`aspect-square flex flex-col items-center justify-center rounded transition-all ${
                     isSelected
-                      ? "bg-amber-600 text-white font-bold scale-105 shadow-md"
-                      : "hover:bg-amber-50 text-gray-700 hover:scale-105 active:scale-95"
+                      ? "bg-[var(--color-primary)] text-white font-bold scale-105 shadow-md"
+                      : "hover:bg-[var(--color-hover)] text-[var(--color-text)] hover:scale-105 active:scale-95"
                   }`}
                   aria-label={`选择 ${month.label}`}
                 >
-                  <div className={`text-xs md:text-sm font-semibold ${isSelected ? "text-white" : "text-gray-900"}`}>
+                  <div className={`text-xs md:text-sm font-semibold ${isSelected ? "text-white" : "text-[var(--color-text-strong)]"}`}>
                     {month.value}月
                   </div>
-                  <div className={`text-[10px] md:text-xs mt-0.5 ${isSelected ? "text-amber-100" : "text-gray-500"}`}>
+                  <div className={`text-[10px] md:text-xs mt-0.5 ${isSelected ? "text-amber-100" : "text-[var(--color-muted)]"}`}>
                     {month.ganzhi}
                   </div>
                   {lunar && (
-                    <div className={`text-[9px] mt-0.5 ${isSelected ? "text-amber-200" : "text-blue-500"}`}>
+                    <div className={`text-[9px] mt-0.5 ${isSelected ? "text-amber-200" : "text-[var(--color-link)]"}`}>
                       {lunar.displayWithAlias || lunar.monthAlias}
                     </div>
                   )}
@@ -166,7 +166,7 @@ export default function MonthPicker({
           </div>
 
           {/* 底部提示 */}
-          <div className="px-4 py-2 bg-gray-50 border-t border-gray-200 text-xs text-gray-500 text-center rounded-b-lg">
+          <div className="px-4 py-2 bg-[var(--color-surface)] border-t border-[var(--color-border)] text-xs text-[var(--color-muted)] text-center rounded-b-lg">
             点击月份选择 · {year}年
           </div>
         </div>

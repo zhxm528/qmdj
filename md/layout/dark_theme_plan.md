@@ -52,5 +52,7 @@
 - `app/account/page.tsx`
 - `app/member/page.tsx`
 - `app/pricing/page.tsx`
+- `app/term/page.tsx`
+- `app/privacy/page.tsx`
 - `app/components/SidebarDrawer.tsx`
 - `app/admin/**`：管理后台

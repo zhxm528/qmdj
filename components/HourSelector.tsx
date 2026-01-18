@@ -65,13 +65,13 @@ export default function HourSelector({
         type="button"
         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
         disabled={!year || !month || !day}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white disabled:bg-gray-100 disabled:cursor-not-allowed text-left flex items-center justify-between"
+        className="w-full px-4 py-3 border border-[var(--color-border)] rounded-lg focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] bg-[var(--color-card-bg)] disabled:bg-[var(--color-elevated)] disabled:cursor-not-allowed text-left flex items-center justify-between"
       >
-        <span className={!hour ? "text-gray-500" : ""}>
+        <span className={!hour ? "text-[var(--color-muted)]" : "text-[var(--color-text)]"}>
           {hour !== "" ? `${parseInt(hour)}时 ${getHourGanzhi() ? `(${getHourGanzhi()})` : ""}` : "时"}
         </span>
         <svg
-          className="h-5 w-5 text-gray-400"
+          className="h-5 w-5 text-[var(--color-muted)]"
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
@@ -86,7 +86,7 @@ export default function HourSelector({
       
       {isDropdownOpen && year && month && day && (
         <div
-          className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
+          className="absolute z-50 left-0 right-0 mt-1 bg-[var(--color-card-bg)] border border-[var(--color-border)] rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
           style={{ minWidth: "0", maxWidth: "90vw", width: "100%" }}
         >
           <div className="grid grid-cols-4 gap-2">
@@ -103,13 +103,13 @@ export default function HourSelector({
                   }}
                   className={`text-center py-2 px-2 rounded transition-colors whitespace-nowrap ${
                     hour === hourValue
-                      ? "bg-amber-500 text-white"
-                      : "hover:bg-amber-50"
+                      ? "bg-[var(--color-primary)] text-white"
+                      : "hover:bg-[var(--color-hover)] text-[var(--color-text)]"
                   }`}
                   title={`${h}时 ${ganzhi}`}
                 >
-                  <div className={`text-sm font-medium ${hour === hourValue ? 'text-white' : ''} whitespace-nowrap`}>{h}时</div>
-                  <div className={`text-xs ${hour === hourValue ? 'text-amber-200' : 'text-amber-600'} whitespace-nowrap`}>{ganzhi}</div>
+                  <div className={`text-sm font-medium ${hour === hourValue ? 'text-white' : 'text-[var(--color-text)]'} whitespace-nowrap`}>{h}时</div>
+                  <div className={`text-xs ${hour === hourValue ? 'text-amber-200' : 'text-[var(--color-link)]'} whitespace-nowrap`}>{ganzhi}</div>
                 </button>
               );
             })}

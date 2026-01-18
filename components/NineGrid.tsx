@@ -65,10 +65,10 @@ export default function NineGrid({ data }: NineGridProps) {
         return (
           <div
             key={cellKey}
-            className="aspect-square bg-white border-2 border-amber-200 rounded-lg p-2"
+            className="aspect-square bg-[var(--color-card-bg)] border-2 border-[var(--color-border)] rounded-lg p-2"
           >
             {/* 宫标题 */}
-            <div className="text-xs font-bold text-amber-900 mb-1 text-center">{cell.name}</div>
+            <div className="text-xs font-bold text-[var(--color-text-strong)] mb-1 text-center">{cell.name}</div>
             {/* 4x3 子格 */}
             <div className="grid grid-cols-3 grid-rows-4 gap-1 h-full">
               {/* 1-1 驿马 */}
@@ -98,7 +98,7 @@ export default function NineGrid({ data }: NineGridProps) {
               </div>
 
               {/* 3-1 空 */}
-              <div className="flex items-center justify-center text-[14px] text-gray-600 border rounded-sm"></div>
+              <div className="flex items-center justify-center text-[14px] text-[var(--color-muted)] border-[var(--color-border)] rounded-sm"></div>
               {/* 3-2 八门 */}
               <div className="flex items-center justify-center text-[14px] text-rose-700 font-medium border rounded-sm bg-rose-50">{door}</div>
               {/* 3-3 地盘干 */}
@@ -107,7 +107,7 @@ export default function NineGrid({ data }: NineGridProps) {
               </div>
 
               {/* 4-1 八卦+宫位数 */}
-              <div className="flex items-center justify-center text-[14px] text-gray-800 font-semibold border rounded-sm bg-gray-50">
+              <div className="flex items-center justify-center text-[14px] text-[var(--color-text-strong)] font-semibold border-[var(--color-border)] rounded-sm bg-[var(--color-surface)]">
                 {gua}{palaceNumber}
               </div>
               {/* 4-2 地八神（第八神） */}
@@ -115,7 +115,7 @@ export default function NineGrid({ data }: NineGridProps) {
                 {diShen}
               </div>
               {/* 4-3 空 */}
-              <div className="flex items-center justify-center text-[14px] text-gray-600 border rounded-sm"></div>
+              <div className="flex items-center justify-center text-[14px] text-[var(--color-muted)] border-[var(--color-border)] rounded-sm"></div>
             </div>
           </div>
         );
