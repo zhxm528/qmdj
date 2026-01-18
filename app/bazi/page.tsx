@@ -228,6 +228,12 @@ export default function BaziPage() {
   const [mingzhuLLMLoading, setMingzhuLLMLoading] = useState<boolean>(false);
   const [baseinfoLLMLoading, setBaseinfoLLMLoading] = useState<boolean>(false);
   const [wangshuaiLLMLoading, setWangshuaiLLMLoading] = useState<boolean>(false);
+  const [haizaoLLMLoading, setHaizaoLLMLoading] = useState<boolean>(false);
+  const [gejuLLMLoading, setGejuLLMLoading] = useState<boolean>(false);
+  const [yongxijiLLMLoading, setYongxijiLLMLoading] = useState<boolean>(false);
+  const [yanpanLLMLoading, setYanpanLLMLoading] = useState<boolean>(false);
+  const [shishenhuaxiangLLMLoading, setShishenhuaxiangLLMLoading] = useState<boolean>(false);
+  const [dayunLLMLoading, setDayunLLMLoading] = useState<boolean>(false);
   const visibleSteps = baziSteps.filter((step) => ![11, 12, 13].includes(step.step));
   const baziTimeline = [
     { label: "定命主", step: 1 },
@@ -685,6 +691,324 @@ export default function BaziPage() {
       alert(error.message || "调用 LLM 生成描述失败，请重试");
     } finally {
       setWangshuaiLLMLoading(false);
+    }
+  };
+
+  // 调用寒暖燥湿 LLM 生成 API
+  const handleHaizaoLLM = async () => {
+    const step5 = baziSteps.find((s) => s.step === 5);
+    if (!step5 || !step5.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setHaizaoLLMLoading(true);
+
+      const response = await fetch("/api/bazi/haizao-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step5Result: step5.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step5 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 5) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用寒暖燥湿 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setHaizaoLLMLoading(false);
+    }
+  };
+
+  // 调用格局成局 LLM 生成 API
+  const handleGejuLLM = async () => {
+    const step6 = baziSteps.find((s) => s.step === 6);
+    if (!step6 || !step6.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setGejuLLMLoading(true);
+
+      const response = await fetch("/api/bazi/geju-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step6Result: step6.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step6 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 6) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用格局成局 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setGejuLLMLoading(false);
+    }
+  };
+
+  // 调用用喜忌 LLM 生成 API
+  const handleYongxijiLLM = async () => {
+    const step7 = baziSteps.find((s) => s.step === 7);
+    if (!step7 || !step7.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setYongxijiLLMLoading(true);
+
+      const response = await fetch("/api/bazi/yongxiji-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step7Result: step7.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step7 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 7) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用用喜忌 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setYongxijiLLMLoading(false);
+    }
+  };
+
+  // 调用验盘 LLM 生成 API
+  const handleYanpanLLM = async () => {
+    const step8 = baziSteps.find((s) => s.step === 8);
+    if (!step8 || !step8.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setYanpanLLMLoading(true);
+
+      const response = await fetch("/api/bazi/yanpan-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step8Result: step8.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step8 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 8) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用验盘 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setYanpanLLMLoading(false);
+    }
+  };
+
+  // 调用十神画像 LLM 生成 API
+  const handleShishenhuaxiangLLM = async () => {
+    const step9 = baziSteps.find((s) => s.step === 9);
+    if (!step9 || !step9.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setShishenhuaxiangLLMLoading(true);
+
+      const response = await fetch("/api/bazi/shishenhuaxiang-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step9Result: step9.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step9 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 9) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用十神画像 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setShishenhuaxiangLLMLoading(false);
+    }
+  };
+
+  // 调用大运 LLM 生成 API
+  const handleDayunLLM = async () => {
+    const step10 = baziSteps.find((s) => s.step === 10);
+    if (!step10 || !step10.result) {
+      alert("请先完成八字排盘");
+      return;
+    }
+
+    try {
+      setDayunLLMLoading(true);
+
+      const response = await fetch("/api/bazi/dayun-llm", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          step10Result: step10.result,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "调用 LLM 生成描述失败");
+      }
+
+      const data = await response.json();
+      if (data.success && data.text) {
+        // 更新 step10 的 result，添加 llm_text
+        const updatedSteps = baziSteps.map((s) => {
+          if (s.step === 10) {
+            return {
+              ...s,
+              result: {
+                ...s.result,
+                llm_text: data.text,
+              },
+            };
+          }
+          return s;
+        });
+        setBaziSteps(updatedSteps);
+      } else {
+        throw new Error(data.error || "LLM 返回数据格式不正确");
+      }
+    } catch (error: any) {
+      console.error("调用大运 LLM 失败:", error);
+      alert(error.message || "调用 LLM 生成描述失败，请重试");
+    } finally {
+      setDayunLLMLoading(false);
     }
   };
 
@@ -1449,6 +1773,90 @@ export default function BaziPage() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleWangshuaiLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 5 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={haizaoLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleHaizaoLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 6 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={gejuLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleGejuLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 7 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={yongxijiLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleYongxijiLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 8 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={yanpanLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleYanpanLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 9 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={shishenhuaxiangLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleShishenhuaxiangLLM();
+                                }}
+                                className="ml-4"
+                              >
+                                解盘
+                              </Button>
+                            )}
+                            {step.step === 10 && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                loading={dayunLLMLoading}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDayunLLM();
                                 }}
                                 className="ml-4"
                               >
