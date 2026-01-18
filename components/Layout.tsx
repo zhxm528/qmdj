@@ -188,8 +188,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                             }}
                             className="w-full text-left px-4 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors flex items-center space-x-2"
                           >
+                            <span>{theme === "dark" ? "白天" : "晚上"}</span>
                             <span>{theme === "dark" ? "☀️" : "🌙"}</span>
-                            <span>{theme === "dark" ? "白天模式" : "黑夜模式"}</span>
                           </button>
                           <form action="/api/auth/logout" method="POST">
                             <button
