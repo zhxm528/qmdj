@@ -2,29 +2,11 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Layout from "@/components/Layout";
-import {
-  Input,
-  Button,
-  Select,
-  Space,
-  Tag,
-  Card,
-  Empty,
-  message,
-  Spin,
-} from "antd";
+import { Input, Button, Space, Tag, Card, Empty, message, Spin } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 
 const { Search } = Input;
-
-interface TermCategory {
-  id: number;
-  name: string;
-  code: string;
-  description: string | null;
-  sort_order: number;
-}
 
 interface Term {
   id: number;
@@ -62,26 +44,10 @@ interface TermDetail extends Term {
 export default function TerminologyPage() {
   const [loading, setLoading] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
-  const [sortOrder, setSortOrder] = useState<"name" | "sort_order">("sort_order");
   const [terms, setTerms] = useState<Term[]>([]);
-  const [categories, setCategories] = useState<TermCategory[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<TermDetail | null>(null);
   const [suggestions, setSuggestions] = useState<Term[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-
-  // 加载分类列表
-  const loadCategories = async () => {
-    try {
-      const res = await fetch("/api/products/knowledge_base/terminology/categories");
-      const data = await res.json();
-      if (data.success) {
-        setCategories(data.data || []);
-      }
-    } catch (error) {
-      console.error("加载分类失败:", error);
-    }
-  };
 
   // 加载术语详情
   const loadTermDetail = useCallback(async (termKey: string) => {
@@ -106,10 +72,6 @@ export default function TerminologyPage() {
       if (searchKeyword) {
         params.set("q", searchKeyword);
       }
-      if (selectedCategory) {
-        params.set("category_id", String(selectedCategory));
-      }
-      params.set("sort_order", sortOrder);
 
       const res = await fetch(
         `/api/products/knowledge_base/terminology?${params.toString()}`
@@ -130,7 +92,7 @@ export default function TerminologyPage() {
     } finally {
       setLoading(false);
     }
-  }, [searchKeyword, selectedCategory, sortOrder, selectedTerm, loadTermDetail]);
+  }, [searchKeyword, selectedTerm, loadTermDetail]);
 
   // 搜索联想
   const loadSuggestions = async (keyword: string) => {
@@ -176,39 +138,18 @@ export default function TerminologyPage() {
     loadTerms();
   };
 
-  // 选择分类
-  const handleCategoryChange = (categoryId: number | null) => {
-    setSelectedCategory(categoryId);
-  };
-
-  // 选择术语
-  const handleSelectTerm = (term: Term) => {
-    loadTermDetail(term.term_key);
-  };
-
   // 点击相关术语
   const handleRelatedTermClick = (termKey: string) => {
     loadTermDetail(termKey);
-    // 重新加载列表以高亮选中的术语
-    loadTerms();
   };
 
   useEffect(() => {
-    loadCategories();
     loadTerms();
   }, [loadTerms]);
 
-  const getCategoryName = (categoryId: number | null) => {
-    if (!categoryId) return null;
-    const category = categories.find((c) => c.id === categoryId);
-    return category?.name || null;
-  };
-
-  const selectedCategoryName = getCategoryName(selectedCategory);
-
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
         <div className="max-w-7xl mx-auto">
           {/* 顶部搜索区 */}
           <div className="mb-6">
@@ -227,16 +168,16 @@ export default function TerminologyPage() {
                 }}
               />
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-[var(--color-card-bg)] border border-[var(--color-border)] rounded-lg shadow-lg max-h-60 overflow-y-auto">
                   {suggestions.map((term) => (
                     <div
                       key={term.id}
-                      className="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                      className="p-3 hover:bg-[var(--color-surface)] cursor-pointer border-b border-[var(--color-border)] last:border-b-0"
                       onClick={() => handleSelectSuggestion(term)}
                     >
-                      <div className="font-medium text-gray-900">{term.name}</div>
+                      <div className="font-medium text-[var(--color-text-strong)]">{term.name}</div>
                       {term.short_desc && (
-                        <div className="text-sm text-gray-500 mt-1 line-clamp-1">
+                        <div className="text-sm text-[var(--color-muted)] mt-1 line-clamp-1">
                           {term.short_desc}
                         </div>
                       )}
@@ -246,105 +187,27 @@ export default function TerminologyPage() {
               )}
             </div>
             {terms.length > 0 && searchKeyword && (
-              <div className="mt-2 text-sm text-gray-600">
+              <div className="mt-2 text-sm text-[var(--color-text)]">
                 共找到 <strong>{terms.length}</strong> 个相关术语
               </div>
             )}
             {terms.length === 0 && searchKeyword && (
-              <div className="mt-2 text-sm text-gray-500">
+              <div className="mt-2 text-sm text-[var(--color-muted)]">
                 未找到相关术语，请尝试更换关键词，或检查拼写。
               </div>
             )}
           </div>
 
-          <div className="flex gap-6">
-            {/* 左侧：分类 + 名词列表区 */}
-            <div className="w-1/3 flex-shrink-0">
-              <Card className="h-full">
-                {/* 分类选择 */}
-                <div className="mb-4">
-                  <div className="font-semibold text-gray-900 mb-2">分类</div>
-                  <Select
-                    className="w-full"
-                    placeholder="全部"
-                    value={selectedCategory}
-                    onChange={handleCategoryChange}
-                    allowClear
-                  >
-                    {categories.map((cat) => (
-                      <Select.Option key={cat.id} value={cat.id}>
-                        {cat.name}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </div>
-
-                {/* 排序方式 */}
-                <div className="mb-4">
-                  <Select
-                    className="w-full"
-                    value={sortOrder}
-                    onChange={(value) => setSortOrder(value)}
-                  >
-                    <Select.Option value="sort_order">推荐排序</Select.Option>
-                    <Select.Option value="name">名称 A-Z</Select.Option>
-                  </Select>
-                </div>
-
-                {/* 名词列表 */}
-                <div className="border-t pt-4">
-                  <Spin spinning={loading}>
-                    {terms.length > 0 ? (
-                      <div className="space-y-2 max-h-[calc(100vh-400px)] overflow-y-auto">
-                        {terms.map((term) => (
-                          <div
-                            key={term.id}
-                            className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                              selectedTerm?.id === term.id
-                                ? "bg-amber-50 border border-amber-200"
-                                : "hover:bg-gray-50 border border-transparent"
-                            }`}
-                            onClick={() => handleSelectTerm(term)}
-                          >
-                            <div className="flex items-start justify-between mb-1">
-                              <span className="font-semibold text-gray-900">
-                                {term.name}
-                              </span>
-                              {term.category_name && (
-                                <Tag color="blue" className="ml-2">
-                                  {term.category_name}
-                                </Tag>
-                              )}
-                            </div>
-                            {term.short_desc && (
-                              <div className="text-sm text-gray-600 line-clamp-1">
-                                {term.short_desc}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <Empty
-                        description="未找到相关术语"
-                        className="py-8"
-                        image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      />
-                    )}
-                  </Spin>
-                </div>
-              </Card>
-            </div>
-
-            {/* 右侧：名词详情区 */}
-            <div className="flex-1">
+          <div>
+            {/* 名词详情区 */}
+            <div>
               <Card className="h-full">
                 {selectedTerm ? (
                   <div>
                     {/* 标题区 */}
-                    <div className="mb-6 pb-4 border-b">
+                    <div className="mb-6 pb-4 border-b border-[var(--color-border)]">
                       <div className="flex items-start justify-between mb-2">
-                        <h2 className="text-3xl font-bold text-gray-900">
+                        <h2 className="text-3xl font-bold text-[var(--color-text-strong)]">
                           {selectedTerm.name}
                         </h2>
                         {selectedTerm.category_name && (
@@ -358,14 +221,14 @@ export default function TerminologyPage() {
                     {/* 基础信息区 */}
                     <div className="mb-6 space-y-3">
                       <div>
-                        <span className="text-gray-500">术语 Key：</span>
-                        <code className="ml-2 px-2 py-1 bg-gray-100 rounded text-sm">
+                        <span className="text-[var(--color-muted)]">术语 Key：</span>
+                        <code className="ml-2 px-2 py-1 bg-[var(--color-elevated)] rounded text-sm">
                           {selectedTerm.term_key}
                         </code>
                       </div>
                       {selectedTerm.alias && (
                         <div>
-                          <span className="text-gray-500">别名 / 缩写：</span>
+                          <span className="text-[var(--color-muted)]">别名 / 缩写：</span>
                           <span className="ml-2">
                             {selectedTerm.alias
                               .split(",")
@@ -376,8 +239,8 @@ export default function TerminologyPage() {
                       )}
                       {selectedTerm.pinyin && (
                         <div>
-                          <span className="text-gray-500">拼音 / 简拼：</span>
-                          <span className="ml-2 text-gray-600">
+                          <span className="text-[var(--color-muted)]">拼音 / 简拼：</span>
+                          <span className="ml-2 text-[var(--color-text)]">
                             {selectedTerm.pinyin}
                           </span>
                         </div>
@@ -387,20 +250,20 @@ export default function TerminologyPage() {
                     {/* 简要说明 */}
                     {selectedTerm.short_desc && (
                       <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-2">
                           简要说明
                         </h3>
-                        <p className="text-gray-700">{selectedTerm.short_desc}</p>
+                        <p className="text-[var(--color-text)]">{selectedTerm.short_desc}</p>
                       </div>
                     )}
 
                     {/* 详细解释 */}
                     {selectedTerm.full_desc && (
                       <div className="mb-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-2">
                           详细解释
                         </h3>
-                        <div className="text-gray-700 whitespace-pre-wrap">
+                        <div className="text-[var(--color-text)] whitespace-pre-wrap">
                           {selectedTerm.full_desc}
                         </div>
                       </div>
@@ -412,13 +275,13 @@ export default function TerminologyPage() {
                         selectedTerm.relations.parent.length > 0 ||
                         selectedTerm.relations.child.length > 0) && (
                         <div className="mb-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                          <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">
                             相关术语
                           </h3>
                           <div className="space-y-4">
                             {selectedTerm.relations.parent.length > 0 && (
                               <div>
-                                <div className="text-sm font-medium text-gray-600 mb-2">
+                                <div className="text-sm font-medium text-[var(--color-text)] mb-2">
                                   上位概念：
                                 </div>
                                 <Space wrap>
@@ -438,7 +301,7 @@ export default function TerminologyPage() {
                             )}
                             {selectedTerm.relations.child.length > 0 && (
                               <div>
-                                <div className="text-sm font-medium text-gray-600 mb-2">
+                                <div className="text-sm font-medium text-[var(--color-text)] mb-2">
                                   下位概念：
                                 </div>
                                 <Space wrap>
@@ -458,7 +321,7 @@ export default function TerminologyPage() {
                             )}
                             {selectedTerm.relations.related.length > 0 && (
                               <div>
-                                <div className="text-sm font-medium text-gray-600 mb-2">
+                                <div className="text-sm font-medium text-[var(--color-text)] mb-2">
                                   相关术语：
                                 </div>
                                 <Space wrap>
@@ -481,7 +344,7 @@ export default function TerminologyPage() {
                       )}
 
                     {/* 更新时间 */}
-                    <div className="mt-8 pt-4 border-t text-sm text-gray-500">
+                    <div className="mt-8 pt-4 border-t border-[var(--color-border)] text-sm text-[var(--color-muted)]">
                       <div>
                         最后更新时间：{dayjs(selectedTerm.updated_at).format("YYYY-MM-DD HH:mm:ss")}
                       </div>
@@ -492,19 +355,21 @@ export default function TerminologyPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <Empty
-                      description={
-                        <div>
-                          <p className="text-gray-600 mb-2">
-                            欢迎使用名词解释系统
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            请在左侧选择术语，或使用搜索功能查找名词解释
-                          </p>
-                        </div>
-                      }
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    />
+                    <Spin spinning={loading}>
+                      <Empty
+                        description={
+                          <div>
+                            <p className="text-[var(--color-text)] mb-2">
+                              欢迎使用名词解释系统
+                            </p>
+                            <p className="text-sm text-[var(--color-muted)]">
+                              请使用上方搜索框查找名词解释
+                            </p>
+                          </div>
+                        }
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                      />
+                    </Spin>
                   </div>
                 )}
               </Card>

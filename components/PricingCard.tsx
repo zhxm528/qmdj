@@ -88,12 +88,12 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
   return (
     <div
-      className={`bg-white rounded-lg shadow-md p-8 border-2 transition-transform hover:scale-105 flex flex-col ${
-        plan.highlight ? "border-amber-500 scale-105" : "border-gray-200"
+      className={`bg-[var(--color-card-bg)] rounded-lg shadow-md p-8 border-2 transition-transform hover:scale-105 flex flex-col ${
+        plan.highlight ? "border-[var(--color-primary)] scale-105" : "border-[var(--color-border)]"
       }`}
     >
       {plan.highlight && (
-        <div className="bg-amber-500 text-white text-sm font-bold px-4 py-1 rounded-full block mb-4 mx-auto w-fit">
+        <div className="bg-[var(--color-primary)] text-white text-sm font-bold px-4 py-1 rounded-full block mb-4 mx-auto w-fit">
           推荐
         </div>
       )}
@@ -101,12 +101,12 @@ export default function PricingCard({ plan }: PricingCardProps) {
       <h3 
         className={`text-2xl font-bold mb-4 ${
           plan.name === "白银会员" 
-            ? "text-gray-400" 
+            ? "text-[var(--color-muted)]" 
             : plan.name === "黄金会员"
-            ? "text-yellow-600"
+            ? "text-[var(--color-warning)]"
             : plan.name === "钻石会员"
-            ? "text-purple-500"
-            : "text-gray-900"
+            ? "text-[var(--color-link)]"
+            : "text-[var(--color-text-strong)]"
         }`}
       >
         {plan.name}
@@ -114,7 +114,7 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <div className="mb-6">
         <span 
-          className={`font-bold text-amber-600 ${
+          className={`font-bold text-[var(--color-link)] ${
             plan.name === "黄金会员" 
               ? "text-5xl" 
               : "text-4xl"
@@ -123,9 +123,9 @@ export default function PricingCard({ plan }: PricingCardProps) {
         >
           {plan.price}
         </span>
-        <span className="text-gray-600">{plan.period}</span>
+        <span className="text-[var(--color-text)]">{plan.period}</span>
         {plan.description && (
-          <div className="mt-2 text-sm text-gray-500">
+          <div className="mt-2 text-sm text-[var(--color-muted)]">
             {plan.description}
           </div>
         )}
@@ -133,22 +133,22 @@ export default function PricingCard({ plan }: PricingCardProps) {
 
       <ul className="space-y-3 mb-8 flex-1">
         {plan.features.map((feature, idx) => (
-          <li key={idx} className="flex items-start text-sm text-gray-700">
+          <li key={idx} className="flex items-start text-sm text-[var(--color-text)]">
             <div className="relative mr-2 flex-shrink-0" style={{ width: '24px', height: '24px' }}>
               {/* 带边框的小格子 */}
               <div 
-                className="absolute border-2 border-amber-600 rounded"
+                className="absolute border-2 border-[var(--color-link)] rounded"
                 style={{ 
                   width: '16px', 
                   height: '16px', 
                   top: '2px',
                   left: '0px',
-                  backgroundColor: 'white'
+                  backgroundColor: 'var(--color-card-bg)'
                 }}
               />
               {/* 对勾图标，上方探出边框 */}
               <svg
-                className="absolute text-green-600"
+                className="absolute text-[var(--color-success)]"
                 style={{ 
                   width: '24px', 
                   height: '24px', 

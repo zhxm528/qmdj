@@ -56,13 +56,13 @@ export default function Products() {
 
   return (
     <Layout>
-      <div className="bg-gray-50 py-8 px-4">
+      <div className="bg-[var(--color-surface)] py-8 px-4">
         <div className="max-w-7xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {panels.map((panel) => (
               <div
                 key={panel.id}
-                className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-xl transition-shadow"
+                className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 border border-[var(--color-border)] hover:shadow-xl transition-shadow"
               >
                 {panel.banner && (
                   <div className="mb-4 rounded-lg overflow-hidden">
@@ -77,11 +77,11 @@ export default function Products() {
                 )}
                 <div className="text-4xl mb-4">{panel.icon}</div>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-semibold text-gray-900">
+                  <h3 className="text-2xl font-semibold text-[var(--color-text-strong)]">
                     {panel.title}
                   </h3>
                   {panel.status && (
-                    <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+                    <span className="inline-block px-3 py-1 rounded-full text-sm font-medium bg-[var(--color-surface)] text-[var(--color-primary-strong)]">
                       {panel.status}
                     </span>
                   )}
@@ -89,7 +89,7 @@ export default function Products() {
                 {panel.features && panel.features.length > 0 && (
                   <ul className="space-y-2 mb-6">
                     {panel.features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start text-sm text-gray-600">
+                      <li key={idx} className="flex items-start text-sm text-[var(--color-text)]">
                         <span className="mr-2">•</span>
                         {feature}
                       </li>
@@ -100,21 +100,21 @@ export default function Products() {
                   panel.comingSoon ? (
                     <button
                       disabled
-                      className="w-full px-4 py-2 rounded-lg border border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed transition-colors"
+                      className="w-full px-4 py-2 rounded-lg border border-[var(--color-border)] text-[var(--color-muted)] bg-[var(--color-surface)] cursor-not-allowed transition-colors"
                     >
                       {panel.buttonText}
                     </button>
                   ) : panel.path ? (
                     <Link
                       href={panel.path}
-                      className="w-full px-4 py-2 rounded-lg border border-amber-600 text-amber-600 hover:bg-amber-50 transition-colors block text-center"
+                      className="w-full px-4 py-2 rounded-lg border border-[var(--color-primary)] text-[var(--color-link)] hover:bg-[var(--color-hover)] transition-colors block text-center"
                     >
                       {panel.buttonText}
                     </Link>
                   ) : null
                 )}
                 {panel.menus && panel.menus.length > 0 && (
-                  <div className="text-gray-600">
+                  <div className="text-[var(--color-text)]">
                     <ul className="space-y-2">
                       {panel.menus.map((menu, index) => (
                         <li key={index}>
@@ -122,7 +122,7 @@ export default function Products() {
                             href={menu.path}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-amber-600 hover:text-amber-700 hover:underline transition-colors"
+                            className="text-[var(--color-link)] hover:text-[var(--color-link-hover)] hover:underline transition-colors"
                           >
                             {menu.title}
                           </Link>

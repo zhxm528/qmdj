@@ -38,13 +38,13 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`sticky top-0 h-screen border-r border-amber-100 bg-white transition-all duration-200 ${
+      className={`sticky top-0 h-screen border-r border-[var(--color-border)] bg-[var(--color-card-bg)] transition-all duration-200 ${
         collapsed ? "w-16" : "w-64"
       }`}
     >
       <div className="flex items-center justify-between px-3 py-4">
         <span
-          className={`text-sm font-semibold tracking-wide text-gray-600 transition-opacity ${
+          className={`text-sm font-semibold tracking-wide text-[var(--color-text)] transition-opacity ${
             collapsed ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
         >
@@ -52,7 +52,7 @@ export default function AdminSidebar() {
         </span>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-md p-2 text-gray-600 hover:text-amber-600 hover:bg-amber-50"
+          className="inline-flex items-center justify-center rounded-md p-2 text-[var(--color-text)] hover:text-[var(--color-link)] hover:bg-[var(--color-hover)]"
           aria-label="Toggle sidebar"
           onClick={() => setCollapsed((value) => !value)}
         >
@@ -95,13 +95,13 @@ export default function AdminSidebar() {
             <div key={section.key} className="mb-2">
               <button
                 type="button"
-                className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-700 hover:bg-amber-50 ${
+                className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-[var(--color-text)] hover:bg-[var(--color-hover)] ${
                   collapsed ? "justify-center" : "justify-between"
                 }`}
                 onClick={() => toggleSection(section.key)}
               >
                 <span className={`flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
-                  <span className="text-amber-600">{section.icon}</span>
+                  <span className="text-[var(--color-link)]">{section.icon}</span>
                   <span
                     className={`transition-opacity ${
                       collapsed ? "opacity-0 w-0" : "opacity-100"
@@ -126,11 +126,11 @@ export default function AdminSidebar() {
                       href={item.href || "#"}
                       className={`flex items-center gap-3 rounded-md px-2 py-2 text-sm transition-colors ${
                         active
-                          ? "bg-amber-100 text-amber-700"
-                          : "text-gray-600 hover:bg-amber-50 hover:text-amber-700"
+                          ? "bg-[var(--color-hover)] text-[var(--color-link)]"
+                          : "text-[var(--color-text)] hover:bg-[var(--color-hover)] hover:text-[var(--color-link)]"
                       } ${collapsed ? "justify-center" : ""}`}
                     >
-                      <span className="text-amber-500">{item.icon}</span>
+                      <span className="text-[var(--color-link)]">{item.icon}</span>
                       <span className={collapsed ? "hidden" : "block"}>{item.label}</span>
                     </Link>
                   );

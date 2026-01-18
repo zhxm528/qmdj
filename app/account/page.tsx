@@ -62,30 +62,30 @@ export default function Account() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
               <div className="space-y-6">
-              <div className="border-b pb-6">
+              <div className="border-b border-[var(--color-border)] pb-6">
                 <h2 className="text-xl font-bold mb-4">账户信息</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                       昵称/姓名
                     </label>
-                    <p className="text-gray-900">{user?.name || "-"}</p>
+                    <p className="text-[var(--color-text-strong)]">{user?.name || "-"}</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                       邮箱
                     </label>
-                    <p className="text-gray-900">
+                    <p className="text-[var(--color-text-strong)]">
                       {user?.email || "-"}
                       {user?.email && (
                         <span className={`ml-2 px-2 py-1 rounded text-xs font-medium ${
                           user?.isEmailVerified 
-                            ? "bg-green-100 text-green-800" 
-                            : "bg-yellow-100 text-yellow-800"
+                            ? "bg-[var(--color-surface)] text-[var(--color-success)]" 
+                            : "bg-[var(--color-surface)] text-[var(--color-warning)]"
                         }`}>
                           {user?.isEmailVerified ? "已验证" : "未验证"}
                         </span>
@@ -94,38 +94,38 @@ export default function Account() {
                   </div>
                   {user?.memberRegisteredAt && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         注册日期
                       </label>
-                      <p className="text-gray-900">
+                      <p className="text-[var(--color-text-strong)]">
                         {formatDate(user.memberRegisteredAt)}
                       </p>
                     </div>
                   )}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                       账户状态
                     </label>
-                    <p className="inline-block px-4 py-2 bg-amber-50 text-amber-900 font-semibold rounded-lg border border-amber-200">
+                    <p className="inline-block px-4 py-2 bg-[var(--color-surface)] text-[var(--color-text-strong)] font-semibold rounded-lg border border-[var(--color-border)]">
                       {user?.status === "active" ? "使用中" : user?.status || "-"}
                     </p>
                   </div>
                   {user?.cardExpiredAt && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         会员有效期
                       </label>
-                      <p className="inline-block px-4 py-2 bg-amber-50 text-amber-900 font-semibold rounded-lg border border-amber-200">
+                      <p className="inline-block px-4 py-2 bg-[var(--color-surface)] text-[var(--color-text-strong)] font-semibold rounded-lg border border-[var(--color-border)]">
                         {formatDate(user.cardExpiredAt)}
                       </p>
                     </div>
                   )}
                   {user?.memberLevel && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         会员等级
                       </label>
-                      <p className="inline-block px-4 py-2 bg-amber-500 text-white font-bold rounded-lg text-lg">
+                      <p className="inline-block px-4 py-2 bg-[var(--color-primary)] text-white font-bold rounded-lg text-lg">
                         {user.memberLevel.levelName === "银卡" ? "白银会员" : user.memberLevel.levelName}
                       </p>
                     </div>

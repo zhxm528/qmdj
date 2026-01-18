@@ -363,12 +363,12 @@ export default function PromptContextManagement() {
   return (
     <ConfigProvider locale={zhCN}>
       <AdminLayout>
-        <div className="min-h-screen bg-gray-50 py-8 px-4">
+        <div className="min-h-screen bg-[var(--color-surface)] py-8 px-4">
           <div className="w-full">
             <Card>
               <div className="mb-4">
                 <AdminBreadcrumb title="Prompt 上下文管理" />
-                <p className="text-gray-600 mt-2">
+                <p className="text-[var(--color-text)] mt-2">
                   管理提示词模板、版本、变量等相关数据
                 </p>
               </div>

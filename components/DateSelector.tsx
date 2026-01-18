@@ -76,8 +76,8 @@ export default function DateSelector({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-gray-700 mb-2">
-        日期 <span className="text-red-500">{required && "*"}</span>
+      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+        日期 <span className="text-[var(--color-danger)]">{required && "*"}</span>
       </label>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {/* 年份选择 */}
@@ -118,8 +118,7 @@ export default function DateSelector({
           
           {isDayDropdownOpen && year && month && (
             <div
-              className="absolute z-50 left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 max-h-96 overflow-y-auto"
-              style={{ minWidth: "0", maxWidth: "90vw", width: "100%" }}
+              className="absolute z-50 top-full left-0 mt-2 bg-white border border-gray-300 rounded-lg shadow-xl p-3 max-h-96 overflow-y-auto w-full min-w-[280px] md:min-w-[320px] md:max-w-[400px]"
             >
               <div className="grid grid-cols-4 gap-2">
                 {Array.from(

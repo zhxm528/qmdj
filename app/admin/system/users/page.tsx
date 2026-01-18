@@ -301,7 +301,7 @@ export default function UsersManagement() {
       key: "level_name",
       width: 120,
       render: (levelName: string | null | undefined) =>
-        levelName ? <Tag color="blue">{levelName}</Tag> : <span className="text-gray-400">-</span>,
+        levelName ? <Tag color="blue">{levelName}</Tag> : <span className="text-[var(--color-muted)]">-</span>,
     },
     {
       title: "会员有效期",
@@ -310,7 +310,7 @@ export default function UsersManagement() {
       width: 180,
       render: (expiredAt: string | null | undefined) => {
         if (!expiredAt) {
-          return <span className="text-gray-400">-</span>;
+          return <span className="text-[var(--color-muted)]">-</span>;
         }
         const expiredDate = new Date(expiredAt);
         const now = new Date();
@@ -361,7 +361,7 @@ export default function UsersManagement() {
   return (
     <ConfigProvider locale={zhCN}>
       <AdminLayout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-8 px-4">
+        <div className="min-h-screen bg-[var(--color-surface)] py-8 px-4">
           <div className="w-full">
             <div className="mb-6">
               <AdminBreadcrumb title="用户管理" />
@@ -448,7 +448,7 @@ export default function UsersManagement() {
                   {/* 已选择的查询条件 */}
                   {activeFilters.length > 0 && (
                     <div className="mt-4">
-                      <span className="text-gray-600 mr-2">已选择的条件：</span>
+                      <span className="text-[var(--color-text)] mr-2">已选择的条件：</span>
                       <Space wrap>
                         {activeFilters.map((filter) => (
                           <Tag
@@ -479,7 +479,7 @@ export default function UsersManagement() {
                 scroll={{ x: 1200 }}
               />
               <div className="mt-4 flex justify-between items-center">
-                <div className="text-gray-600">
+                <div className="text-[var(--color-text)]">
                   共 {total} 条记录
                 </div>
                 <Pagination

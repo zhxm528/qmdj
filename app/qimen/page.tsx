@@ -1169,24 +1169,26 @@ export default function HomePage() {
   return (
     <ConfigProvider locale={zhCN}>
       <Layout>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-[var(--color-surface)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* 日期选择框和小时选择框 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-date">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <DateSelector
-                key={`date-${restoreKey}`}
-                value={date}
-                onChange={(newDate) => {
-                  // 如果正在恢复盘面数据，阻止更新
-                  if (!isRestoringPaipan) {
-                    setDate(newDate);
-                  }
-                }}
-                required
-              />
-              <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+          <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 mb-6" id="qimen-date">
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+              <div className="md:col-span-3">
+                <DateSelector
+                  key={`date-${restoreKey}`}
+                  value={date}
+                  onChange={(newDate) => {
+                    // 如果正在恢复盘面数据，阻止更新
+                    if (!isRestoringPaipan) {
+                      setDate(newDate);
+                    }
+                  }}
+                  required
+                />
+              </div>
+              <div className="md:col-span-2 space-y-2">
+                <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                   时辰 <span className="text-red-500">*</span>
                 </label>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -1235,62 +1237,62 @@ export default function HomePage() {
 
           {/* 日期信息面板 */}
           {dateInfo && (
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-xl font-bold text-gray-900 mb-4"></h2>
+            <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 mb-6">
+              <h2 className="text-xl font-bold text-[var(--color-text-strong)] mb-4"></h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
-                  <span className="text-sm text-gray-600">公历（阳历）：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">公历（阳历）：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {date && hour && minute
                       ? `${date} ${hour.padStart(2, "0")}:${minute.padStart(2, "0")}`
                       : dateInfo.gregorian}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">农历（阴历）：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">农历（阴历）：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {dateInfo.lunar}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">时节：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">时节：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {dateInfo.startShijie && dateInfo.endShijie
                       ? `${dateInfo.startShijie} → ${dateInfo.endShijie}`
                       : dateInfo.season || "—"}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">干支四柱：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">干支四柱：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {dateInfo.fourPillars.year}年 {dateInfo.fourPillars.month}月{" "}
                     {dateInfo.fourPillars.day}日 {dateInfo.fourPillars.hour}时
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">旬首：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">旬首：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {getXunShou(dateInfo.fourPillars.hour)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-sm text-gray-600">阴阳遁：</span>
-                  <span className="ml-2 font-medium text-gray-900">
+                  <span className="text-sm text-[var(--color-muted)]">阴阳遁：</span>
+                  <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                     {dateInfo.dunType}{dateInfo.ju}局
                   </span>
                 </div>
                 {zhiShiDoor && (
                   <div>
-                    <span className="text-sm text-gray-600">值使门：</span>
-                    <span className="ml-2 font-medium text-gray-900">
+                    <span className="text-sm text-[var(--color-muted)]">值使门：</span>
+                    <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                       {zhiShiDoor}门
                     </span>
                   </div>
                 )}
                 {zhiFuPalace !== null && (
                   <div>
-                    <span className="text-sm text-gray-600">值符：</span>
-                    <span className="ml-2 font-medium text-gray-900">
+                    <span className="text-sm text-[var(--color-muted)]">值符：</span>
+                    <span className="ml-2 font-medium text-[var(--color-text-strong)]">
                       宫{zhiFuPalace}
                     </span>
                   </div>
@@ -1300,11 +1302,11 @@ export default function HomePage() {
           )}
 
           {/* 问事输入框和看盘按钮 */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-question">
+          <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 mb-6" id="qimen-question">
             <div className="w-full">
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
+                  <label className="block text-sm font-medium text-[var(--color-text)]">
                     问事
                     {!isLoggedIn && (
                       <span className="ml-2 text-xs text-amber-600 font-normal">
@@ -1312,7 +1314,7 @@ export default function HomePage() {
                       </span>
                     )}
                   </label>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-[var(--color-muted)]">
                     {question.length}/200
                   </span>
                 </div>
@@ -1330,12 +1332,12 @@ export default function HomePage() {
                   style={{ height: '48px' }}
                   maxLength={200}
                 />
-                <p className="mt-2 text-sm text-gray-500">
+                <p className="mt-2 text-sm text-[var(--color-muted)]">
                  用你最舒服的方式写，别担心措辞，只需要说重点，简短也没关系，200 字以内我们先从这里开始。。
                 </p>
               </div>
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                   问哪方面
                 </label>
                 <Radio.Group
@@ -1421,12 +1423,12 @@ export default function HomePage() {
           </div>
 
           {/* 看盘分析结果区域（左右布局） */}
-          <div className="bg-white rounded-lg shadow-md p-6 mb-6" id="qimen-history">
+          <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 mb-6" id="qimen-history">
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
               {/* 左侧：对话标题列表 */}
-              <div className="lg:col-span-1 border-r border-gray-200 pr-6">
+              <div className="lg:col-span-1 border-r border-[var(--color-border)] pr-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-medium text-gray-700">对话历史</h2>
+                  <h2 className="text-sm font-medium text-[var(--color-text)]">对话历史</h2>
                   <div className="flex items-center gap-2">
                     <Tooltip 
                       title={!isLoggedIn ? "请先登录才能查看收藏" : (showFavoritesOnly ? "显示所有对话" : "只显示收藏的对话")} 
@@ -1466,7 +1468,7 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-2 max-h-[600px] overflow-y-auto mb-4">
                   {conversations.length === 0 ? (
-                    <p className="text-sm text-gray-500 text-center py-4">暂无对话记录</p>
+                    <p className="text-sm text-[var(--color-muted)] text-center py-4">暂无对话记录</p>
                   ) : (() => {
                     // 计算分页数据
                     const totalPages = Math.ceil(conversations.length / CONVERSATIONS_PER_PAGE);
@@ -1482,7 +1484,7 @@ export default function HomePage() {
                             className={`w-full px-3 py-2 rounded-lg text-sm transition-colors ${
                               selectedConversationId === conv.id
                                 ? "bg-amber-100 text-amber-900 border border-amber-300"
-                                : "bg-gray-50 text-gray-700 md:hover:bg-gray-100 border border-gray-200"
+                                : "bg-[var(--color-surface)] text-[var(--color-text)] md:hover:bg-[var(--color-elevated)] border border-[var(--color-border)]"
                             }`}
                           >
                             {editingConversationId === conv.id ? (
@@ -1527,7 +1529,7 @@ export default function HomePage() {
                                     )}
                                     <span className="truncate">{conv.title || "未命名对话"}</span>
                                   </div>
-                                  <div className="text-xs text-gray-500 mt-1">
+                                  <div className="text-xs text-[var(--color-muted)] mt-1">
                                     {new Date(conv.last_question_at || conv.updated_at).toLocaleDateString()}
                                   </div>
                                 </div>
@@ -1561,7 +1563,7 @@ export default function HomePage() {
                                     onClick={(e) => {
                                       e.stopPropagation();
                                     }}
-                                    className="ml-2 opacity-0 md:group-hover:opacity-100 transition-opacity text-gray-500 md:hover:text-gray-700"
+                                    className="ml-2 opacity-0 md:group-hover:opacity-100 transition-opacity text-[var(--color-muted)] md:hover:text-[var(--color-text)]"
                                     title="更多操作"
                                   >
                                     <MoreOutlined />
@@ -1579,7 +1581,7 @@ export default function HomePage() {
                 {conversations.length > CONVERSATIONS_PER_PAGE && (() => {
                   const totalPages = Math.ceil(conversations.length / CONVERSATIONS_PER_PAGE);
                   return (
-                    <div className="flex items-center justify-between pt-2 border-t border-gray-200">
+                    <div className="flex items-center justify-between pt-2 border-t border-[var(--color-border)]">
                       <Button
                         size="small"
                         onClick={() => setConversationPage(Math.max(1, conversationPage - 1))}
@@ -1588,7 +1590,7 @@ export default function HomePage() {
                       >
                         上一页
                       </Button>
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-[var(--color-muted)]">
                         第 {conversationPage} / {totalPages} 页
                       </span>
                       <Button
@@ -1612,7 +1614,7 @@ export default function HomePage() {
                     (aiKanpanResult && currentConversationId)) && (
                     <>
                       {(selectedConversationId || currentConversationId) && (
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">
+                        <h2 className="text-xl font-bold text-[var(--color-text-strong)] mb-4">
                           {conversations.find(
                             (c: any) => c.id === (selectedConversationId || currentConversationId)
                           )?.title || "对话详情"}
@@ -1630,23 +1632,23 @@ export default function HomePage() {
                             .map((record: any) => (
                               <div
                                 key={record.id}
-                                className="border border-gray-200 rounded-lg p-4 space-y-3"
+                                className="border border-[var(--color-border)] rounded-lg p-4 space-y-3"
                               >
                                 {/* 问题 - 靠右对齐，显示原始输入的问题 */}
                                 <div className="flex justify-end">
-                                  <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
-                                    <div className="text-gray-800 text-right">
+                                  <div className="bg-[var(--color-surface)] rounded-lg px-4 py-2 max-w-[80%]">
+                                    <div className="text-[var(--color-text-strong)] text-right">
                                       {record.original_question || record.question_title}
                                     </div>
                                   </div>
                                 </div>
                                 {/* AI回答 */}
-                                <div className="bg-gray-50 rounded-lg p-4">
-                                  <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                                <div className="bg-[var(--color-surface)] rounded-lg p-4">
+                                  <div className="prose prose-sm max-w-none text-[var(--color-text)] leading-relaxed whitespace-pre-wrap">
                                     {record.ai_analysis}
                                   </div>
                                 </div>
-                                <div className="text-xs text-gray-500 text-right">
+                                <div className="text-xs text-[var(--color-muted)] text-right">
                                   {new Date(record.created_at).toLocaleString()}
                                 </div>
                               </div>
@@ -1656,18 +1658,18 @@ export default function HomePage() {
 
                       {/* 显示当前最新的问事和AI分析（如果有且尚未保存到记录中） */}
                       {aiKanpanResult && (
-                        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                        <div className="border border-[var(--color-border)] rounded-lg p-4 space-y-3">
                           {/* 问题 - 靠右对齐，显示原始输入的问题 */}
                           <div className="flex justify-end">
-                            <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
-                              <div className="text-gray-800 text-right">
+                            <div className="bg-[var(--color-surface)] rounded-lg px-4 py-2 max-w-[80%]">
+                              <div className="text-[var(--color-text-strong)] text-right">
                                 {currentQuestion || question}
                               </div>
                             </div>
                           </div>
                           {/* AI回答 */}
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                          <div className="bg-[var(--color-surface)] rounded-lg p-4">
+                            <div className="prose prose-sm max-w-none text-[var(--color-text)] leading-relaxed whitespace-pre-wrap">
                               {aiKanpanResult}
                             </div>
                           </div>
@@ -1678,7 +1680,7 @@ export default function HomePage() {
                       {aiKanpanLoading && (
                         <div className="flex items-center justify-center py-4 bg-amber-50 border border-amber-200 rounded-lg">
                           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
-                          <span className="ml-3 text-gray-700 font-medium">
+                          <span className="ml-3 text-[var(--color-text)] font-medium">
                             {loadingMessages[loadingMessageIndex]}
                           </span>
                         </div>
@@ -1691,16 +1693,16 @@ export default function HomePage() {
                     !currentConversationId &&
                     aiKanpanResult && (
                       <>
-                        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+                        <div className="border border-[var(--color-border)] rounded-lg p-4 space-y-3">
                           <div className="flex justify-end">
-                            <div className="bg-blue-50 rounded-lg px-4 py-2 max-w-[80%]">
-                              <div className="text-gray-800 text-right">
+                            <div className="bg-[var(--color-surface)] rounded-lg px-4 py-2 max-w-[80%]">
+                              <div className="text-[var(--color-text-strong)] text-right">
                                 {currentQuestion || question}
                               </div>
                             </div>
                           </div>
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="prose prose-sm max-w-none text-gray-700 leading-relaxed whitespace-pre-wrap">
+                          <div className="bg-[var(--color-surface)] rounded-lg p-4">
+                            <div className="prose prose-sm max-w-none text-[var(--color-text)] leading-relaxed whitespace-pre-wrap">
                               {aiKanpanResult}
                             </div>
                           </div>
@@ -1709,7 +1711,7 @@ export default function HomePage() {
                         {aiKanpanLoading && (
                           <div className="flex items-center justify-center py-4 bg-amber-50 border border-amber-200 rounded-lg">
                             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
-                            <span className="ml-3 text-gray-700 font-medium">
+                            <span className="ml-3 text-[var(--color-text)] font-medium">
                               {loadingMessages[loadingMessageIndex]}
                             </span>
                           </div>
@@ -1724,7 +1726,7 @@ export default function HomePage() {
                     aiKanpanLoading && (
                       <div className="flex items-center justify-center py-8 bg-amber-50 border border-amber-200 rounded-lg">
                         <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600"></div>
-                        <span className="ml-3 text-gray-700 font-medium">
+                        <span className="ml-3 text-[var(--color-text)] font-medium">
                           {loadingMessages[loadingMessageIndex]}
                         </span>
                       </div>
@@ -1735,7 +1737,7 @@ export default function HomePage() {
                     !aiKanpanResult &&
                     !selectedConversationId &&
                     conversationRecords.length === 0 && (
-                      <div className="text-center py-12 text-gray-500">
+                      <div className="text-center py-12 text-[var(--color-muted)]">
                         <p>你的感受很重要，我们从最想解决的地方开始</p>
                         <p className="text-sm mt-2">
                           点击&ldquo;看盘&rdquo;获取解读；也可以打开左侧&ldquo;历史对话&rdquo;接着聊
@@ -1749,15 +1751,15 @@ export default function HomePage() {
 
           {/* 排盘结果面板 - 可折叠面板 */}
           {paipanResult && (
-            <div className="bg-white rounded-lg shadow-md mb-6">
+            <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md mb-6">
               <button
                 type="button"
                 onClick={() => setIsPaipanExpanded(!isPaipanExpanded)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-[var(--color-surface)] transition-colors rounded-t-lg"
               >
-                <h2 className="text-xl font-bold text-gray-900">九宫</h2>
+                <h2 className="text-xl font-bold text-[var(--color-text-strong)]">九宫</h2>
                 <svg
-                  className={`w-5 h-5 text-gray-500 transition-transform ${isPaipanExpanded ? "transform rotate-180" : ""}`}
+                  className={`w-5 h-5 text-[var(--color-muted)] transition-transform ${isPaipanExpanded ? "transform rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1775,15 +1777,15 @@ export default function HomePage() {
 
           {/* 奇盘一览 - 可折叠面板 */}
           {(dipangan || tianpangan || dibashen || tianbashen || jiuxing || bamen || kongwang || yima) && (
-            <div className="bg-white rounded-lg shadow-md mt-6">
+            <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md mt-6">
               <button
                 type="button"
                 onClick={() => setIsQipanExpanded(!isQipanExpanded)}
-                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors rounded-t-lg"
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-[var(--color-surface)] transition-colors rounded-t-lg"
               >
-                <h2 className="text-xl font-bold text-gray-900">更多</h2>
+                <h2 className="text-xl font-bold text-[var(--color-text-strong)]">更多</h2>
                 <svg
-                  className={`w-5 h-5 text-gray-500 transition-transform ${isQipanExpanded ? "transform rotate-180" : ""}`}
+                  className={`w-5 h-5 text-[var(--color-muted)] transition-transform ${isQipanExpanded ? "transform rotate-180" : ""}`}
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -1795,12 +1797,12 @@ export default function HomePage() {
                 <div className="px-6 pb-6 space-y-6">
                   {dipangan && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地盘干一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">地盘干一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-amber-200 rounded-lg px-4 py-3 bg-amber-50 text-sm text-gray-700"
+                            className="border border-amber-200 rounded-lg px-4 py-3 bg-amber-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{dipangan[palace] || "—"}</span>
@@ -1811,12 +1813,12 @@ export default function HomePage() {
                   )}
                   {tianpangan && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天盘干一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">天盘干一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-sky-200 rounded-lg px-4 py-3 bg-sky-50 text-sm text-gray-700"
+                            className="border border-sky-200 rounded-lg px-4 py-3 bg-sky-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{tianpangan[palace] || "—"}</span>
@@ -1827,12 +1829,12 @@ export default function HomePage() {
                   )}
                   {dibashen && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">地八神一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">地八神一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-purple-200 rounded-lg px-4 py-3 bg-purple-50 text-sm text-gray-700"
+                            className="border border-purple-200 rounded-lg px-4 py-3 bg-purple-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{dibashen[palace] || "—"}</span>
@@ -1843,12 +1845,12 @@ export default function HomePage() {
                   )}
                   {tianbashen && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">天八神一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">天八神一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-green-200 rounded-lg px-4 py-3 bg-green-50 text-sm text-gray-700"
+                            className="border border-green-200 rounded-lg px-4 py-3 bg-green-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{tianbashen[palace] || "—"}</span>
@@ -1859,12 +1861,12 @@ export default function HomePage() {
                   )}
                   {jiuxing && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">九星一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">九星一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{jiuxing[palace] || "—"}</span>
@@ -1875,12 +1877,12 @@ export default function HomePage() {
                   )}
                   {bamen && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">八门一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">八门一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-rose-200 rounded-lg px-4 py-3 bg-rose-50 text-sm text-gray-700"
+                            className="border border-rose-200 rounded-lg px-4 py-3 bg-rose-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{bamen[palace] || "—"}</span>
@@ -1891,12 +1893,12 @@ export default function HomePage() {
                   )}
                   {kongwang && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">空亡一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">空亡一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{kongwang[palace] ? "空亡" : "—"}</span>
@@ -1907,12 +1909,12 @@ export default function HomePage() {
                   )}
                   {yima && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">驿马一览</h3>
+                      <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-3">驿马一览</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {displayOrder.map((palace: number) => (
                           <div
                             key={palace}
-                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-gray-700"
+                            className="border border-orange-200 rounded-lg px-4 py-3 bg-orange-50 text-sm text-[var(--color-text)]"
                           >
                             <span className="font-semibold mr-2">宫{palace}</span>
                             <span>{yima[palace] ? "驿马" : "—"}</span>
@@ -1929,14 +1931,14 @@ export default function HomePage() {
         </div>
         <SidebarDrawer title="瞬间移动">
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-[var(--color-elevated)] p-1">
               <button
                 type="button"
                 onClick={() => setSidebarTab("ask")}
                 className={`rounded-md py-2 text-sm transition-colors ${
                   sidebarTab === "ask"
                     ? "bg-amber-600 text-white"
-                    : "text-gray-700 hover:bg-gray-200"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"
                 }`}
               >
                 问问
@@ -1947,7 +1949,7 @@ export default function HomePage() {
                 className={`rounded-md py-2 text-sm transition-colors ${
                   sidebarTab === "look"
                     ? "bg-amber-600 text-white"
-                    : "text-gray-700 hover:bg-gray-200"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"
                 }`}
               >
                 看看

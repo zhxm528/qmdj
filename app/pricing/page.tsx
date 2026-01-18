@@ -58,11 +58,11 @@ export default function Pricing() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">价格计划</h1>
-            <p className="text-lg text-gray-600">从轻柔的陪伴到深入解读，把关键问题看清、把心安稳下来，更完整的深度方案，会更贴近你。</p>
+            <h1 className="text-4xl font-bold text-[var(--color-text-strong)] mb-4">价格计划</h1>
+            <p className="text-lg text-[var(--color-text)]">从轻柔的陪伴到深入解读，把关键问题看清、把心安稳下来，更完整的深度方案，会更贴近你。</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

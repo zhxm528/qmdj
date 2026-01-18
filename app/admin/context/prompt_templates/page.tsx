@@ -570,8 +570,8 @@ export default function PromptTemplatesPage() {
   return (
     <ConfigProvider locale={zhCN}>
       <AdminLayout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-          <div className="w-full bg-white rounded-lg shadow-md p-8">
+        <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
+          <div className="w-full bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
             {/* 时间轴导航 */}
             <ContextTimeline currentStep={1} />
 

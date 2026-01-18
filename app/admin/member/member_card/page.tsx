@@ -397,8 +397,8 @@ export default function MemberCardPage() {
   return (
     <ConfigProvider locale={zhCN}>
       <AdminLayout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-          <div className="w-full bg-white rounded-lg shadow-md p-8">
+        <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
+          <div className="w-full bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
             <div className="flex items-center justify-between mb-6">
               <AdminBreadcrumb title="会员卡管理" />
               <Button
@@ -526,7 +526,7 @@ export default function MemberCardPage() {
               width={500}
             >
               {membershipLevels.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">
+                <div className="text-center py-4 text-[var(--color-muted)]">
                   暂无会员等级数据，请先添加会员等级
                 </div>
               ) : (

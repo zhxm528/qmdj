@@ -581,8 +581,8 @@ export default function ConsumptionTransactionPage() {
   return (
     <ConfigProvider locale={zhCN}>
       <AdminLayout>
-        <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
-          <div className="w-full bg-white rounded-lg shadow-md p-8">
+        <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
+          <div className="w-full bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
             <div className="flex items-center justify-between mb-6">
               <AdminBreadcrumb title="消费记录管理" />
               <Button
@@ -754,7 +754,7 @@ export default function ConsumptionTransactionPage() {
                   />
                 </Form.Item>
                 {selectedMember && (
-                  <div className="mb-4 text-xs text-gray-600 bg-gray-50 rounded px-2 py-1">
+                  <div className="mb-4 text-xs text-[var(--color-text)] bg-[var(--color-surface)] rounded px-2 py-1">
                     <div>
                       会员等级：
                       <span className="font-medium">
@@ -867,7 +867,7 @@ export default function ConsumptionTransactionPage() {
                   />
                 </Form.Item>
                 {previewDaysToAdd !== null && previewExpiredDate && (
-                  <div className="mt-2 mb-2 text-xs text-gray-600 bg-blue-50 rounded px-2 py-1">
+                  <div className="mt-2 mb-2 text-xs text-[var(--color-text)] bg-[var(--color-surface)] rounded px-2 py-1">
                     <div>
                       预计本次将增加有效期：
                       <span className="font-medium">{previewDaysToAdd} 天</span>

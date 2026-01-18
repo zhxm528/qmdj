@@ -348,12 +348,12 @@ export default function Member() {
     return (
       <ConfigProvider locale={zhCN}>
         <Layout>
-          <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+          <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
             <div className="max-w-4xl mx-auto">
-              <div className="bg-white rounded-lg shadow-md p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">会员信息</h1>
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <p className="text-red-800">{error}</p>
+              <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
+                <h1 className="text-3xl font-bold text-[var(--color-text-strong)] mb-4">会员信息</h1>
+                <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg p-4 mb-4">
+                  <p className="text-[var(--color-danger)]">{error}</p>
                 </div>
                 <Button onClick={() => router.push("/account")} className="w-full">
                   返回账户页面
@@ -387,12 +387,12 @@ export default function Member() {
   return (
     <ConfigProvider locale={zhCN}>
       <Layout>
-        <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
         <div className="max-w-4xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md p-8">
+          <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-8">
             <div className="space-y-6">
               {/* 基本信息 */}
-              <div className="border-b pb-6">
+              <div className="border-b border-[var(--color-border)] pb-6">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold">账户详情</h2>
                   {!isEditing && (
@@ -406,7 +406,7 @@ export default function Member() {
                   <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                           姓名
                         </label>
                         <input
@@ -415,19 +415,19 @@ export default function Member() {
                           onChange={(e) =>
                             setEditForm({ ...editForm, fullName: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                           placeholder="请输入姓名"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                           邮箱
                         </label>
-                        <p className="text-gray-900 py-2">{member.email}</p>
-                        <p className="text-xs text-gray-500">邮箱不可修改</p>
+                        <p className="text-[var(--color-text-strong)] py-2">{member.email}</p>
+                        <p className="text-xs text-[var(--color-muted)]">邮箱不可修改</p>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                           手机号
                         </label>
                         <input
@@ -436,12 +436,12 @@ export default function Member() {
                           onChange={(e) =>
                             setEditForm({ ...editForm, mobile: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                           placeholder="请输入手机号"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                           性别
                         </label>
                         <select
@@ -449,7 +449,7 @@ export default function Member() {
                           onChange={(e) =>
                             setEditForm({ ...editForm, gender: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         >
                           <option value="">请选择</option>
                           <option value="M">男</option>
@@ -458,7 +458,7 @@ export default function Member() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                           生日
                         </label>
                         <input
@@ -467,7 +467,7 @@ export default function Member() {
                           onChange={(e) =>
                             setEditForm({ ...editForm, birthDate: e.target.value })
                           }
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                         />
                       </div>
                     </div>
@@ -492,36 +492,36 @@ export default function Member() {
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         姓名
                       </label>
-                      <p className="text-gray-900">{member.fullName || "-"}</p>
+                      <p className="text-[var(--color-text-strong)]">{member.fullName || "-"}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         邮箱
                       </label>
-                      <p className="text-gray-900">{member.email}</p>
+                      <p className="text-[var(--color-text-strong)]">{member.email}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         手机号
                       </label>
-                      <p className="text-gray-900">{member.mobile || "-"}</p>
+                      <p className="text-[var(--color-text-strong)]">{member.mobile || "-"}</p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         性别
                       </label>
-                      <p className="text-gray-900">
+                      <p className="text-[var(--color-text-strong)]">
                         {member.gender === "M" ? "男性" : member.gender === "F" ? "女性" : member.gender === "O" ? "其他" : member.gender || "-"}
                       </p>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                         生日
                       </label>
-                      <p className="text-gray-900">{formatDate(member.birthDate)}</p>
+                      <p className="text-[var(--color-text-strong)]">{formatDate(member.birthDate)}</p>
                     </div>
                   </div>
                 )}
@@ -529,25 +529,25 @@ export default function Member() {
 
               {/* 会员等级 */}
               {level && (
-                <div className="border-b pb-6">
+                <div className="border-b border-[var(--color-border)] pb-6">
                   
-                  <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-[var(--color-surface)] p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">等级名称</p>
-                      <p className="font-medium text-gray-900">{level.levelName}</p>
+                      <p className="text-sm text-[var(--color-text)] mb-1">等级名称</p>
+                      <p className="font-medium text-[var(--color-text-strong)]">{level.levelName}</p>
                     </div>
                     {level.discountRate !== 1 && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">消费折扣</p>
-                        <p className="font-medium text-gray-900">
+                        <p className="text-sm text-[var(--color-text)] mb-1">消费折扣</p>
+                        <p className="font-medium text-[var(--color-text-strong)]">
                           {(level.discountRate * 100).toFixed(0)}%
                         </p>
                       </div>
                     )}
                     {member.registeredAt && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">会员注册日期</p>
-                        <p className="font-medium text-gray-900">
+                        <p className="text-sm text-[var(--color-text)] mb-1">会员注册日期</p>
+                        <p className="font-medium text-[var(--color-text-strong)]">
                           {formatDate(member.registeredAt)}
                         </p>
                       </div>
@@ -558,42 +558,42 @@ export default function Member() {
 
               {/* 会员卡信息 */}
               {cards && cards.length > 0 && (
-                <div className="border-b pb-6">
+                <div className="border-b border-[var(--color-border)] pb-6">
                   <div className="space-y-4">
                     {cards.map((card) => (
                       <div
                         key={card.cardId}
-                        className="bg-amber-50 p-4 rounded-lg border border-amber-200"
+                        className="bg-[var(--color-surface)] p-4 rounded-lg border border-[var(--color-border)]"
                       >
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">卡号</p>
-                            <p className="font-medium text-gray-900">{card.cardNo}</p>
+                            <p className="text-sm text-[var(--color-text)] mb-1">卡号</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">{card.cardNo}</p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">状态</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">状态</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {card.status === 1 ? "使用中" : "挂失/注销"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">发卡时间</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">发卡时间</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {formatDateTime(card.issuedAt)}
                             </p>
                           </div>
                           {card.expiredAt && (
                             <div>
-                              <p className="text-sm text-gray-600 mb-1">过期时间</p>
-                              <p className="font-medium text-gray-900">
+                              <p className="text-sm text-[var(--color-text)] mb-1">过期时间</p>
+                              <p className="font-medium text-[var(--color-text-strong)]">
                                 {formatDateTime(card.expiredAt)}
                               </p>
                             </div>
                           )}
                           {card.remark && (
                             <div>
-                              <p className="text-sm text-gray-600 mb-1">备注</p>
-                              <p className="font-medium text-gray-900">{card.remark}</p>
+                              <p className="text-sm text-[var(--color-text)] mb-1">备注</p>
+                              <p className="font-medium text-[var(--color-text-strong)]">{card.remark}</p>
                             </div>
                           )}
                         </div>
@@ -604,18 +604,18 @@ export default function Member() {
               )}
 
               {/* 积分信息 */}
-              <div className="border-b pb-6">
+              <div className="border-b border-[var(--color-border)] pb-6">
                 
-                <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-[var(--color-surface)] p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">历史累计积分</p>
-                    <p className="font-medium text-gray-900 text-2xl">
+                    <p className="text-sm text-[var(--color-text)] mb-1">历史累计积分</p>
+                    <p className="font-medium text-[var(--color-text-strong)] text-2xl">
                       {member.totalPoints}
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">当前可用积分</p>
-                    <p className="font-medium text-gray-900 text-2xl">
+                    <p className="text-sm text-[var(--color-text)] mb-1">当前可用积分</p>
+                    <p className="font-medium text-[var(--color-text-strong)] text-2xl">
                       {member.availablePoints}
                     </p>
                   </div>
@@ -624,31 +624,31 @@ export default function Member() {
 
               {/* 账户余额 */}
               {account && (
-                <div className="border-b pb-6">
+                <div className="border-b border-[var(--color-border)] pb-6">
                   <h2 className="text-xl font-bold mb-4">账户余额</h2>
-                  <div className="bg-amber-50 p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-[var(--color-surface)] p-4 rounded-lg grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">可用余额</p>
-                      <p className="font-medium text-gray-900 text-2xl">
+                      <p className="text-sm text-[var(--color-text)] mb-1">可用余额</p>
+                      <p className="font-medium text-[var(--color-text-strong)] text-2xl">
                         ¥{account.balance.toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">冻结余额</p>
-                      <p className="font-medium text-gray-900 text-2xl">
+                      <p className="text-sm text-[var(--color-text)] mb-1">冻结余额</p>
+                      <p className="font-medium text-[var(--color-text-strong)] text-2xl">
                         ¥{account.frozenBalance.toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">更新时间</p>
-                      <p className="font-medium text-gray-900">
+                      <p className="text-sm text-[var(--color-text)] mb-1">更新时间</p>
+                      <p className="font-medium text-[var(--color-text-strong)]">
                         {formatDateTime(account.updatedAt)}
                       </p>
                     </div>
                     {cardExpiredAt && (
                       <div>
-                        <p className="text-sm text-gray-600 mb-1">会员卡有效期</p>
-                        <p className="font-medium text-gray-900">
+                        <p className="text-sm text-[var(--color-text)] mb-1">会员卡有效期</p>
+                        <p className="font-medium text-[var(--color-text-strong)]">
                           {formatDate(cardExpiredAt)}
                         </p>
                       </div>
@@ -664,9 +664,9 @@ export default function Member() {
                         充值
                       </Button>
                     ) : (
-                      <div className="bg-white p-4 rounded-lg border border-amber-200">
+                      <div className="bg-[var(--color-card-bg)] p-4 rounded-lg border border-[var(--color-border)]">
                         <div className="mb-4">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                             充值金额（元）
                           </label>
                           <input
@@ -676,7 +676,7 @@ export default function Member() {
                             value={rechargeAmount}
                             onChange={(e) => setRechargeAmount(e.target.value)}
                             placeholder="请输入充值金额"
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md focus:outline-none focus:ring-2 focus:ring-amber-500"
                           />
                         </div>
                         <div className="flex gap-2">
@@ -706,7 +706,7 @@ export default function Member() {
 
               {/* 充值记录 */}
               {rechargeRecords && rechargeRecords.length > 0 && (
-                <div className="border-b pb-6">
+                <div className="border-b border-[var(--color-border)] pb-6">
                   <h2 className="text-xl font-bold mb-4">充值记录</h2>
                   <div className="space-y-3">
                     {rechargeRecords.map((record) => (
@@ -716,33 +716,33 @@ export default function Member() {
                       >
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">充值金额</p>
-                            <p className="font-medium text-gray-900 text-lg">
+                            <p className="text-sm text-[var(--color-text)] mb-1">充值金额</p>
+                            <p className="font-medium text-[var(--color-text-strong)] text-lg">
                               ¥{record.amount.toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">支付方式</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">支付方式</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.paymentMethod === "ONLINE" ? "在线支付" : record.paymentMethod}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">充值时间</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">充值时间</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {formatDateTime(record.createdAt)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">状态</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">状态</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.status === 1 ? "成功" : "失败"}
                             </p>
                           </div>
                           {record.remark && (
                             <div>
-                              <p className="text-sm text-gray-600 mb-1">备注</p>
-                              <p className="font-medium text-gray-900">{record.remark}</p>
+                              <p className="text-sm text-[var(--color-text)] mb-1">备注</p>
+                              <p className="font-medium text-[var(--color-text-strong)]">{record.remark}</p>
                             </div>
                           )}
                         </div>
@@ -770,7 +770,7 @@ export default function Member() {
 
               {/* 消费记录 */}
               {consumptionRecords && consumptionRecords.length > 0 && (
-                <div className="border-b pb-6">
+                <div className="border-b border-[var(--color-border)] pb-6">
                   <h2 className="text-xl font-bold mb-4">消费记录</h2>
                   <div className="space-y-3">
                     {consumptionRecords.map((record) => (
@@ -780,26 +780,26 @@ export default function Member() {
                       >
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">消费金额</p>
-                            <p className="font-medium text-gray-900 text-lg">
+                            <p className="text-sm text-[var(--color-text)] mb-1">消费金额</p>
+                            <p className="font-medium text-[var(--color-text-strong)] text-lg">
                               ¥{record.paidAmount.toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">原始金额</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">原始金额</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               ¥{record.originalAmount.toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">优惠金额</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">优惠金额</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               ¥{record.discountAmount.toFixed(2)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">支付渠道</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">支付渠道</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.payChannel === "BALANCE" ? "余额" : 
                                record.payChannel === "CASH" ? "现金" :
                                record.payChannel === "WECHAT" ? "微信" :
@@ -807,33 +807,33 @@ export default function Member() {
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">使用积分</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">使用积分</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.pointsUsed}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">获得积分</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">获得积分</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.pointsEarned}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">消费时间</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">消费时间</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {formatDateTime(record.createdAt)}
                             </p>
                           </div>
                           <div>
-                            <p className="text-sm text-gray-600 mb-1">状态</p>
-                            <p className="font-medium text-gray-900">
+                            <p className="text-sm text-[var(--color-text)] mb-1">状态</p>
+                            <p className="font-medium text-[var(--color-text-strong)]">
                               {record.status === 1 ? "成功" : "作废/撤销"}
                             </p>
                           </div>
                           {record.remark && (
                             <div>
-                              <p className="text-sm text-gray-600 mb-1">备注</p>
-                              <p className="font-medium text-gray-900">{record.remark}</p>
+                              <p className="text-sm text-[var(--color-text)] mb-1">备注</p>
+                              <p className="font-medium text-[var(--color-text-strong)]">{record.remark}</p>
                             </div>
                           )}
                         </div>

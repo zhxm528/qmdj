@@ -15,6 +15,7 @@ import HourSelector from "@/components/HourSelector";
 import MinuteSelector from "@/components/MinuteSelector";
 import GenderSelector from "@/components/GenderSelector";
 import SidebarDrawer from "@/components/SidebarDrawer";
+import { useTheme } from "@/components/ThemeProvider";
 
 const { Panel } = Collapse;
 
@@ -25,7 +26,7 @@ const ReactECharts = dynamic(
     // 返回一个占位组件
     return {
       default: () => (
-        <div className="flex items-center justify-center h-full min-h-[400px] text-gray-500">
+        <div className="flex items-center justify-center h-full min-h-[400px] text-[var(--color-muted)]">
           <div className="text-center">
             <p>图表加载失败，请刷新页面重试</p>
           </div>
@@ -185,6 +186,7 @@ interface BaziStep {
 
 export default function BaziPage() {
   const pathname = usePathname();
+  const { theme } = useTheme();
   const isQimenRoute = pathname?.startsWith("/qimen");
   const isBaziRoute = pathname?.startsWith("/bazi");
   const [sidebarTab, setSidebarTab] = useState<"ask" | "look">(isBaziRoute ? "look" : "ask");
@@ -1216,6 +1218,14 @@ export default function BaziPage() {
     // 创建一个计数器来跟踪 formatter 的调用顺序（作为备用方案）
     let callIndex = 0;
 
+    // 根据主题设置颜色
+    const isDark = theme === "dark";
+    const axisNameColor = isDark ? "#94a3b8" : "#666";
+    const splitLineColor = isDark ? "#2a3341" : "#ddd";
+    const axisLineColor = isDark ? "#2a3341" : "#ccc";
+    const labelColor = isDark ? "#e5e7eb" : "#333";
+    const labelBgColor = isDark ? "rgba(31, 41, 55, 0.9)" : "rgba(255, 255, 255, 0.8)";
+
     return {
       radar: {
         indicator: elements.map((element) => ({
@@ -1225,24 +1235,26 @@ export default function BaziPage() {
         center: ["50%", "55%"],
         radius: "70%",
         axisName: {
-          color: "#666",
+          color: axisNameColor,
           fontSize: 14,
           fontWeight: "bold",
         },
         splitArea: {
           show: true,
           areaStyle: {
-            color: ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
+            color: isDark 
+              ? ["rgba(42, 51, 65, 0.3)", "rgba(17, 24, 39, 0.1)"]
+              : ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
           },
         },
         splitLine: {
           lineStyle: {
-            color: "#ddd",
+            color: splitLineColor,
           },
         },
         axisLine: {
           lineStyle: {
-            color: "#ccc",
+            color: axisLineColor,
           },
         },
       },
@@ -1305,10 +1317,10 @@ export default function BaziPage() {
               // 如果仍然无法确定，返回空字符串（不显示标签）
               return "";
             },
-            color: "#333",
+            color: labelColor,
             fontSize: 12,
             fontWeight: "bold",
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            backgroundColor: labelBgColor,
             borderColor: "#8b5cf6",
             borderWidth: 1,
             borderRadius: 4,
@@ -1363,6 +1375,14 @@ export default function BaziPage() {
     // 在雷达图中，formatter 会按照 indicator 的顺序被调用
     let callIndex = 0;
 
+    // 根据主题设置颜色
+    const isDark = theme === "dark";
+    const axisNameColor = isDark ? "#94a3b8" : "#666";
+    const splitLineColor = isDark ? "#2a3341" : "#ddd";
+    const axisLineColor = isDark ? "#2a3341" : "#ccc";
+    const labelColor = isDark ? "#e5e7eb" : "#333";
+    const labelBgColor = isDark ? "rgba(31, 41, 55, 0.9)" : "rgba(255, 255, 255, 0.8)";
+
     return {
       radar: {
         indicator: [
@@ -1375,24 +1395,26 @@ export default function BaziPage() {
         center: ["50%", "55%"],
         radius: "70%",
         axisName: {
-          color: "#666",
+          color: axisNameColor,
           fontSize: 14,
           fontWeight: "bold",
         },
         splitArea: {
           show: true,
           areaStyle: {
-            color: ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
+            color: isDark 
+              ? ["rgba(42, 51, 65, 0.3)", "rgba(17, 24, 39, 0.1)"]
+              : ["rgba(250, 250, 250, 0.3)", "rgba(200, 200, 200, 0.1)"],
           },
         },
         splitLine: {
           lineStyle: {
-            color: "#ddd",
+            color: splitLineColor,
           },
         },
         axisLine: {
           lineStyle: {
-            color: "#ccc",
+            color: axisLineColor,
           },
         },
       },
@@ -1466,10 +1488,10 @@ export default function BaziPage() {
               // 如果仍然无法确定，返回空字符串（不显示标签）
               return "";
             },
-            color: "#333",
+            color: labelColor,
             fontSize: 12,
             fontWeight: "bold",
-            backgroundColor: "rgba(255, 255, 255, 0.8)",
+            backgroundColor: labelBgColor,
             borderColor: "#f59e0b",
             borderWidth: 1,
             borderRadius: 4,
@@ -1575,12 +1597,12 @@ export default function BaziPage() {
   return (
     <ConfigProvider locale={zhCN}>
       <Layout>
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-screen bg-[var(--color-surface)]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             
 
             {/* 日期与时辰选择 */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-[2.5fr_1.5fr_0.8fr] gap-6">
                 <DateSelector
                   value={date}
@@ -1590,8 +1612,8 @@ export default function BaziPage() {
                   required
                 />
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    时辰 <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
+                    时辰 <span className="text-[var(--color-danger)]">*</span>
                   </label>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <HourSelector
@@ -1613,7 +1635,7 @@ export default function BaziPage() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-[var(--color-text)] mb-2">
                     性别
                   </label>
                   <GenderSelector
@@ -1631,7 +1653,7 @@ export default function BaziPage() {
                     !isLoggedIn || !userEmail ? (
                       <span>
                         请先
-                        <Link href="/login" className="text-blue-500 hover:text-blue-600 underline ml-1 mr-1">
+                        <Link href="/login" className="text-[var(--color-link)] hover:text-[var(--color-link-hover)] underline ml-1 mr-1">
                           登录
                         </Link>
                         才能排盘
@@ -1650,7 +1672,7 @@ export default function BaziPage() {
                     onClick={handleBaziPaipan}
                     loading={loading}
                     disabled={!isLoggedIn || !userEmail || !date || !hour}
-                    className="bg-amber-600 hover:bg-amber-700"
+                    className="bg-[var(--color-primary)] hover:bg-[var(--color-primary-strong)]"
                   >
                     八字排盘
                   </Button>
@@ -1660,26 +1682,26 @@ export default function BaziPage() {
 
             {/* 13个步骤结果展示 */}
             {visibleSteps.length > 0 && (
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6">
                 {fourPillars && (
-                  <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">四柱信息</h3>
+                  <div className="mb-6 p-4 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg">
+                    <h3 className="text-lg font-semibold text-[var(--color-text-strong)] mb-2">四柱信息</h3>
                     <div className="grid grid-cols-4 gap-4 text-center">
                       <div>
-                        <div className="text-sm text-gray-600">年柱</div>
-                        <div className="text-xl font-bold text-amber-700">{fourPillars.year}</div>
+                        <div className="text-sm text-[var(--color-muted)]">年柱</div>
+                        <div className="text-xl font-bold text-[var(--color-link)]">{fourPillars.year}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600">月柱</div>
-                        <div className="text-xl font-bold text-amber-700">{fourPillars.month}</div>
+                        <div className="text-sm text-[var(--color-muted)]">月柱</div>
+                        <div className="text-xl font-bold text-[var(--color-link)]">{fourPillars.month}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600">日柱</div>
-                        <div className="text-xl font-bold text-amber-700">{fourPillars.day}</div>
+                        <div className="text-sm text-[var(--color-muted)]">日柱</div>
+                        <div className="text-xl font-bold text-[var(--color-link)]">{fourPillars.day}</div>
                       </div>
                       <div>
-                        <div className="text-sm text-gray-600">时柱</div>
-                        <div className="text-xl font-bold text-amber-700">{fourPillars.hour}</div>
+                        <div className="text-sm text-[var(--color-muted)]">时柱</div>
+                        <div className="text-xl font-bold text-[var(--color-link)]">{fourPillars.hour}</div>
                       </div>
                     </div>
                   </div>
@@ -1718,7 +1740,7 @@ export default function BaziPage() {
                                 {step.name}
                               </span>
                               {step.annotations && (
-                                <span className="text-sm text-gray-500 font-normal italic ml-4">
+                                <span className="text-sm text-[var(--color-muted)] font-normal italic ml-4">
                                   {step.annotations}
                                 </span>
                               )}
@@ -1869,15 +1891,15 @@ export default function BaziPage() {
                       >
                         <div className="space-y-4">
                           <div id={`bazi-step-${step.step}`} className="scroll-mt-24" />
-                          <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="bg-[var(--color-surface)] rounded-lg p-4">
                             {useMarkdown ? (
-                              <div className="text-sm text-gray-800 leading-relaxed">
+                              <div className="text-sm text-[var(--color-text-strong)] leading-relaxed">
                                 <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                                   {llmMarkdown}
                                 </ReactMarkdown>
                               </div>
                             ) : (
-                              <div className="text-sm whitespace-pre-wrap text-gray-800 leading-relaxed">
+                              <div className="text-sm whitespace-pre-wrap text-[var(--color-text-strong)] leading-relaxed">
                                 {naturalText}
                               </div>
                             )}
@@ -1888,17 +1910,17 @@ export default function BaziPage() {
                               {/* 左侧：五行分布和天干五行阴阳表（垂直堆叠） */}
                               <div className="flex flex-col gap-4">
                                 {/* 五行分布表格 */}
-                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">五行分布</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">五行分布</h4>
                                   <div className="overflow-x-auto flex-1">
                                     <table className="w-full border-collapse text-sm">
                                       <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干五行</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支五行</th>
+                                        <tr className="bg-[var(--color-surface)]">
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">柱位</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">天干</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">天干五行</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">地支</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">地支五行</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1908,12 +1930,12 @@ export default function BaziPage() {
                                           { pillar: "日柱", stem: step.result.five_elements.stems.day_stem, branch: step.result.five_elements.branches.day_branch },
                                           { pillar: "时柱", stem: step.result.five_elements.stems.hour_stem, branch: step.result.five_elements.branches.hour_branch },
                                         ].map(({ pillar, stem, branch }) => (
-                                          <tr key={pillar} className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{stem.stem}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">{stem.element || "-"}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch.branch}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">{branch.element || "-"}</td>
+                                          <tr key={pillar} className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-medium">{pillar}</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">{stem.stem}</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">{stem.element || "-"}</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">{branch.branch}</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">{branch.element || "-"}</td>
                                           </tr>
                                         ))}
                                       </tbody>
@@ -1921,16 +1943,16 @@ export default function BaziPage() {
                                   </div>
                                 </div>
                                 {/* 天干五行阴阳表格 */}
-                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">天干五行阴阳表</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">天干五行阴阳表</h4>
                                   <div className="overflow-x-auto flex-1">
                                     <table className="w-full border-collapse text-sm">
                                       <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
+                                        <tr className="bg-[var(--color-surface)]">
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">柱位</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">天干</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">阴阳</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">五行</th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -1942,11 +1964,11 @@ export default function BaziPage() {
                                         ].map(({ pillar, gan }) => {
                                           const meta = ganMetaData[gan];
                                           return (
-                                            <tr key={pillar} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{gan}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">{meta?.yin_yang || "-"}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">{meta?.wu_xing || "-"}</td>
+                                            <tr key={pillar} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-medium">{pillar}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">{gan}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">{meta?.yin_yang || "-"}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">{meta?.wu_xing || "-"}</td>
                                             </tr>
                                           );
                                         })}
@@ -1956,10 +1978,10 @@ export default function BaziPage() {
                                 </div>
                               </div>
                               {/* 右侧：五行统计雷达图 */}
-                              <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
+                              <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
                                 <div className="flex flex-col mb-3">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-2">五行统计雷达图</h4>
-                                  <div className="text-xs text-gray-600">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-2">五行统计雷达图</h4>
+                                  <div className="text-xs text-[var(--color-muted)]">
                                     {(() => {
                                       const counts = step.result.five_elements.optional_summary.count_by_element;
                                       return `木：${counts.木}、火：${counts.火}、土：${counts.土}、金：${counts.金}、水：${counts.水}`;
@@ -1982,22 +2004,22 @@ export default function BaziPage() {
                             const shishenData = step.result?.shishen;
                             console.log("[前端] 步骤2 - shishenData:", shishenData ? `存在，details数量=${shishenData.details?.length || 0}` : "不存在");
                             return shishenData ? (
-                              <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-3">原始十神</h4>
+                              <div className="mt-4 bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">原始十神</h4>
                                 <div className="space-y-4">
                                   {/* 天干十神表格 */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">天干十神</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">天干十神</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">柱位</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">天干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">十神</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">关系</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">柱位</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">天干</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">五行</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">阴阳</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">十神</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">关系</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -2022,19 +2044,19 @@ export default function BaziPage() {
                                                 x_ke_dm: "克我",
                                               };
                                               return (
-                                                <tr key={`${detail.pillar}-${detail.target_stem}`} className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                <tr key={`${detail.pillar}-${detail.target_stem}`} className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium">
                                                     {pillarNames[detail.pillar] || detail.pillar}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">
                                                     {detail.target_stem}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_element}</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_yinyang}</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-blue-600">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center">{detail.target_element}</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center">{detail.target_yinyang}</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-[var(--color-link)]">
                                                     {detail.tenshen}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-500">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs text-[var(--color-muted)]">
                                                     {relNames[detail.rel_to_dm] || detail.rel_to_dm}
                                                   </td>
                                                 </tr>
@@ -2046,19 +2068,19 @@ export default function BaziPage() {
                                   </div>
                                   {/* 地支藏干十神表格 */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">地支藏干十神</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">地支藏干十神</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">柱位</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">藏干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">角色</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">五行</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">阴阳</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">十神</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">关系</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">柱位</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">地支</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">藏干</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">角色</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">五行</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">阴阳</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">十神</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">关系</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -2092,25 +2114,25 @@ export default function BaziPage() {
                                                 x_ke_dm: "克我",
                                               };
                                               return (
-                                                <tr key={`${detail.pillar}-${detail.source_branch}-${detail.target_stem}-${detail.hidden_role}`} className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                <tr key={`${detail.pillar}-${detail.source_branch}-${detail.target_stem}-${detail.hidden_role}`} className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium">
                                                     {pillarNames[detail.pillar] || detail.pillar}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">
                                                     {detail.source_branch}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium">
                                                     {detail.target_stem}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">
                                                     {roleNames[detail.hidden_role] || detail.hidden_role}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_element}</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center">{detail.target_yinyang}</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-semibold text-blue-600">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center">{detail.target_element}</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center">{detail.target_yinyang}</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-[var(--color-link)]">
                                                     {detail.tenshen}
                                                   </td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-500">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs text-[var(--color-muted)]">
                                                     {relNames[detail.rel_to_dm] || detail.rel_to_dm}
                                                   </td>
                                                 </tr>
@@ -2126,16 +2148,16 @@ export default function BaziPage() {
                           })()}
                           {/* 步骤2显示地支藏干表 */}
                           {step.step === 2 && fourPillars && hiddenStemsData && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">地支藏干表</h4>
+                            <div className="mt-4 bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                              <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">地支藏干表</h4>
                               <div className="overflow-x-auto">
                                 <table className="w-full border-collapse text-sm">
                                   <thead>
-                                    <tr className="bg-gray-50">
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">柱位</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-center font-semibold">地支</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">藏干</th>
-                                      <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                    <tr className="bg-[var(--color-surface)]">
+                                      <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">柱位</th>
+                                      <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">地支</th>
+                                      <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">藏干</th>
+                                      <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">说明</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -2148,26 +2170,26 @@ export default function BaziPage() {
                                       const hiddenStems = hiddenStemsData[branch] || [];
                                       const roleLabels = ["主气", "中气", "余气"];
                                       return (
-                                        <tr key={pillar} className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-medium">{pillar}</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center font-bold text-amber-700">{branch}</td>
-                                          <td className="border border-gray-300 px-3 py-2">
+                                        <tr key={pillar} className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-medium">{pillar}</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center font-bold text-[var(--color-link)]">{branch}</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2">
                                             {hiddenStems.length > 0 ? (
                                               <div className="flex flex-wrap gap-2">
                                                 {hiddenStems.map((stem, index) => (
                                                   <span key={index} className="inline-flex items-center gap-1">
                                                     <span className="font-medium">{stem}</span>
                                                     {index < roleLabels.length && (
-                                                      <span className="text-xs text-gray-500">({roleLabels[index]})</span>
+                                                      <span className="text-xs text-[var(--color-muted)]">({roleLabels[index]})</span>
                                                     )}
                                                   </span>
                                                 ))}
                                               </div>
                                             ) : (
-                                              <span className="text-gray-400">无</span>
+                                              <span className="text-[var(--color-muted)]">无</span>
                                             )}
                                           </td>
-                                          <td className="border border-gray-300 px-3 py-2 text-gray-600 text-xs">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-[var(--color-muted)] text-xs">
                                             {hiddenStems.length > 0
                                               ? `共${hiddenStems.length}个藏干，按主气→中气→余气顺序排列`
                                               : "该地支无藏干"}
@@ -2182,31 +2204,31 @@ export default function BaziPage() {
                           )}
                           {/* 步骤2显示天干地支关系规则表 */}
                           {step.step === 2 && ganheData && (
-                            <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-700 mb-3">合冲刑害破 + 干合干克</h4>
+                            <div className="mt-4 bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                              <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">合冲刑害破 + 干合干克</h4>
                               <div className="space-y-6">
                                 {/* 四个表格一行显示：五合、六合、三合、三会 */}
                                 <div className="grid grid-cols-1 gap-4">
                                   {/* 五合（天干五合） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">五合（天干五合）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">五合（天干五合）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干1</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干2</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">合化五行</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">天干1</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">天干2</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">合化五行</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.gan_he)
                                             .filter(([gan, _]) => ["甲", "乙", "丙", "丁", "戊"].includes(gan))
                                             .map(([gan, info]) => (
-                                              <tr key={gan} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{gan}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{info.with}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{info.transform}</td>
+                                              <tr key={gan} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{gan}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{info.with}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center text-xs">{info.transform}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2216,22 +2238,22 @@ export default function BaziPage() {
                                   
                                   {/* 六合（地支六合） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">六合（地支六合）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">六合（地支六合）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支2</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_liuhe)
                                             .filter(([zhi, _]) => ["子", "寅", "卯", "辰", "巳", "午"].includes(zhi))
                                             .map(([zhi, partner]) => (
-                                              <tr key={zhi} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              <tr key={zhi} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{partner}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2241,22 +2263,22 @@ export default function BaziPage() {
                                   
                                   {/* 三合（地支三合局） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">三合（地支三合局）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">三合（地支三合局）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三合局</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">合化五行</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">三合局</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">合化五行</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_sanhe)
                                             .filter(([combo, _]) => ["申子辰", "寅午戌", "亥卯未", "巳酉丑"].includes(combo))
                                             .map(([combo, element]) => (
-                                              <tr key={combo} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{combo}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{element}</td>
+                                              <tr key={combo} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{combo}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center text-xs">{element}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2266,22 +2288,22 @@ export default function BaziPage() {
                                   
                                   {/* 三会（地支三会局） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">三会（地支三会局）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">三会（地支三会局）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三会局</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">会化五行</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">三会局</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">会化五行</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_sanhui)
                                             .filter(([combo, _]) => ["亥子丑", "寅卯辰", "巳午未", "申酉戌"].includes(combo))
                                             .map(([combo, element]) => (
-                                              <tr key={combo} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{combo}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{element}</td>
+                                              <tr key={combo} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{combo}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center text-xs">{element}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2294,22 +2316,22 @@ export default function BaziPage() {
                                 <div className="grid grid-cols-1 gap-4">
                                   {/* 冲（地支六冲） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">冲（地支六冲）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">冲（地支六冲）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支2</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_chong)
                                             .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "辰", "巳"].includes(zhi))
                                             .map(([zhi, partner]) => (
-                                              <tr key={zhi} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              <tr key={zhi} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{partner}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2319,23 +2341,23 @@ export default function BaziPage() {
                                   
                                   {/* 刑（地支刑） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">刑（地支刑）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">刑（地支刑）</h5>
                                     <div className="space-y-2">
                                       <div>
-                                        <div className="text-xs text-gray-500 mb-1">三刑组：</div>
+                                        <div className="text-xs text-[var(--color-muted)] mb-1">三刑组：</div>
                                         <div className="overflow-x-auto">
                                           <table className="w-full border-collapse text-sm">
                                             <thead>
-                                              <tr className="bg-gray-50">
-                                                <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">三刑组</th>
-                                                <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">类型</th>
+                                              <tr className="bg-[var(--color-surface)]">
+                                                <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">三刑组</th>
+                                                <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">类型</th>
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {ganheData.zhi_xing.groups.map((group, idx) => (
-                                                <tr key={idx} className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{group.join("、")}</td>
-                                                  <td className="border border-gray-300 px-2 py-1 text-center text-xs">
+                                                <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{group.join("、")}</td>
+                                                  <td className="border border-[var(--color-border)] px-2 py-1 text-center text-xs">
                                                     {group.length === 3 ? "三刑" : "相刑"}
                                                   </td>
                                                 </tr>
@@ -2345,30 +2367,30 @@ export default function BaziPage() {
                                         </div>
                                       </div>
                                       <div>
-                                        <div className="text-xs text-gray-500 mb-1">自刑：</div>
-                                        <div className="text-xs text-gray-700">{ganheData.zhi_xing.zixing.join("、")}</div>
+                                        <div className="text-xs text-[var(--color-muted)] mb-1">自刑：</div>
+                                        <div className="text-xs text-[var(--color-text)]">{ganheData.zhi_xing.zixing.join("、")}</div>
                                       </div>
                                     </div>
                                   </div>
                                   
                                   {/* 害（地支六害） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">害（地支六害）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">害（地支六害）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支2</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_hai)
                                             .filter(([zhi, _]) => ["子", "丑", "寅", "卯", "申", "酉"].includes(zhi))
                                             .map(([zhi, partner]) => (
-                                              <tr key={zhi} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              <tr key={zhi} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{partner}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2378,22 +2400,22 @@ export default function BaziPage() {
                                   
                                   {/* 破（地支六破） */}
                                   <div>
-                                    <h5 className="text-xs font-semibold text-gray-600 mb-2">破（地支六破）</h5>
+                                    <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">破（地支六破）</h5>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支1</th>
-                                            <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">地支2</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支1</th>
+                                            <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">地支2</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {Object.entries(ganheData.zhi_po)
                                             .filter(([zhi, _]) => ["子", "卯", "辰", "未", "寅", "巳"].includes(zhi))
                                             .map(([zhi, partner]) => (
-                                              <tr key={zhi} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{zhi}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{partner}</td>
+                                              <tr key={zhi} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{zhi}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{partner}</td>
                                               </tr>
                                             ))}
                                         </tbody>
@@ -2404,23 +2426,23 @@ export default function BaziPage() {
                                 
                                 {/* 干克（天干相克） */}
                                 <div>
-                                  <h5 className="text-xs font-semibold text-gray-600 mb-2">干克（天干相克）</h5>
+                                  <h5 className="text-xs font-semibold text-[var(--color-muted)] mb-2">干克（天干相克）</h5>
                                   <div className="grid grid-cols-1 gap-4">
                                     <div>
-                                      <div className="text-xs text-gray-500 mb-1">天干五行映射：</div>
+                                      <div className="text-xs text-[var(--color-muted)] mb-1">天干五行映射：</div>
                                       <div className="overflow-x-auto">
                                         <table className="w-full border-collapse text-sm">
                                           <thead>
-                                            <tr className="bg-gray-50">
-                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">天干</th>
-                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">五行</th>
+                                            <tr className="bg-[var(--color-surface)]">
+                                              <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">天干</th>
+                                              <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">五行</th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {Object.entries(ganheData.gan_ke.gan_wuxing).map(([gan, wuxing]) => (
-                                              <tr key={gan} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{gan}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center text-xs">{wuxing}</td>
+                                              <tr key={gan} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{gan}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center text-xs">{wuxing}</td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -2428,20 +2450,20 @@ export default function BaziPage() {
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-gray-500 mb-1">五行相克规则：</div>
+                                      <div className="text-xs text-[var(--color-muted)] mb-1">五行相克规则：</div>
                                       <div className="overflow-x-auto">
                                         <table className="w-full border-collapse text-sm">
                                           <thead>
-                                            <tr className="bg-gray-50">
-                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">克方</th>
-                                              <th className="border border-gray-300 px-2 py-1 text-center font-semibold text-xs">被克方</th>
+                                            <tr className="bg-[var(--color-surface)]">
+                                              <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">克方</th>
+                                              <th className="border border-[var(--color-border)] px-2 py-1 text-center font-semibold text-xs">被克方</th>
                                             </tr>
                                           </thead>
                                           <tbody>
                                             {Object.entries(ganheData.gan_ke.wuxing_ke).map(([ke, beike]) => (
-                                              <tr key={ke} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{ke}</td>
-                                                <td className="border border-gray-300 px-2 py-1 text-center font-medium text-xs">{beike}</td>
+                                              <tr key={ke} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{ke}</td>
+                                                <td className="border border-[var(--color-border)] px-2 py-1 text-center font-medium text-xs">{beike}</td>
                                               </tr>
                                             ))}
                                           </tbody>
@@ -2460,27 +2482,27 @@ export default function BaziPage() {
                               <div className="flex flex-col gap-4">
                                 {/* 月令信息表格 */}
                                 {step.result.month_command && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">月令信息</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">月令信息</h4>
                                     <div className="overflow-x-auto flex-1">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">月支（月令）</td>
-                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.month_branch || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">月支（月令）</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2">{step.result.month_command.month_branch || "-"}</td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">对应季节</td>
-                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.season || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">对应季节</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2">{step.result.month_command.season || "-"}</td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">当令之气</td>
-                                            <td className="border border-gray-300 px-3 py-2">{step.result.month_command.dominant_qi || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">当令之气</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2">{step.result.month_command.dominant_qi || "-"}</td>
                                           </tr>
                                           {step.result.month_command.supporting_elements_rank && step.result.month_command.supporting_elements_rank.length > 0 && (
-                                            <tr className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">五行强弱</td>
-                                              <td className="border border-gray-300 px-3 py-2">{step.result.month_command.supporting_elements_rank.join(" > ")}</td>
+                                            <tr className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">五行强弱</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2">{step.result.month_command.supporting_elements_rank.join(" > ")}</td>
                                             </tr>
                                           )}
                                         </tbody>
@@ -2490,29 +2512,29 @@ export default function BaziPage() {
                                 )}
                                 {/* 月令强弱/得令表格 */}
                                 {step.result.yueling_strength && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">月令强弱/得令</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">月令强弱/得令</h4>
                                     <div className="overflow-x-auto flex-1">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">日主五行</td>
-                                            <td className="border border-gray-300 px-3 py-2">{step.result.yueling_strength.day_master_element || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">日主五行</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2">{step.result.yueling_strength.day_master_element || "-"}</td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">得令状态</td>
-                                            <td className="border border-gray-300 px-3 py-2">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">得令状态</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2">
                                               {step.result.yueling_strength.day_master_state || "-"}
                                               {step.result.yueling_strength.day_master_state_rank !== undefined && (
-                                                <span className="text-gray-500 ml-2">（强弱值：{step.result.yueling_strength.day_master_state_rank}/5）</span>
+                                                <span className="text-[var(--color-muted)] ml-2">（强弱值：{step.result.yueling_strength.day_master_state_rank}/5）</span>
                                               )}
                                             </td>
                                           </tr>
                                           {step.result.yueling_strength.is_override && (
-                                            <tr className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">覆盖规则</td>
-                                              <td className="border border-gray-300 px-3 py-2">
-                                                <span className="text-amber-600">⚠️ 使用了覆盖规则</span>
+                                            <tr className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">覆盖规则</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2">
+                                                <span className="text-[var(--color-link)]">⚠️ 使用了覆盖规则</span>
                                                 {step.result.yueling_strength.override_note && (
                                                   <span className="ml-2">{step.result.yueling_strength.override_note}</span>
                                                 )}
@@ -2527,8 +2549,8 @@ export default function BaziPage() {
                               </div>
                               {/* 右列：所有五行旺相休囚死状态雷达图 */}
                               {step.result.yueling_strength?.all_elements_state && (
-                                <div className="bg-white rounded-lg p-4 border border-gray-200 flex flex-col">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">所有五行旺相休囚死状态</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)] flex flex-col">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">所有五行旺相休囚死状态</h4>
                                   <div className="flex-1 flex items-center justify-center">
                                     <ReactECharts
                                       option={getYuelingRadarChartOption(
@@ -2550,25 +2572,25 @@ export default function BaziPage() {
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                 {/* 通根表 */}
                                 {tonggenData && tonggenData.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">通根表</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">通根表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">天干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">地支</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">根层级</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">权重</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold text-xs">天干</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold text-xs">地支</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">根层级</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">权重</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {tonggenData.map((item, idx) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.stem_code}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.root_role || "-"}</td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                            <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium text-xs">{item.stem_code}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{item.root_role || "-"}</td>
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">
                                                 {item.weight != null ? (typeof item.weight === 'number' ? item.weight.toFixed(2) : parseFloat(String(item.weight)).toFixed(2)) : "-"}
                                               </td>
                                             </tr>
@@ -2580,18 +2602,18 @@ export default function BaziPage() {
                                 )}
                                 {/* 透干表 */}
                                 {touganData && touganData.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">透干表</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">透干表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">柱位</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold text-xs">地支</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">藏干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">层级</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">是否透干</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold text-xs">透出位置</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold text-xs">柱位</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold text-xs">地支</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">藏干</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">层级</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">是否透干</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold text-xs">透出位置</th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -2603,19 +2625,19 @@ export default function BaziPage() {
                                               hour: "时",
                                             };
                                             return (
-                                              <tr key={idx} className="hover:bg-gray-50">
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{pillarNames[item.pillar] || item.pillar}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.hidden_stem}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">{item.hidden_role}</td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                              <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium text-xs">{pillarNames[item.pillar] || item.pillar}</td>
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium text-xs">{item.branch_code}</td>
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{item.hidden_stem}</td>
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{item.hidden_role}</td>
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">
                                                   {item.is_tougan ? (
-                                                    <span className="text-green-600 font-semibold">是</span>
+                                                    <span className="text-[var(--color-success)] font-semibold">是</span>
                                                   ) : (
-                                                    <span className="text-gray-400">否</span>
+                                                    <span className="text-[var(--color-muted)]">否</span>
                                                   )}
                                                 </td>
-                                                <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                                <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">
                                                   {item.tougan_pillars && Array.isArray(item.tougan_pillars) && item.tougan_pillars.length > 0
                                                     ? item.tougan_pillars.map((p: string) => pillarNames[p] || p).join("、")
                                                     : "-"}
@@ -2633,31 +2655,31 @@ export default function BaziPage() {
                               <div className="flex flex-col gap-4">
                                 {/* 得令数据 */}
                                 {delingData && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">得令判定</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">得令判定</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">月支</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">{delingData.month_branch || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">月支</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">{delingData.month_branch || "-"}</td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">季节</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">{delingData.season_code || "-"}</td>
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">季节</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">{delingData.season_code || "-"}</td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">日主</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {delingData.day_stem || "-"}（{delingData.day_master_element || "-"}）
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">日主状态</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center text-xs">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">日主状态</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">
                                               {delingData.day_master_state || "-"}
                                               {delingData.day_master_score !== undefined && (
-                                                <span className="text-gray-500 ml-1">
+                                                <span className="text-[var(--color-muted)] ml-1">
                                                   （{typeof delingData.day_master_score === "number"
                                                     ? delingData.day_master_score.toFixed(2)
                                                     : parseFloat(String(delingData.day_master_score)).toFixed(2)}）
@@ -2665,19 +2687,19 @@ export default function BaziPage() {
                                               )}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">是否得令</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">是否得令</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {delingData.is_deling ? (
-                                                <span className="text-green-600 font-semibold">是</span>
+                                                <span className="text-[var(--color-success)] font-semibold">是</span>
                                               ) : (
-                                                <span className="text-red-600 font-semibold">否</span>
+                                                <span className="text-[var(--color-danger)] font-semibold">否</span>
                                               )}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">规则</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center text-xs text-gray-600">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">规则</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs text-[var(--color-muted)]">
                                               {delingData.rule_text || delingData.ruleset_id || "-"}
                                             </td>
                                           </tr>
@@ -2688,8 +2710,8 @@ export default function BaziPage() {
                                 )}
                                 {/* 根气表 */}
                                 {rootqiData && rootqiData.summaries && rootqiData.summaries.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">根气表</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">根气表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
@@ -2737,27 +2759,27 @@ export default function BaziPage() {
 
                                             return (
                                               <>
-                                                <tr className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">目标天干</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center font-medium text-xs">
+                                                <tr className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">目标天干</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center font-medium text-xs">
                                                     {targetLabel}
                                                   </td>
                                                 </tr>
-                                                <tr className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总根数</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{totalRoots}</td>
+                                                <tr className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">总根数</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{totalRoots}</td>
                                                 </tr>
-                                                <tr className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最高根分</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestScore}</td>
+                                                <tr className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">最高根分</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{bestScore}</td>
                                                 </tr>
-                                                <tr className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最高等级</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestLevel}</td>
+                                                <tr className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">最高等级</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{bestLevel}</td>
                                                 </tr>
-                                                <tr className="hover:bg-gray-50">
-                                                  <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">最佳根</td>
-                                                  <td className="border border-gray-300 px-3 py-2 text-center text-xs">{bestRoot}</td>
+                                                <tr className="hover:bg-[var(--color-surface)]">
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">最佳根</td>
+                                                  <td className="border border-[var(--color-border)] px-3 py-2 text-center text-xs">{bestRoot}</td>
                                                 </tr>
                                               </>
                                             );
@@ -2769,26 +2791,26 @@ export default function BaziPage() {
                                 )}
                                 {/* 得助表 */}
                                 {dezhuData && dezhuData.summary && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">得助表</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">得助表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">比劫得分</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">比劫得分</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {typeof dezhuData.summary.same_class_score === 'number' ? dezhuData.summary.same_class_score.toFixed(4) : parseFloat(String(dezhuData.summary.same_class_score)).toFixed(4)}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">生扶得分</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">生扶得分</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {typeof dezhuData.summary.shengfu_score === 'number' ? dezhuData.summary.shengfu_score.toFixed(4) : parseFloat(String(dezhuData.summary.shengfu_score)).toFixed(4)}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总得助分</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center font-semibold">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">总得助分</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">
                                               {typeof dezhuData.summary.total_support_score === 'number' ? dezhuData.summary.total_support_score.toFixed(4) : parseFloat(String(dezhuData.summary.total_support_score)).toFixed(4)}
                                             </td>
                                           </tr>
@@ -2799,42 +2821,42 @@ export default function BaziPage() {
                                 )}
                               </div>
                               {keXieData && keXieData.summary && (
-                                <div className="mt-4 bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">受克泄耗（制化）</h4>
+                                <div className="mt-4 bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">受克泄耗（制化）</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">泄分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">泄分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof keXieData.summary.xie_score === "number"
                                               ? keXieData.summary.xie_score.toFixed(4)
                                               : parseFloat(String(keXieData.summary.xie_score)).toFixed(4)}
                                           </td>
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">耗分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">耗分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof keXieData.summary.hao_score === "number"
                                               ? keXieData.summary.hao_score.toFixed(4)
                                               : parseFloat(String(keXieData.summary.hao_score)).toFixed(4)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">克分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">克分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof keXieData.summary.ke_score === "number"
                                               ? keXieData.summary.ke_score.toFixed(4)
                                               : parseFloat(String(keXieData.summary.ke_score)).toFixed(4)}
                                           </td>
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">制化分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">制化分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof keXieData.summary.zhihua_score === "number"
                                               ? keXieData.summary.zhihua_score.toFixed(4)
                                               : parseFloat(String(keXieData.summary.zhihua_score)).toFixed(4)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">总分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center font-semibold" colSpan={3}>
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">总分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold" colSpan={3}>
                                             {typeof keXieData.summary.total_score === "number"
                                               ? keXieData.summary.total_score.toFixed(4)
                                               : parseFloat(String(keXieData.summary.total_score)).toFixed(4)}
@@ -2851,41 +2873,41 @@ export default function BaziPage() {
                           {step.step === 5 && step.result?.climate_balance && (
                             <div className="mt-4 space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">寒暖燥湿</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">寒暖燥湿</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">温度</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.temperature || "-"}</td>
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">温度</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">{step.result.climate_balance.temperature || "-"}</td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">湿度</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.humidity || "-"}</td>
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">湿度</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">{step.result.climate_balance.humidity || "-"}</td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">燥湿</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">{step.result.climate_balance.dry_wet || "-"}</td>
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">燥湿</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">{step.result.climate_balance.dry_wet || "-"}</td>
                                         </tr>
                                       </tbody>
                                     </table>
                                   </div>
                                 </div>
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">调候建议</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">调候建议</h4>
                                   <div className="space-y-2 text-sm">
                                     <div>
-                                      <div className="text-xs text-gray-500 mb-1">需要</div>
-                                      <div className="text-gray-700">
+                                      <div className="text-xs text-[var(--color-muted)] mb-1">需要</div>
+                                      <div className="text-[var(--color-text)]">
                                         {step.result.climate_balance.needs?.length
                                           ? step.result.climate_balance.needs.join("、")
                                           : "-"}
                                       </div>
                                     </div>
                                     <div>
-                                      <div className="text-xs text-gray-500 mb-1">备注</div>
-                                      <div className="text-gray-700">
+                                      <div className="text-xs text-[var(--color-muted)] mb-1">备注</div>
+                                      <div className="text-[var(--color-text)]">
                                         {step.result.climate_balance.notes?.length
                                           ? step.result.climate_balance.notes.join("、")
                                           : "-"}
@@ -2895,42 +2917,42 @@ export default function BaziPage() {
                                 </div>
                               </div>
                               {step.result.han_zao?.summary && (
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">寒暖燥湿汇总</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">寒暖燥湿汇总</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">偏寒</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">偏寒</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof step.result.han_zao.summary.han_score === "number"
                                               ? step.result.han_zao.summary.han_score.toFixed(4)
                                               : parseFloat(String(step.result.han_zao.summary.han_score)).toFixed(4)}
                                           </td>
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/4">偏热</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/4">偏热</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof step.result.han_zao.summary.re_score === "number"
                                               ? step.result.han_zao.summary.re_score.toFixed(4)
                                               : parseFloat(String(step.result.han_zao.summary.re_score)).toFixed(4)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">偏燥</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">偏燥</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof step.result.han_zao.summary.zao_score === "number"
                                               ? step.result.han_zao.summary.zao_score.toFixed(4)
                                               : parseFloat(String(step.result.han_zao.summary.zao_score)).toFixed(4)}
                                           </td>
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">偏湿</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">偏湿</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {typeof step.result.han_zao.summary.shi_score === "number"
                                               ? step.result.han_zao.summary.shi_score.toFixed(4)
                                               : parseFloat(String(step.result.han_zao.summary.shi_score)).toFixed(4)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center font-semibold" colSpan={3}>
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">结论</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold" colSpan={3}>
                                             {getTendencyChinese(step.result.han_zao.summary.final_tendency)}
                                           </td>
                                         </tr>
@@ -2947,32 +2969,32 @@ export default function BaziPage() {
                             return (
                               <div className="mt-4 space-y-4">
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">格局摘要</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">格局摘要</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <tbody>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">主格局</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">主格局</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {structure.primary_pattern || "-"}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">清纯/破格</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">清纯/破格</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {structure.purity || "-"}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">清纯分</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">清纯分</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {summary.purity_score ?? "-"}
                                             </td>
                                           </tr>
-                                          <tr className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">破格等级</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">破格等级</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {getBreakLevelChinese(summary.break_level)}
                                             </td>
                                           </tr>
@@ -2980,39 +3002,39 @@ export default function BaziPage() {
                                       </table>
                                     </div>
                                   </div>
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">破格点</h4>
-                                    <div className="text-sm text-gray-700">
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">破格点</h4>
+                                    <div className="text-sm text-[var(--color-text)]">
                                       {structure.breakers?.length ? structure.breakers.join("，") : "-"}
                                     </div>
                                   </div>
                                 </div>
                                 {Array.isArray(structure.candidates) && structure.candidates.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">候选格局</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">候选格局</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">格局</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">核心十神</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">置信度</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">格局</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">核心十神</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">得分</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">置信度</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {structure.candidates.map((c: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                            <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-medium">
                                                 {c.pattern_code || "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {c.core_tenshen || "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {typeof c.score === "number" ? c.score.toFixed(1) : c.score ?? "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {typeof c.confidence === "number" ? c.confidence.toFixed(2) : c.confidence ?? "-"}
                                               </td>
                                             </tr>
@@ -3023,31 +3045,31 @@ export default function BaziPage() {
                                   </div>
                                 )}
                                 {Array.isArray(structure.formations) && structure.formations.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">成局列表</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">成局列表</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">类型</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">局名</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">状态</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">类型</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">局名</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">状态</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">得分</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {structure.formations.map((f: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                            <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-medium">
                                                 {f.formation_type || "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {f.formation_code || "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {getFormationStatusChinese(f.status)}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {typeof f.score === "number" ? f.score.toFixed(1) : f.score ?? "-"}
                                               </td>
                                             </tr>
@@ -3063,28 +3085,28 @@ export default function BaziPage() {
                           {step.step === 7 && step.result?.useful_gods && (
                             <div className="mt-4 space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">用神/喜神/忌神</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">用神/喜神/忌神</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">用神</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">用神</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.useful_gods.yong_shen?.element || "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">喜神</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">喜神</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.useful_gods.xi_shen?.length
                                               ? step.result.useful_gods.xi_shen.map((x: any) => x.element).join("，")
                                               : "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">忌神</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">忌神</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.useful_gods.ji_shen?.length
                                               ? step.result.useful_gods.ji_shen.map((x: any) => x.element).join("，")
                                               : "-"}
@@ -3094,21 +3116,21 @@ export default function BaziPage() {
                                     </table>
                                   </div>
                                 </div>
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">取用理由</h4>
-                                  <div className="space-y-2 text-sm text-gray-700">
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">取用理由</h4>
+                                  <div className="space-y-2 text-sm text-[var(--color-text)]">
                                     <div>
-                                      <span className="text-xs text-gray-500">用神：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">用神：</span>
                                       {step.result.useful_gods.yong_shen?.why || "-"}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">喜神：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">喜神：</span>
                                       {step.result.useful_gods.xi_shen?.length
                                         ? step.result.useful_gods.xi_shen.map((x: any) => x.why).join("，")
                                         : "-"}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">忌神：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">忌神：</span>
                                       {step.result.useful_gods.ji_shen?.length
                                         ? step.result.useful_gods.ji_shen.map((x: any) => x.why).join("，")
                                         : "-"}
@@ -3121,26 +3143,26 @@ export default function BaziPage() {
                           {step.step === 8 && step.result?.consistency_check && (
                             <div className="mt-4 space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">自洽评分</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">自洽评分</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">评分</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">评分</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.consistency_check.consistency_score ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">结论</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">结论</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {getSelfConsistencyChinese(step.result.consistency_check.self_consistency)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">病标签</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">病标签</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.consistency_check.disease_tags?.length
                                               ? step.result.consistency_check.disease_tags.map((tag: string) => getDiseaseTagChinese(tag)).join("，")
                                               : "-"}
@@ -3150,19 +3172,19 @@ export default function BaziPage() {
                                     </table>
                                   </div>
                                 </div>
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">药与风险</h4>
-                                  <div className="space-y-2 text-sm text-gray-700">
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">药与风险</h4>
+                                  <div className="space-y-2 text-sm text-[var(--color-text)]">
                                     <div>
-                                      <span className="text-xs text-gray-500">用神：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">用神：</span>
                                       {step.result.consistency_check.remedy_candidates?.primary_yongshen || "-"}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">调候：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">调候：</span>
                                       {step.result.consistency_check.remedy_candidates?.tiao_hou || "-"}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">问题：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">问题：</span>
                                       {step.result.consistency_check.risk_points?.length
                                         ? step.result.consistency_check.risk_points.join("，")
                                         : "-"}
@@ -3172,27 +3194,27 @@ export default function BaziPage() {
                               </div>
                               {Array.isArray(step.result.consistency_check.issues) &&
                                 step.result.consistency_check.issues.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">问题明细</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">问题明细</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">类型</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">等级</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">说明</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">类型</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">等级</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">说明</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {step.result.consistency_check.issues.map((i: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                            <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-medium">
                                                 {getIssueTypeChinese(i.issue_type)}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {getSeverityChinese(i.severity)}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2">
+                                              <td className="border border-[var(--color-border)] px-3 py-2">
                                                 {i.message || "-"}
                                               </td>
                                             </tr>
@@ -3207,28 +3229,28 @@ export default function BaziPage() {
                           {step.step === 9 && step.result?.tenshen_profile_static && (
                             <div className="mt-4 space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">十神画像摘要</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">十神画像摘要</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">主导十神</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">主导十神</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.top_tenshen?.length
                                               ? step.result.tenshen_profile_static.top_tenshen.join("，")
                                               : "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">置信度</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">置信度</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.confidence ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">证据条数</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">证据条数</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.evidence_count ?? "-"}
                                           </td>
                                         </tr>
@@ -3236,38 +3258,38 @@ export default function BaziPage() {
                                     </table>
                                   </div>
                                 </div>
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">六类占比</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">六类占比</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50 w-1/3">财</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)] w-1/3">财</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.category_ratio?.财 ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">官杀</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">官杀</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.category_ratio?.官杀 ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">印</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">印</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.category_ratio?.印 ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">食伤</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">食伤</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.category_ratio?.食伤 ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">比劫</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">比劫</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.tenshen_profile_static.category_ratio?.比劫 ?? "-"}
                                           </td>
                                         </tr>
@@ -3278,33 +3300,33 @@ export default function BaziPage() {
                               </div>
                               {Array.isArray(step.result.tenshen_profile_static.items) &&
                                 step.result.tenshen_profile_static.items.length > 0 && (
-                                  <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3">十神明细</h4>
+                                  <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                    <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">十神明细</h4>
                                     <div className="overflow-x-auto">
                                       <table className="w-full border-collapse text-sm">
                                         <thead>
-                                          <tr className="bg-gray-50">
-                                            <th className="border border-gray-300 px-3 py-2 text-left font-semibold">十神</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">出现数</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">得分</th>
-                                            <th className="border border-gray-300 px-3 py-2 text-center font-semibold">排名</th>
+                                          <tr className="bg-[var(--color-surface)]">
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">十神</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">出现数</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">得分</th>
+                                            <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">排名</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           {step.result.tenshen_profile_static.items.map((item: any, idx: number) => (
-                                            <tr key={idx} className="hover:bg-gray-50">
-                                              <td className="border border-gray-300 px-3 py-2 font-medium">
+                                            <tr key={idx} className="hover:bg-[var(--color-surface)]">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 font-medium">
                                                 {item.tenshen_code || "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {item.count_total ?? "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {typeof item.score_total === "number"
                                                   ? item.score_total.toFixed(2)
                                                   : item.score_total ?? "-"}
                                               </td>
-                                              <td className="border border-gray-300 px-3 py-2 text-center">
+                                              <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                                 {item.rank_no ?? "-"}
                                               </td>
                                             </tr>
@@ -3319,44 +3341,44 @@ export default function BaziPage() {
                           {step.step === 10 && step.result?.dayun && (
                             <div className="mt-4 space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">起运信息</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">起运信息</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <tbody>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">顺逆</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">顺逆</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {getDayunDirectionLabel(step.result.dayun.meta?.direction)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运年龄</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">起运年龄</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.dayun.meta?.start_age ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运年份</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">起运年份</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.dayun.meta?.start_year ?? "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">目标节气</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">目标节气</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.dayun.meta?.target_jieqi_name || "-"}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">节气时间</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">节气时间</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {formatDateTime(step.result.dayun.meta?.target_jieqi_datetime)}
                                           </td>
                                         </tr>
-                                        <tr className="hover:bg-gray-50">
-                                          <td className="border border-gray-300 px-3 py-2 font-semibold bg-gray-50">起运天数</td>
-                                          <td className="border border-gray-300 px-3 py-2 text-center">
+                                        <tr className="hover:bg-[var(--color-surface)]">
+                                          <td className="border border-[var(--color-border)] px-3 py-2 font-semibold bg-[var(--color-surface)]">起运天数</td>
+                                          <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                             {step.result.dayun.meta?.diff_days ?? "-"}
                                           </td>
                                         </tr>
@@ -3364,64 +3386,64 @@ export default function BaziPage() {
                                     </table>
                                   </div>
                                 </div>
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">规则摘要</h4>
-                                  <div className="space-y-2 text-sm text-gray-700">
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">规则摘要</h4>
+                                  <div className="space-y-2 text-sm text-[var(--color-text)]">
                                     <div>
-                                      <span className="text-xs text-gray-500">年干阴阳：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">年干阴阳：</span>
                                       {getYinyangChinese(step.result.dayun.meta?.year_stem_yinyang)}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">性别：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">性别：</span>
                                       {getGenderChinese(step.result.dayun.meta?.gender)}
                                     </div>
                                     <div>
-                                      <span className="text-xs text-gray-500">规则版本：</span>
+                                      <span className="text-xs text-[var(--color-muted)]">规则版本：</span>
                                       {step.result.dayun.meta?.rule_version || "-"}
                                     </div>
                                   </div>
                                 </div>
                               </div>
                               {Array.isArray(step.result.dayun.list) && step.result.dayun.list.length > 0 && (
-                                <div className="bg-white rounded-lg p-4 border border-gray-200">
-                                  <h4 className="text-sm font-semibold text-gray-700 mb-3">大运列表</h4>
+                                <div className="bg-[var(--color-card-bg)] rounded-lg p-4 border border-[var(--color-border)]">
+                                  <h4 className="text-sm font-semibold text-[var(--color-text)] mb-3">大运列表</h4>
                                   <div className="overflow-x-auto">
                                     <table className="w-full border-collapse text-sm">
                                       <thead>
-                                        <tr className="bg-gray-50">
-                                          <th className="border border-gray-300 px-3 py-2 text-left font-semibold">运序</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">大运干支</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运年龄</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运年份</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">起运月份</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">结束年份</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">结束月份</th>
-                                          <th className="border border-gray-300 px-3 py-2 text-center font-semibold">顺逆</th>
+                                        <tr className="bg-[var(--color-surface)]">
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-left font-semibold">运序</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">大运干支</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">起运年龄</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">起运年份</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">起运月份</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">结束年份</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">结束月份</th>
+                                          <th className="border border-[var(--color-border)] px-3 py-2 text-center font-semibold">顺逆</th>
                                         </tr>
                                       </thead>
                                       <tbody>
                                         {step.result.dayun.list.map((item: any) => (
-                                          <tr key={item.seq} className="hover:bg-gray-50">
-                                            <td className="border border-gray-300 px-3 py-2 font-medium">{item.seq}</td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                          <tr key={item.seq} className="hover:bg-[var(--color-surface)]">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 font-medium">{item.seq}</td>
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.dayun_pillar || "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.start_age ?? "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.start_year ?? "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.start_month ?? "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.end_year ?? "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {item.end_month ?? "-"}
                                             </td>
-                                            <td className="border border-gray-300 px-3 py-2 text-center">
+                                            <td className="border border-[var(--color-border)] px-3 py-2 text-center">
                                               {getDayunDirectionLabel(item.direction)}
                                             </td>
                                           </tr>
@@ -3435,10 +3457,10 @@ export default function BaziPage() {
                           )}
                           {userRole === "qmdj" && (
                             <details className="mt-4">
-                              <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700">
+                              <summary className="cursor-pointer text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]">
                                 查看原始JSON数据
                               </summary>
-                              <div className="mt-2 bg-gray-100 rounded p-3">
+                              <div className="mt-2 bg-[var(--color-elevated)] rounded p-3">
                                 <pre className="text-xs whitespace-pre-wrap overflow-auto">
                                   {JSON.stringify(step.result, null, 2)}
                                 </pre>
@@ -3454,23 +3476,23 @@ export default function BaziPage() {
             )}
 
             {loading && (
-              <div className="bg-white rounded-lg shadow-md p-6 text-center">
+              <div className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 text-center">
                 <Spin size="large" />
-                <p className="mt-4 text-gray-600">正在生成八字排盘，请稍候...</p>
+                <p className="mt-4 text-[var(--color-muted)]">正在生成八字排盘，请稍候...</p>
               </div>
             )}
           </div>
         </div>
         <SidebarDrawer title="瞬间移动">
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-2 rounded-lg bg-gray-100 p-1">
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-[var(--color-elevated)] p-1">
               <button
                 type="button"
                 onClick={() => setSidebarTab("ask")}
                 className={`rounded-md py-2 text-sm transition-colors ${
                   sidebarTab === "ask"
-                    ? "bg-amber-600 text-white"
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-[var(--color-primary)] text-white"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"
                 }`}
               >
                 问问
@@ -3480,8 +3502,8 @@ export default function BaziPage() {
                 onClick={() => setSidebarTab("look")}
                 className={`rounded-md py-2 text-sm transition-colors ${
                   sidebarTab === "look"
-                    ? "bg-amber-600 text-white"
-                    : "text-gray-700 hover:bg-gray-200"
+                    ? "bg-[var(--color-primary)] text-white"
+                    : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"
                 }`}
               >
                 看看
@@ -3489,29 +3511,29 @@ export default function BaziPage() {
             </div>
             {sidebarTab === "ask" ? (
               <div className="text-sm">
-                <a href="/qimen#qimen-date" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                <a href="/qimen#qimen-date" className="flex items-start gap-3 py-3 text-[var(--color-link)] hover:text-[var(--color-link-hover)]">
                   <span className="flex w-4 flex-col items-center">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" />
-                    <span className="relative mt-2 h-4 w-px bg-amber-200">
-                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" />
+                    <span className="relative mt-2 h-4 w-px bg-[var(--color-border)]">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-[var(--color-border)]" />
                     </span>
                   </span>
                   起盘
                 </a>
-                <a href="/qimen#qimen-question" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                <a href="/qimen#qimen-question" className="flex items-start gap-3 py-3 text-[var(--color-link)] hover:text-[var(--color-link-hover)]">
                   <span className="flex w-4 flex-col items-center">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" />
-                    <span className="relative mt-2 h-4 w-px bg-amber-200">
-                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" />
+                    <span className="relative mt-2 h-4 w-px bg-[var(--color-border)]">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-[var(--color-border)]" />
                     </span>
                   </span>
                   问事
                 </a>
-                <a href="/qimen#qimen-history" className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800">
+                <a href="/qimen#qimen-history" className="flex items-start gap-3 py-3 text-[var(--color-link)] hover:text-[var(--color-link-hover)]">
                   <span className="flex w-4 flex-col items-center">
-                    <span className="h-2 w-2 rounded-full bg-amber-500" />
-                    <span className="relative mt-2 h-4 w-px bg-amber-200">
-                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                    <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" />
+                    <span className="relative mt-2 h-4 w-px bg-[var(--color-border)]">
+                      <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-[var(--color-border)]" />
                     </span>
                   </span>
                   历史
@@ -3528,12 +3550,12 @@ export default function BaziPage() {
                         setActiveStepKey(String(item.step));
                       }
                     }}
-                    className="flex items-start gap-3 py-3 text-amber-700 hover:text-amber-800"
+                    className="flex items-start gap-3 py-3 text-[var(--color-link)] hover:text-[var(--color-link-hover)]"
                   >
                     <span className="flex w-4 flex-col items-center">
-                      <span className="h-2 w-2 rounded-full bg-amber-500" />
-                      <span className="relative mt-2 h-4 w-px bg-amber-200">
-                        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-amber-300" />
+                      <span className="h-2 w-2 rounded-full bg-[var(--color-primary)]" />
+                      <span className="relative mt-2 h-4 w-px bg-[var(--color-border)]">
+                        <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-[var(--color-border)]" />
                       </span>
                     </span>
                     {item.label}

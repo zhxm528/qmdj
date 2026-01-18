@@ -139,7 +139,7 @@ export default function Admin() {
 
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-gradient-to-b from-amber-50 to-white py-12 px-4">
+      <div className="min-h-screen bg-[var(--color-surface)] py-12 px-4">
         <div className="w-full">
           <div className="mb-6">
             <AdminBreadcrumb title="管理后台" />
@@ -149,13 +149,13 @@ export default function Admin() {
             {panels.map((panel) => (
               <div
                 key={panel.id}
-                className="bg-white rounded-lg shadow-md p-6 border border-gray-200 hover:shadow-xl transition-shadow"
+                className="bg-[var(--color-card-bg)] rounded-lg shadow-md p-6 border border-[var(--color-border)] hover:shadow-xl transition-shadow"
               >
                 <div className="text-4xl mb-4">{panel.icon}</div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+                <h2 className="text-2xl font-semibold text-[var(--color-text-strong)] mb-4">
                   {panel.title}
                 </h2>
-                <div className="text-gray-600">
+                <div className="text-[var(--color-text)]">
                   {panel.menus && panel.menus.length > 0 ? (
                     <ul className="space-y-2">
                       {panel.menus.map((menu, index) => (
