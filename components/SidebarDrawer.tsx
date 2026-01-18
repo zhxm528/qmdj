@@ -16,7 +16,7 @@ export default function SidebarDrawer({ title = "侧边栏", children }: Sidebar
         type="button"
         aria-label={open ? "收起侧边栏" : "展开侧边栏"}
         onClick={() => setOpen(!open)}
-        className="fixed right-4 bottom-24 z-50 rounded-full bg-amber-500 text-white shadow-lg w-12 h-12 flex items-center justify-center hover:bg-amber-600 transition-colors"
+        className="fixed right-4 bottom-24 z-50 rounded-full bg-[var(--color-primary)] text-white shadow-lg w-12 h-12 flex items-center justify-center hover:bg-[var(--color-primary-strong)] transition-colors"
       >
         {open ? (
           <svg
@@ -54,14 +54,14 @@ export default function SidebarDrawer({ title = "侧边栏", children }: Sidebar
             className="fixed inset-0 z-40 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <aside className="fixed right-0 top-0 z-50 h-full w-72 bg-white shadow-xl border-l border-gray-200">
-            <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="font-semibold text-gray-800">{title}</div>
+          <aside className="fixed right-0 top-0 z-50 h-full w-72 bg-[var(--color-card-bg)] shadow-xl border-l border-[var(--color-border)]">
+            <div className="p-4 border-b border-[var(--color-border)] flex items-center justify-between">
+              <div className="font-semibold text-[var(--color-text-strong)]">{title}</div>
               <button
                 type="button"
                 aria-label="收起侧边栏"
                 onClick={() => setOpen(false)}
-                className="h-8 w-8 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                className="h-8 w-8 rounded-full flex items-center justify-center text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-colors"
               >
                 <svg
                   className="h-4 w-4"
@@ -77,7 +77,7 @@ export default function SidebarDrawer({ title = "侧边栏", children }: Sidebar
                 </svg>
               </button>
             </div>
-            <div className="p-4 text-sm text-gray-700 space-y-2">
+            <div className="p-4 text-sm text-[var(--color-text)] space-y-2">
               {children || <div>侧边栏内容</div>}
             </div>
           </aside>

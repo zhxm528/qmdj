@@ -158,3 +158,55 @@ input, button, a {
 [data-theme="dark"] .ant-btn-link:hover {
   color: var(--color-link-hover);
 }
+
+/* 暗色主题下 Collapse 组件适配 */
+[data-theme="dark"] .ant-collapse {
+  background-color: var(--color-card-bg);
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .ant-collapse-item {
+  border-color: var(--color-border);
+}
+
+[data-theme="dark"] .ant-collapse-header {
+  background-color: var(--color-card-bg);
+  color: var(--color-text-strong);
+}
+
+[data-theme="dark"] .ant-collapse-header:hover {
+  background-color: var(--color-hover);
+}
+
+[data-theme="dark"] .ant-collapse-header:focus {
+  background-color: var(--color-hover);
+}
+
+[data-theme="dark"] .ant-collapse-content {
+  background-color: var(--color-card-bg);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+[data-theme="dark"] .ant-collapse-content-box {
+  background-color: var(--color-card-bg);
+  color: var(--color-text);
+}
+
+/* 暗色主题下表格样式适配 */
+[data-theme="dark"] table {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] table th {
+  color: var(--color-text-strong);
+  background-color: var(--color-surface);
+}
+
+[data-theme="dark"] table td {
+  color: var(--color-text);
+}
+
+[data-theme="dark"] table tr:hover {
+  background-color: var(--color-surface);
+}

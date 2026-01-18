@@ -1736,7 +1736,7 @@ export default function BaziPage() {
                         header={
                           <div className="flex justify-between items-center w-full">
                             <div className="flex items-center">
-                              <span className="font-semibold">
+                              <span className="font-semibold text-[var(--color-text-strong)]">
                                 {step.name}
                               </span>
                               {step.annotations && (
